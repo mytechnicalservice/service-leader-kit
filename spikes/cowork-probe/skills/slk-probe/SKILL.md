@@ -18,6 +18,8 @@ You are running a verification test, not doing real work. Follow these rules for
 1. Copy this skill's `fixtures/` folder contents into the workspace root (keep the structure: `00_Eingang/…`,
    `01_Vorgaenge/…`). The fixtures are in the `fixtures/` directory next to this SKILL.md.
 2. Create `_slk-probe/report.md` with a header: date, and `Workspace path:` + the output of `pwd`.
+3. **T0:** ask the user: "Läuft diese Aufgabe in der Cloud oder lokal auf deinem Computer?" Record the answer as
+   `Session: Cloud` or `Session: Lokal` in the header, plus the values of `$CLAUDE_PROJECT_DIR` and `$HOME`.
 
 ## Tests
 
