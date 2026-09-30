@@ -42,5 +42,7 @@ You are running a verification test, not doing real work. Follow these rules for
 ## Report format
 
 Write each result into `_slk-probe/report.md` as a table row: `| ID | Result | Evidence (message, exit codes, output) |`.
+**The table must contain exactly one row for every ID T1–T15, in order.** Before finishing, count the rows; add any
+missing one (for a blocked test, take the evidence from the `BLOCK` lines in `_slk-probe/log.txt`).
 Then append the full content of `_slk-probe/log.txt` under a heading `## Hook log`.
 Finally tell the user in German: "SLK-Probe fertig. Bericht: _slk-probe/report.md".
