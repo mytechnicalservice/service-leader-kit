@@ -5,17 +5,17 @@
 """Regenerates the read-only Excel view of the case ledger (spec §6)."""
 from __future__ import annotations
 
-import argparse
 import datetime as dt
-import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from vorgang import all_cases
+from slk_common import JsonParser, run
+from vorgang import VorgangFehler, all_cases
 
 DATEINAME = "Vorgaenge-Uebersicht (nur Ansicht).xlsx"
 HINWEIS = "Nur Ansicht – Änderungen hier werden überschrieben. Sag der Assistenz, was sich ändern soll."
@@ -24,8 +24,18 @@ SPALTEN = [("Nr", "nr"), ("Titel", "titel"), ("Typ", "typ"), ("Status", "status"
            ("Wartet auf", "wartet_auf"), ("Betrag (EUR)", "betrag_eur"), ("Aktualisiert", "aktualisiert")]
 
 
+class GesperrtFehler(Exception):
+    pass
+
+
 def ueberfaellig(meta: dict, heute: str) -> bool:
     return bool(meta.get("faellig")) and meta["faellig"] < heute and meta["status"] != "erledigt"
+
+
+def setze(sheet, row: int, col: int, value) -> None:
+    cell = sheet.cell(row=row, column=col, value=value)
+    if isinstance(value, str) and value.startswith("="):
+        cell.data_type = "s"  # text from customer mails must never become a live Excel formula
 
 
 def fill(sheet, rows: list[dict], heute: str) -> None:
@@ -35,7 +45,7 @@ def fill(sheet, rows: list[dict], heute: str) -> None:
         sheet.cell(row=3, column=col, value=titel).font = Font(bold=True)
     for r, meta in enumerate(rows, start=4):
         for col, (_, key) in enumerate(SPALTEN, start=1):
-            sheet.cell(row=r, column=col, value=("ja" if ueberfaellig(meta, heute) else "nein") if key is None else meta.get(key))
+            setze(sheet, r, col, ("ja" if ueberfaellig(meta, heute) else "nein") if key is None else meta.get(key))
     sheet.freeze_panes = "A4"
     sheet.protection.sheet = True
 
@@ -50,24 +60,37 @@ def build(ws: Path, heute: str) -> Path:
     fill(wb.create_sheet("Erledigt"), erledigt, heute)
     target = ws / "01_Vorgaenge" / DATEINAME
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(target.name + ".tmp")
-    wb.save(tmp)
-    os.replace(tmp, target)
+    fd, tmp = tempfile.mkstemp(dir=target.parent, prefix=".uebersicht.", suffix=".tmp")
+    os.close(fd)
+    try:
+        wb.save(tmp)
+        os.replace(tmp, target)
+    except PermissionError as exc:
+        raise GesperrtFehler("Die Übersicht ist gerade in Excel geöffnet. Bitte 'Vorgaenge-Uebersicht' in Excel "
+                             "schließen und noch einmal versuchen.") from exc
+    finally:
+        Path(tmp).unlink(missing_ok=True)
     return target
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="vorgaenge_uebersicht")
+def _main(argv: list[str] | None) -> tuple[int, dict]:
+    ap = JsonParser(prog="vorgaenge_uebersicht")
     ap.add_argument("--ws", required=True)
     ap.add_argument("--heute", default=dt.date.today().isoformat())
     a = ap.parse_args(argv)
     ws = Path(a.ws)
-    path = build(ws, a.heute)
-    offen = [m for _, m, _ in all_cases(ws, ("offen",))]
-    print(json.dumps({"ok": True, "datei": path.relative_to(ws).as_posix(), "offen": len(offen),
-                      "ueberfaellig": sum(ueberfaellig(m, a.heute) for m in offen),
-                      "erledigt": len(all_cases(ws, ("erledigt",)))}, ensure_ascii=False))
-    return 0
+    try:
+        path = build(ws, a.heute)
+        offen = [m for _, m, _ in all_cases(ws, ("offen",))]
+    except (VorgangFehler, GesperrtFehler) as exc:
+        return 1, {"ok": False, "fehler": [str(exc)]}
+    return 0, {"ok": True, "datei": path.relative_to(ws).as_posix(), "offen": len(offen),
+               "ueberfaellig": sum(ueberfaellig(m, a.heute) for m in offen),
+               "erledigt": len(all_cases(ws, ("erledigt",)))}
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run(_main, argv)
 
 
 if __name__ == "__main__":

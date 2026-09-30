@@ -2,6 +2,7 @@
   "name": "auftraege",
   "periode": { "spalte": "Eingang" },
   "summe": "Umsatz_EUR",
+  "schluessel": "Auftragsnr",
   "spalten": [
     { "name": "Auftragsnr", "typ": "text", "pflicht": true, "synonyme": ["Auftrag", "Auftragsnummer", "SA-Nr"] },
     { "name": "Kunde", "typ": "text", "pflicht": true, "synonyme": ["Kundenname", "Debitor"] },

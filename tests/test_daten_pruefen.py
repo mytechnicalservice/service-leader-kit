@@ -38,7 +38,7 @@ def test_clean_import_writes_csv_moves_original_and_blocks_second_import(ws, dat
     r = pruefe(ws, src, "auftraege", None, [], True, HEUTE)
     assert r["ok"] and (r["periode"], r["summe"], r["zeilen"]) == ("2026-09", exp["auftraege_umsatz"], exp["auftraege_zeilen"])
     assert (ws / "07_Daten" / "auftraege_2026-09.csv").exists() and not src.exists()
-    assert (ws / "07_Daten" / "original" / "auftraege_2026-09.xlsx").exists()
+    assert (ws / "07_Daten" / "original" / "auftraege_2026-09__auftraege_2026-09.xlsx").exists()
     dup = ws / "00_Eingang" / "auftraege_2026-09 (1).xlsx"
     dup.write_bytes((gen / "beispiel" / "00_Eingang" / "auftraege_2026-09.xlsx").read_bytes())
     r2 = pruefe(ws, dup, "auftraege", None, [], True, HEUTE)
