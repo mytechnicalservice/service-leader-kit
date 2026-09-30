@@ -1,0 +1,11 @@
+{
+  "name": "ergebnis",
+  "periode": { "spalte": "Monat" },
+  "summe": "Ist_EUR",
+  "spalten": [
+    { "name": "Monat", "typ": "monat", "pflicht": true, "synonyme": ["Periode", "Buchungsmonat"] },
+    { "name": "Position", "typ": "text", "pflicht": true, "synonyme": ["Kostenart", "Zeile"] },
+    { "name": "Plan_EUR", "typ": "zahl", "pflicht": false, "synonyme": ["Plan", "Budget"] },
+    { "name": "Ist_EUR", "typ": "zahl", "pflicht": true, "synonyme": ["Ist", "Istwert"] }
+  ]
+}

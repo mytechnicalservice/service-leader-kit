@@ -1,0 +1,13 @@
+{
+  "name": "installed_base",
+  "periode": { "stichtag": true },
+  "summe": null,
+  "spalten": [
+    { "name": "Kunde", "typ": "text", "pflicht": true, "synonyme": ["Kundenname", "Debitor"] },
+    { "name": "Anlage", "typ": "text", "pflicht": true, "synonyme": ["Maschine", "Equipment"] },
+    { "name": "Maschinentyp", "typ": "text", "pflicht": true, "synonyme": ["Typ", "Modell"] },
+    { "name": "Baujahr", "typ": "zahl", "pflicht": false, "synonyme": ["BJ"] },
+    { "name": "Vertrag", "typ": "ja_nein", "pflicht": true, "synonyme": ["Wartungsvertrag"] },
+    { "name": "Vertragsende", "typ": "datum", "pflicht": false, "synonyme": ["Vertrag bis", "Laufzeitende"] }
+  ]
+}

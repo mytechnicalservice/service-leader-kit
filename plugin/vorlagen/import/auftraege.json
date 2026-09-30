@@ -1,0 +1,18 @@
+{
+  "name": "auftraege",
+  "periode": { "spalte": "Eingang" },
+  "summe": "Umsatz_EUR",
+  "spalten": [
+    { "name": "Auftragsnr", "typ": "text", "pflicht": true, "synonyme": ["Auftrag", "Auftragsnummer", "SA-Nr"] },
+    { "name": "Kunde", "typ": "text", "pflicht": true, "synonyme": ["Kundenname", "Debitor"] },
+    { "name": "Anlage", "typ": "text", "pflicht": false, "synonyme": ["Maschine", "Equipment"] },
+    { "name": "Auftragsart", "typ": "text", "pflicht": true, "synonyme": ["Art", "Leistungsart"] },
+    { "name": "Eingang", "typ": "datum", "pflicht": true, "synonyme": ["Eingangsdatum", "Erfasst am"] },
+    { "name": "Abschluss", "typ": "datum", "pflicht": false, "synonyme": ["Abschlussdatum", "Erledigt am"] },
+    { "name": "Status", "typ": "text", "pflicht": false, "synonyme": [] },
+    { "name": "Stunden", "typ": "zahl", "pflicht": true, "synonyme": ["Std.", "Std", "Arbeitsstunden"] },
+    { "name": "Umsatz_EUR", "typ": "zahl", "pflicht": true, "synonyme": ["Auftragswert", "Umsatz", "Netto"] },
+    { "name": "Kosten_EUR", "typ": "zahl", "pflicht": false, "synonyme": ["Kosten", "Selbstkosten"] },
+    { "name": "Team", "typ": "text", "pflicht": false, "synonyme": ["Gruppe", "Region"] }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "kapazitaet",
+  "periode": { "spalte": "Monat" },
+  "summe": "Ist_Stunden",
+  "spalten": [
+    { "name": "Monat", "typ": "monat", "pflicht": true, "synonyme": ["Periode"] },
+    { "name": "Team", "typ": "text", "pflicht": true, "synonyme": ["Gruppe", "Region"] },
+    { "name": "Techniker_Anzahl", "typ": "zahl", "pflicht": true, "synonyme": ["Techniker", "Köpfe"] },
+    { "name": "Soll_Stunden", "typ": "zahl", "pflicht": true, "synonyme": ["Soll", "Kapazität"] },
+    { "name": "Ist_Stunden", "typ": "zahl", "pflicht": true, "synonyme": ["Ist", "Geleistet"] }
+  ]
+}
