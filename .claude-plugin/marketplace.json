@@ -1,0 +1,12 @@
+{
+  "name": "service-leader-kit",
+  "description": "Service Leader Kit von myTS: Claude-Code-Plugin für Leiter Kundendienst.",
+  "owner": { "name": "myTS" },
+  "plugins": [
+    {
+      "name": "service-leader-kit",
+      "source": "./plugin",
+      "description": "KI-Stab für Leiter Kundendienst: Agenten, Skills und Vorlagen für die Arbeit in einem Ordner."
+    }
+  ]
+}
