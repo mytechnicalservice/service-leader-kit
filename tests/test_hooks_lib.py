@@ -81,13 +81,6 @@ def test_workspace_found_above_and_below(shell, tmp_path):
     assert lib(shell, f'slk_ws_from "{tmp_path}"')[0] == 1
 
 
-def test_root_of_handles_backslashes_case_and_relative_paths(shell):
-    assert lib(shell, 'slk_root_of "/U/Kunden Müller/01_vorgaenge/offen/V-1.md" 01_vorgaenge /cwd')[1] == \
-        "/U/Kunden Müller"
-    assert lib(shell, r"slk_root_of '\U\Müller\Unternehmen\x.md' unternehmen /cwd")[1] == "/U/Müller"
-    assert lib(shell, 'slk_root_of "01_Vorgaenge/offen/V-1.md" 01_vorgaenge /cwd')[1] == "/cwd"
-
-
 @pytest.mark.parametrize("datum", ["1970-01-01", "2024-02-29", "2026-08-01", "2026-10-01", "2031-12-31"])
 def test_days_and_weekday_match_python(shell, datum):
     d = dt.date.fromisoformat(datum)
@@ -148,7 +141,7 @@ def test_lib_leaves_caller_variables_alone(shell, tmp_path):
     ws = tmp_path / "ws"
     (ws / "Unternehmen").mkdir(parents=True)
     script = (f'd=X f=Y n=Z m=W p=V; slk_ws_from "{ws}" >/dev/null; slk_ws_below "{tmp_path}" >/dev/null; '
-              f'slk_root_of "a/01_x/b" 01_x /c >/dev/null; slk_days 2026-10-01 >/dev/null; slk_ver_gt 1.2.3 1.2.4; '
+              f'slk_norm_path a/../b /c >/dev/null; slk_ws_for /a/01_x/b 01_x; slk_days 2026-10-01 >/dev/null; slk_ver_gt 1.2.3 1.2.4; '
               f'slk_log "{ws}" E t >/dev/null; slk_json_str q >/dev/null; slk_config "{ws}" >/dev/null; '
               f'slk_get "a=b" a >/dev/null; echo "$d$f$n$m$p"')
     assert lib(shell, script, SLK_KEIN_PROTOKOLL="")[1] == "XYZWV\n"
@@ -156,10 +149,6 @@ def test_lib_leaves_caller_variables_alone(shell, tmp_path):
 
 def test_days_rejects_malformed_date(shell):
     assert lib(shell, "slk_days 2026-10-01x") == (1, "")
-
-
-def test_root_of_relative_prefix_gets_cwd(shell):
-    assert lib(shell, 'slk_root_of "sub/01_vorgaenge/x" 01_vorgaenge /cwd')[1] == "/cwd/sub"
 
 
 def test_ws_below_empty_arg_fails(shell):
@@ -188,3 +177,22 @@ def test_log_flattens_tabs_and_newlines(shell, tmp_path):
 def test_get_first_match_and_absent(shell):
     assert lib(shell, "slk_get \"$(printf 'a=1\\nb=2\\na=3')\" a")[1] == "1\n"
     assert lib(shell, "slk_get 'a=1' zz")[1] == ""
+
+
+@pytest.mark.parametrize("pfad,erwartet", [
+    ("a/b.md", "/cwd/a/b.md"), ("/x/nope/../y", "/x/y"), ("/x/./y//z", "/x/y/z"),
+    (r"\x\y\..\z", "/x/z"), (r"C:\a\..\b", "C:/b"), ("../../..//q", "/q"), ("/x/y/", "/x/y"),
+])
+def test_norm_path(shell, pfad, erwartet):
+    assert lib(shell, f"slk_norm_path '{pfad}' /cwd")[1] == erwartet
+
+
+def test_ws_for_tries_every_occurrence(shell, tmp_path):
+    ws = tmp_path / "Unternehmen" / "Kunden Müller"
+    ws.mkdir(parents=True)
+    pfad = f"{ws}/Unternehmen/profil.md"
+    assert lib(shell, f'slk_ws_for "{pfad}" unternehmen')[0] == 1
+    (ws / "01_Vorgaenge").mkdir()
+    assert lib(shell, f'slk_ws_for "{pfad}" unternehmen') == (0, str(ws))
+    assert lib(shell, f'slk_ws_for "{ws}/01_VORGAENGE/x.md" 01_vorgaenge') == (0, str(ws))
+    assert lib(shell, f'slk_ws_for "{tmp_path}/Unternehmen/y" unternehmen')[0] == 1

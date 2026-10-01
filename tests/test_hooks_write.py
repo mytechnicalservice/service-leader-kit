@@ -66,3 +66,28 @@ def test_case_guard_holds_when_another_project_is_open(shell, tmp_path, kit_ws):
 def test_read_and_unknown_tools_pass(shell, kit_ws):
     p = write(kit_ws / "01_Vorgaenge" / "offen" / "V-0001.md", tool="Read")
     assert pre(shell, kit_ws, p) == (0, "")
+
+
+def test_nested_workspace_inside_a_folder_named_unternehmen(shell, tmp_path, ws):
+    from conftest import KONFIG, ORDNER
+    w = tmp_path / "Unternehmen" / "Kundendienst"
+    for o in ORDNER:
+        (w / o).mkdir(parents=True)
+    (w / "Unternehmen" / ".kit-config").write_text(KONFIG, encoding="utf-8")
+    assert pre(shell, w, write(w / "Unternehmen" / "profil.md"))[0] == 2
+    assert pre(shell, w, write(w / "Unternehmen" / "profil.md", agent=ARCHITEKT))[0] == 0
+    assert pre(shell, w, write(w / "03_Berichte" / "b.md"))[0] == 0
+
+
+def test_decoy_folder_before_the_real_workspace(shell, tmp_path, kit_ws):
+    decoy = tmp_path / "01_Vorgaenge"
+    decoy.mkdir()
+    pfad = f"{decoy}/../{kit_ws.name}/01_Vorgaenge/offen/x.md"
+    assert pre(shell, kit_ws, write(pfad))[0] == 2
+
+
+@pytest.mark.parametrize("relativ", [False, True])
+def test_dotdot_through_a_missing_folder(shell, kit_ws, relativ):
+    p = write("nope/../01_Vorgaenge/x.md" if relativ else f"{kit_ws}/nope/../01_Vorgaenge/offen/V-0001.md")
+    p["cwd"] = str(kit_ws)
+    assert pre(shell, kit_ws, p)[0] == 2

@@ -37,19 +37,40 @@ slk_ws_below() {
   return 1
 }
 
-# Prints the directory that contains folder $2 (lower-case name) in path $1, in the path's own case.
-# Paths relative to it resolve against $3 (the tool call's cwd).
-slk_root_of() {
-  _slk_p=$(slk_slashes "$1"); _slk_l=$(slk_lower "$_slk_p")
-  case "$_slk_l" in
-    "$2"/*|./"$2"/*) printf '%s' "$3" ;;
-    */"$2"/*)
-      _slk_pre=${_slk_l%%/"$2"/*}
-      if [ -z "$_slk_pre" ]; then printf '/'; return 0; fi
-      _slk_r=$(printf '%s' "$_slk_p" | cut -c "1-${#_slk_pre}")
-      case "$_slk_r" in /*|[A-Za-z]:*) ;; *) _slk_r="$3/$_slk_r" ;; esac
-      printf '%s' "$_slk_r" ;;
-  esac
+# Absolute, lexically collapsed form of path $1 (relative paths resolve against $2): backslashes become
+# slashes; "//", "/./" and "seg/.." collapse; a leading "X:" drive is kept. Case is left alone.
+slk_norm_path() {
+  _slk_n=$(slk_slashes "$1")
+  case "$_slk_n" in /*|[A-Za-z]:/*) ;; *) _slk_n="$(slk_slashes "$2")/$_slk_n" ;; esac
+  printf '%s' "$_slk_n" | awk '{
+    drive = ""
+    if ($0 ~ /^[A-Za-z]:/) { drive = substr($0, 1, 2); $0 = substr($0, 3) }
+    n = split($0, a, "/"); m = 0
+    for (i = 1; i <= n; i++) {
+      if (a[i] == "" || a[i] == ".") continue
+      if (a[i] == "..") { if (m > 0) m--; continue }
+      m++; o[m] = a[i]
+    }
+    r = ""
+    for (i = 1; i <= m; i++) r = r "/" o[i]
+    if (r == "") r = "/"
+    printf "%s%s", drive, r
+  }'
+}
+
+# For normalized path $1 and lower-case folder name $2: tries the part before EVERY "/name/" occurrence
+# (original case) and prints the first that is a workspace; exit 1 if none.
+slk_ws_for() {
+  _slk_rest=$(slk_lower "$1"); _slk_off=0
+  while :; do
+    case "$_slk_rest" in *"/$2/"*) ;; *) return 1 ;; esac
+    _slk_pre=${_slk_rest%%"/$2/"*}
+    _slk_off=$((_slk_off + ${#_slk_pre}))
+    if [ "$_slk_off" -eq 0 ]; then _slk_r=/; else _slk_r=$(printf '%s' "$1" | cut -c "1-$_slk_off"); fi
+    if slk_is_ws "$_slk_r"; then printf '%s' "$_slk_r"; return 0; fi
+    _slk_off=$((_slk_off + ${#2} + 1))
+    _slk_rest="/${_slk_rest#*"/$2/"}"
+  done
 }
 
 # Validated settings of workspace $1 as key=value lines; exit 1 (no output) if missing or invalid.
