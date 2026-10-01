@@ -10,7 +10,7 @@ cfg=$(slk_config "$ws") || cfg=""
 meldung=""; grund=""
 
 # 1. Backup, only with valid settings (the safe fallback is "no git", spec §7.1).
-if [ "$(slk_get "$cfg" ablage)" = github ] && [ -d "$ws/.git" ] && command -v git >/dev/null 2>&1; then
+if [ "$(slk_get "$cfg" ablage)" = github ] && [ -e "$ws/.git" ] && command -v git >/dev/null 2>&1; then
   . "$SLK_HOOKS/sicherung.sh"
 fi
 

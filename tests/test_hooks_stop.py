@@ -105,3 +105,73 @@ def test_stop_hook_active_with_spaces_is_recognised(shell, kit_ws):
     reminder_ws(kit_ws)
     (kit_ws / "03_Berichte" / "Bericht.md").write_text("x", encoding="utf-8")
     assert stop(shell, kit_ws, '{"hook_event_name":"Stop",\n "stop_hook_active" :  true}') == {}
+
+
+def first_commit(shell, ws, tmp_path):
+    bare = github(ws, tmp_path)
+    (ws / "03_Berichte" / "a.md").write_text("x", encoding="utf-8")
+    assert stop(shell, ws, home=tmp_path) == {}
+    return bare
+
+
+def count(ws):
+    return len(git(ws, "log", "--oneline").split())
+
+
+def test_push_that_hangs_is_cut_off(shell, kit_ws, tmp_path):
+    github(kit_ws, tmp_path)
+    git(kit_ws, "remote", "set-url", "origin", "fake:repo")
+    sleeper = tmp_path / "sleeper.sh"
+    sleeper.write_text("#!/bin/sh\nsleep 100\n", encoding="utf-8")
+    sleeper.chmod(0o755)
+    (kit_ws / "03_Berichte" / "a.md").write_text("x", encoding="utf-8")
+    t0 = time.time()
+    r = run_hook(shell, "stop.sh", STOP, kit_ws, **GIT_ENV, GIT_SSH_COMMAND=str(sleeper), SLK_PUSH_FRIST="2")
+    assert time.time() - t0 < 20 and r.stderr == b""
+    assert "nicht zu GitHub übertragen" in json.loads(r.stdout)["systemMessage"]
+
+
+@pytest.mark.parametrize("zustand", ["merge", "detached"])
+def test_no_backup_during_a_merge_or_on_a_detached_head(shell, kit_ws, tmp_path, zustand):
+    first_commit(shell, kit_ws, tmp_path)
+    n = count(kit_ws)
+    if zustand == "merge":
+        (kit_ws / ".git" / "MERGE_HEAD").write_text("0" * 40 + "\n", encoding="utf-8")
+    else:
+        git(kit_ws, "checkout", "-q", "--detach")
+    (kit_ws / "03_Berichte" / "b.md").write_text("x", encoding="utf-8")
+    assert "Abgleich offen" in stop(shell, kit_ws, home=tmp_path)["systemMessage"]
+    assert count(kit_ws) == n
+
+
+def test_rejected_push_asks_for_a_sync(shell, kit_ws, tmp_path):
+    bare = first_commit(shell, kit_ws, tmp_path)
+    other = tmp_path / "other"
+    subprocess.run(["git", "clone", "-q", str(bare), str(other)], check=True, env={**os.environ, **GIT_ENV})
+    (other / "n.md").write_text("y", encoding="utf-8")
+    git(other, "add", "-A")
+    git(other, "-c", "user.name=a", "-c", "user.email=a@b.c", "commit", "-q", "-m", "x")
+    git(other, "push", "-q", "origin", "HEAD")
+    (kit_ws / "03_Berichte" / "b.md").write_text("x", encoding="utf-8")
+    assert "neuere Stände" in stop(shell, kit_ws, home=tmp_path)["systemMessage"]
+
+
+def test_lock_and_kit_files_are_never_committed_without_a_gitignore(shell, kit_ws, tmp_path):
+    github(kit_ws, tmp_path)
+    (kit_ws / "03_Berichte" / "~$Bericht.xlsx").write_text("x", encoding="utf-8")
+    (kit_ws / "03_Berichte" / "ok.md").write_text("x", encoding="utf-8")
+    (kit_ws / "Unternehmen" / ".kit-stand").write_text("x", encoding="utf-8")
+    assert stop(shell, kit_ws, home=tmp_path) == {}
+    files = git(kit_ws, "ls-files")
+    assert "ok.md" in files and "~$" not in files and ".kit-stand" not in files
+
+
+def test_files_over_90_mb_are_skipped_and_named(shell, kit_ws, tmp_path):
+    github(kit_ws, tmp_path)
+    with open(kit_ws / "03_Berichte" / "gross.bin", "wb") as f:
+        f.truncate(91 * 1024 * 1024)
+    (kit_ws / "03_Berichte" / "ok.md").write_text("x", encoding="utf-8")
+    msg = stop(shell, kit_ws, home=tmp_path)["systemMessage"]
+    assert "gross.bin" in msg and "zu groß für GitHub, nicht gesichert" in msg
+    files = git(kit_ws, "ls-files")
+    assert "ok.md" in files and "gross.bin" not in files
