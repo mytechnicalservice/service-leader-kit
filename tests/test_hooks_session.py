@@ -119,3 +119,23 @@ def test_weekly_start_from_the_configured_weekday(shell, datum, status, erwartet
 ])
 def test_quarter(shell, datum, status, erwartet):
     assert ("quartal ist fällig" in faellig(shell, datum, status)) is erwartet
+
+
+@pytest.mark.parametrize("kaputt", ["guard_shell.sh", "guard_write.sh"])
+def test_self_test_warns_when_a_hook_file_is_missing_or_broken(shell, kit_ws, tmp_path, kaputt):
+    kopie = tmp_path / "plugin"
+    shutil.copytree(ROOT / "plugin", kopie)
+    if kaputt == "guard_write.sh":
+        (kopie / "hooks" / kaputt).write_text("if then\n", encoding="utf-8")
+    else:
+        (kopie / "hooks" / kaputt).unlink()
+    out = start(shell, kit_ws, hooks=kopie / "hooks")
+    assert "funktionieren auf diesem Rechner nicht" in out
+
+
+def test_status_files_with_a_utf8_bom_are_read(shell, kit_ws):
+    u = kit_ws / "Unternehmen"
+    u.joinpath(".kit-status").write_bytes(b"\xef\xbb\xbftagesstart=" + dt.date.today().isoformat().encode() + b"\r\n")
+    u.joinpath(".kit-version").write_bytes(b"\xef\xbb\xbf0.1.0\r\n")
+    out = start(shell, kit_ws)
+    assert "tagesstart ist heute noch nicht gelaufen" not in out and "gesundheitscheck" not in out
