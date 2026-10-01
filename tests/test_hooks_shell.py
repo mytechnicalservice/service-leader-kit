@@ -120,6 +120,10 @@ BLOCK = [
     ("cd gibtsnicht; trash 04_Angebote", "shell-rekursiv"),
     ("(cd 03_Berichte); trash 04_Angebote", "shell-rekursiv"),
     ('mv -T "../Kundendienst Müller" /tmp/x', "shell-geschuetzt"),
+    # fix wave 3: -t combined with other short flags
+    ("mv -vt /tmp ..", "shell-geschuetzt"),
+    ("mv -tv /tmp ..", "shell-geschuetzt"),
+    ("mv -vt/tmp ..", "shell-geschuetzt"),
 ]
 
 ERLAUBT = [
@@ -184,6 +188,10 @@ ERLAUBT = [
     "mv -T 03_Berichte/a.md 03_Berichte/b.md",
     "mv -t 04_Angebote 03_Berichte/a.md",
     "cd 03_Berichte && rm a.md",
+    # fix wave 3: a non-ASCII letter after the name keeps it part of a longer word (en dash is not a separator)
+    "rm 06_Kunden/UnternehmenÜbersicht.md",
+    "cp a.md 06_Kunden/Unternehmen–Liste.md",
+    "mv -vt 04_Angebote 03_Berichte/a.md",
 ]
 
 
@@ -269,6 +277,15 @@ def test_outside_a_workspace_nothing_is_blocked(shell, tmp_path):
     "Remove-Item -LiteralPath:01_Vorgaenge/offen/V-0001.md",
     "Remove-Item 03_Berichte/a.md,Unternehmen/profil.md",
     "Set-Content -Path:Unternehmen/profil.md -Value x",
+    # fix wave 3: PowerShell's typographic quotes and the no-break space separate words
+    "Remove-Item „Unternehmen\\profil.md“",
+    "Remove-Item “Unternehmen\\profil.md”",
+    "Remove-Item ‘Unternehmen\\profil.md’",
+    "Remove-Item -Path „01_Vorgaenge\\offen\\V-0001.md“",
+    "Set-Content „Unternehmen\\profil.md“ x",
+    '"x" > „Unternehmen\\profil.md“',
+    "Remove-Item 03_Berichte\\a.md,„Unternehmen\\profil.md“",
+    "Remove-Item x, Unternehmen\\profil.md",
 ])
 def test_powershell_cannot_move_the_workspace(shell, kit_ws, command):
     code, err = pre(shell, kit_ws, bash(kit_ws, command, tool="PowerShell"))

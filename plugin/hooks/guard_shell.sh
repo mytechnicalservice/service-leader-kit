@@ -9,6 +9,11 @@ cmd=$(slk_field "$payload" command)
 # Too long to check in time (the hook would be cut off, and a cut-off hook does not block): refuse it.
 [ "${#cmd}" -gt 131072 ] &&
   block shell-zu-lang "Der Befehl ist zu lang zum Prüfen. Schreib große Inhalte mit dem Write-Werkzeug in eine Datei."
+# PowerShell treats the typographic quotes ‘ ’ ‚ ‛ “ ” „ (UTF-8 \342\200\230-\236) as quotes and the no-break
+# space (\302\240) as a space: all become plain spaces before anything is checked (the en dash stays).
+_slk_tq=$(printf '\342\200[\230-\236]'); _slk_nb=$(printf '\302\240')
+seps() { printf '%s\n' "$1" | sed -e "s/$_slk_tq/ /g" -e "s/$_slk_nb/ /g"; }
+case "$cmd" in *"$(printf '\342\200')"*|*"$_slk_nb"*) cmd=$(seps "$cmd") ;; esac
 full=$(slk_lower "$(slk_slashes "$cmd")")                                  # everything, quotes kept
 bare=$(printf '%s\n' "$full" | sed -e 's/"[^"]*"/ /g' -e "s/'[^']*'/ /g")  # quoted text removed
 nq=$(printf '%s' "$full" | tr -d "\"'")                                    # quote marks removed, text kept
@@ -39,7 +44,7 @@ SEND="curl wget sendmail mail mailx mutt msmtp nc ncat netcat telnet ssh scp sft
 recmsg="Rekursives Löschen ist im Kundendienst-Ordner nicht erlaubt. Einzelne Dateien außerhalb von 01_Vorgaenge/ und Unternehmen/ dürfen gelöscht werden; Vorgänge merkt vorgang.py loeschen-markieren zum Löschen vor."
 platzmsg="Löschen oder Verschieben mit Platzhaltern (*, ?), Variablen (\$), Befehlsersetzung, xargs oder einer Pipe (|) ist im Kundendienst-Ordner nicht erlaubt. Nenne jede Datei einzeln."
 wsmsg="Den Kundendienst-Ordner selbst oder einen Ordner darüber zu löschen oder zu verschieben ist nicht erlaubt. Das macht der Nutzer selbst."
-lws=$(slk_lower "$ws")
+lws=$(slk_lower "$(seps "$ws")")   # same separator mapping as the command text
 _slk_ecwd=$cwd   # the shell's folder at the current simple command (a literal cd/pushd/Set-Location moves it)
 
 # Checks path $1 ("~" is $HOME) resolved against BOTH the hook's cwd and the tracked folder (a cd may have
@@ -59,16 +64,26 @@ ws_target() {
 # Index of a move's destination among its args: 0 if none. The destination may be the workspace itself
 # (mv 03_Berichte/a.md .). It is the arg after -Destination (PowerShell, any case) or mv's -t (case matters:
 # -T means "no target folder"), else the last name. A -Path/-LiteralPath value is always a source.
-move_dest() {
+move_dest() { # $1 = verb, then the args
+  _slk_mv=$1; shift
   _slk_i=0; _slk_d=0; _slk_np=0; _slk_last=0; _slk_nx=0; _slk_pth=0
   for _slk_a in "$@"; do
     _slk_i=$((_slk_i + 1)); _slk_t=${_slk_a#???}; _slk_l=$(slk_lower "$_slk_t")
     if [ "$_slk_nx" = d ]; then _slk_d=$_slk_i; _slk_nx=0; continue; fi
     if [ "$_slk_nx" = p ]; then _slk_nx=0; continue; fi
     case "$_slk_t" in
-      -t|--target-directory) _slk_nx=d; continue ;;
+      --target-directory) _slk_nx=d; continue ;;
       --target-directory=*) _slk_d=-1; continue ;;
     esac
+    # mv short flags may be combined: -t, -vt (folder is the next arg), -vt/tmp or -tv (folder given inline).
+    if [ "$_slk_mv" = mv ]; then
+      case "$_slk_t" in --*) ;; -*t*)
+        case "${_slk_t%%t*}" in -*[!A-Za-z]*) ;; *)
+          if [ -n "${_slk_t#*t}" ]; then _slk_d=-1; else _slk_nx=d; fi
+          continue ;;
+        esac ;;
+      esac
+    fi
     case "$_slk_l" in
       -debug) ;;
       -de*:*) _slk_d=-1 ;;
@@ -105,7 +120,7 @@ seg_delete_rules() {
   _slk_v=$1; shift
   _slk_rec=0; _slk_ph=0; _slk_n=0; _slk_dest=0
   case "$_slk_v" in rmdir|rd) _slk_rec=1 ;; esac
-  in_list "$_slk_v" "$MOVE" && _slk_dest=$(move_dest "$@")
+  in_list "$_slk_v" "$MOVE" && _slk_dest=$(move_dest "$_slk_v" "$@")
   for _slk_a in "$@"; do
     _slk_f=${_slk_a%"${_slk_a#???}"}; _slk_t=${_slk_a#???}; _slk_n=$((_slk_n + 1))
     case "$_slk_f" in 1??|?1?) _slk_ph=1 ;; esac
@@ -209,7 +224,7 @@ fi
 
 # 3. The protected folders: named in the command, or the shell already sits inside one. Named means the
 # name is not part of a longer word: not directly after a letter, digit, "_" or a non-ASCII byte, and not
-# directly before a letter, digit, "_", "." or "-" (Unternehmensbericht.docx, Partnerunternehmen.md and
+# directly before a letter, digit, "_", ".", "-" or a non-ASCII byte (UnternehmenÜbersicht.md, Unternehmensbericht.docx, Partnerunternehmen.md and
 # Unternehmen.md are not Unternehmen/; -Path:Unternehmen/…, a,Unternehmen/… and {…,Unternehmen/…} are).
 # The workspace's own path is removed first (a workspace may itself live in a folder called Unternehmen).
 named=0; incwd=0
@@ -217,7 +232,7 @@ nqs=$(printf '%s\n' "$nq" | awk -v p="$lws" 'p != "" {
   o = ""; while ((i = index($0, p)) > 0) { o = o substr($0, 1, i - 1); $0 = substr($0, i + length(p)) }
   $0 = o $0 } { print }')
 vorher=$(printf '[^[:alnum:]_\200-\377]')   # LC_ALL=C: bytes 0x80-0xff belong to a word (UTF-8 letters)
-nachher='[^[:alnum:]_.-]'
+nachher=$(printf '[^[:alnum:]_.\200-\377-]')
 printf '%s\n' "$nqs" | grep -Eq "(^|$vorher)(01_vorgaenge|unternehmen)($nachher|\$)" && named=1
 lcwd=$(slk_lower "$cwd")/
 case "$lcwd" in "$lws"/01_vorgaenge/*|"$lws"/unternehmen/*) named=1; incwd=1 ;; esac
