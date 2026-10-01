@@ -157,6 +157,7 @@ def test_rejected_push_asks_for_a_sync(shell, kit_ws, tmp_path):
 
 
 def test_lock_and_kit_files_are_never_committed_without_a_gitignore(shell, kit_ws, tmp_path):
+    (kit_ws / ".gitignore").unlink()
     github(kit_ws, tmp_path)
     (kit_ws / "03_Berichte" / "~$Bericht.xlsx").write_text("x", encoding="utf-8")
     (kit_ws / "03_Berichte" / "ok.md").write_text("x", encoding="utf-8")
@@ -164,6 +165,15 @@ def test_lock_and_kit_files_are_never_committed_without_a_gitignore(shell, kit_w
     assert stop(shell, kit_ws, home=tmp_path) == {}
     files = git(kit_ws, "ls-files")
     assert "ok.md" in files and "~$" not in files and ".kit-stand" not in files
+
+
+def test_excluded_files_that_the_shipped_gitignore_also_ignores_do_not_fail_the_backup(shell, kit_ws, tmp_path):
+    github(kit_ws, tmp_path)  # kit_ws carries the shipped .gitignore
+    (kit_ws / "Unternehmen" / ".kit-stand").write_text("x", encoding="utf-8")
+    (kit_ws / "03_Berichte" / "ok.md").write_text("x", encoding="utf-8")
+    assert stop(shell, kit_ws, home=tmp_path) == {}
+    files = git(kit_ws, "ls-files")
+    assert "ok.md" in files and ".kit-stand" not in files
 
 
 def test_files_over_90_mb_are_skipped_and_named(shell, kit_ws, tmp_path):

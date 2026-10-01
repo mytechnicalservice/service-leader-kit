@@ -21,9 +21,9 @@ def test_hooks_json_wires_three_events_to_existing_scripts():
 def test_pre_tool_use_matcher_covers_every_guarded_tool():
     matcher = json.loads((HOOKS / "hooks.json").read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["matcher"]
     for tool in ["Bash", "PowerShell", "Write", "Edit", "MultiEdit", "NotebookEdit", "mcp__claude_ai_Gmail__reply"]:
-        assert re.fullmatch(matcher, tool), tool
-    for tool in ["Read", "Grep", "Glob", "Agent", "Skill"]:
-        assert not re.fullmatch(matcher, tool), tool
+        assert re.search(matcher, tool), tool
+    for tool in ["Read", "Grep", "Glob", "Agent", "Skill", "TodoWrite", "BashOutput"]:
+        assert not re.search(matcher, tool), tool
 
 
 def test_testworkspace_is_a_valid_kit_workspace(shell, tmp_path):

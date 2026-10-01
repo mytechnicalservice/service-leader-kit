@@ -24,7 +24,8 @@ if [ "$(slk_get "$cfg" git_auto)" = ja ]; then
       ok=""
       # git add exits 1 (yet stages everything else) when an excluded path is also ignored by .gitignore.
       addout=$(_slk_git add -A 2>&1) && addrc=0 || addrc=1
-      if [ "$addrc" = 0 ] || printf '%s\n' "$addout" | grep -q 'ignored by one of your .gitignore'; then
+      if [ "$addrc" = 0 ] || { printf '%s\n' "$addout" | grep -q 'ignored by one of your .gitignore' &&
+         ! printf '%s\n' "$addout" | grep -q -e '^fatal:' -e '^error:'; }; then
         ok=1
         if [ -n "$groesse" ]; then
           while IFS= read -r f; do
