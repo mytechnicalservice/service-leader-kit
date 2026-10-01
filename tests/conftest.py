@@ -13,3 +13,12 @@ def ws(tmp_path):
     d = tmp_path / "Kundendienst Müller"
     d.mkdir()
     return d
+import shutil
+
+SHELLS = [s for s in ("/bin/sh", shutil.which("dash")) if s]
+
+
+@pytest.fixture(params=SHELLS, ids=lambda s: Path(s).name)
+def shell(request):
+    """Every POSIX shell on this machine: hooks must not depend on Bash features."""
+    return request.param

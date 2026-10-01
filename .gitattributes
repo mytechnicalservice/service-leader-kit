@@ -1,0 +1,4 @@
+# Hooks run under sh, also on Windows (Git for Windows): CRLF would break them, so keep LF everywhere.
+plugin/hooks/** text eol=lf
+plugin/vorlagen/*.schema text eol=lf
+plugin/vorlagen/*.gitignore text eol=lf

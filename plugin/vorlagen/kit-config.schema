@@ -1,0 +1,11 @@
+# Allowed values of Unternehmen/.kit-config (spec §7.1): one line per key, <key>=<regular expression
+# for the whole value>. Read by the hooks (hooks/kit_config.awk) and by einrichtung/gesundheitscheck (Plan 2c).
+schema=1
+ablage=lokal|cloud|github
+git_auto=ja|nein
+laufzeit=claude-code|unbekannt
+beispieldaten=ja|nein
+mail=postausgang|connector
+sprache=de|en
+wochenstart=mo|di|mi|do|fr
+monatsstart=erster-werktag|[1-9]|1[0-9]|2[0-8]
