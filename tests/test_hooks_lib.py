@@ -126,10 +126,16 @@ def awk(script, text, **v):
     return subprocess.run(args, input=text, capture_output=True, text=True).stdout
 
 
-def test_cmdwords_skips_numbers_wrappers_dirs_and_exe():
-    assert " rm " in awk("cmdwords.awk", "xargs -n 1 rm x")
-    assert " rm " in awk("cmdwords.awk", "sudo X=1 /bin/RM y".lower())
-    assert " curl " in awk("cmdwords.awk", "curl.exe z")
+def test_segments_split_quote_aware_and_flag_args():
+    out = awk("segments.awk", 'xargs -n 1 rm x; echo "a & rm" $(ls) \'$HOME\' "$X" "*.md" $false').splitlines()
+    assert out == ["rm\t000x\t100$xargs", "ls",
+                   "echo\t001a & rm\t100$sub\t001$HOME\t101$X\t011*.md\t000$false"]
+
+
+def test_segments_dirs_exe_escapes_and_wrappers():
+    assert awk("segments.awk", "/bin/RM.exe C:\\a\\b").splitlines() == ["rm\t000C:/a/b"]
+    assert awk("segments.awk", "trash 05/Retro\\ Anlage").splitlines() == ["trash\t00005/Retro Anlage"]
+    assert awk("segments.awk", "bash -c 'rm -rf x' # rm y").splitlines() == ["bash\t000-c\t001rm -rf x", "rm\t000-rf\t000x"]
 
 
 def test_json_awk_value_ending_in_escaped_backslash():

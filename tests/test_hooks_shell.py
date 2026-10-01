@@ -53,6 +53,27 @@ BLOCK = [
     ("trash 01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
     ("python3 -c \"import os; os.system('rm -rf .')\"", "shell-rekursiv"),
     ("node -e \"require('fs').rmSync('.', {recursive:true})\"", "shell-rekursiv"),
+    ('trash "03_Berichte"', "shell-rekursiv"),
+    ('trash "05_Projekte/Retrofit Anlage 2"', "shell-rekursiv"),
+    ("Remove-Item '03_Berichte'", "shell-rekursiv"),
+    ('del /q "03_Berichte"', "shell-rekursiv"),
+    ("trash 05_Projekte/Retrofit\\ Anlage\\ 2", "shell-rekursiv"),
+    ("rm $(find . -type f)", "shell-platzhalter"),
+    ("rm `ls`", "shell-platzhalter"),
+    ("mv $(ls) /tmp", "shell-platzhalter"),
+    ("find . -type f | xargs rm", "shell-platzhalter"),
+    ("ls | xargs -n 1 rm", "shell-platzhalter"),
+    ('Remove-Item "03_Berichte\\*.md"', "shell-platzhalter"),
+    ('del "03_Berichte\\*.md"', "shell-platzhalter"),
+    ('rm "03_Berichte/*.md"', "shell-platzhalter"),
+    ("find . -exec /bin/rm {} +", "shell-rekursiv"),
+    ('find . -name "*.md" -exec truncate -s0 {} +', "shell-rekursiv"),
+    ("find . -exec mv {} /tmp \\;", "shell-rekursiv"),
+    ("rm -rfP 03_Berichte", "shell-rekursiv"),
+    ("rm -rfx 03_Berichte", "shell-rekursiv"),
+    ("Remove-Item -Re 03_Berichte", "shell-rekursiv"),
+    ("git switch --discard-changes main", "shell-git-verwerfen"),
+    ("git checkout -f main", "shell-git-verwerfen"),
 ]
 
 ERLAUBT = [
@@ -82,7 +103,20 @@ ERLAUBT = [
     "git checkout main",
     "git stash list",
     "git log",
+    'uv run "/p/plugin/scripts/vorgang.py" eintrag --nr V-0001 --text "Altdaten mit rm -rf entfernt"',
+    'git commit -m "rm -rf entfernt"',
+    'grep "rm -rf" 03_Berichte/notiz.md',
+    'rm "03_Berichte/a.md"; echo $? "ok"',
+    "rm -force 03_Berichte/alt.md",
+    "Remove-Item 03_Berichte\\alt.md -Confirm:$false",
+    "git checkout HEAD 03_Berichte/a.md",
+    "find 01_Vorgaenge -name '*.md' | xargs grep Müller",
 ]
+
+
+@pytest.fixture(autouse=True)
+def _projektordner(kit_ws):
+    (kit_ws / "05_Projekte" / "Retrofit Anlage 2").mkdir(parents=True, exist_ok=True)
 
 
 def pre(shell, ws, payload, proj=None):
