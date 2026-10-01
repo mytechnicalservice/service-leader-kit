@@ -109,6 +109,17 @@ BLOCK = [
     ("git rm -r 03_Berichte", "shell-rekursiv"),
     ("git rm -rf alt", "shell-rekursiv"),
     ("git -C . rm --recursive -q alt", "shell-rekursiv"),
+    # fix wave 2: folder names after , : { ; a cd that may not have happened; mv -T
+    ("rm {03_Berichte/a.md,Unternehmen/profil.md}", "shell-geschuetzt"),
+    ("cp x.md 03_Berichte/a.md,01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
+    ('cd gibtsnicht; trash "../Kundendienst Müller"', "shell-geschuetzt"),
+    ('(cd 03_Berichte); trash "../Kundendienst Müller"', "shell-geschuetzt"),
+    ('pushd 03_Berichte; popd; trash "../Kundendienst Müller"', "shell-geschuetzt"),
+    ('echo x | cd 03_Berichte; trash "../Kundendienst Müller"', "shell-geschuetzt"),
+    ('echo $(cd 03_Berichte); mv "../Kundendienst Müller" /tmp/x', "shell-geschuetzt"),
+    ("cd gibtsnicht; trash 04_Angebote", "shell-rekursiv"),
+    ("(cd 03_Berichte); trash 04_Angebote", "shell-rekursiv"),
+    ('mv -T "../Kundendienst Müller" /tmp/x', "shell-geschuetzt"),
 ]
 
 ERLAUBT = [
@@ -166,6 +177,13 @@ ERLAUBT = [
     "cp 03_Berichte/Unternehmensbericht.docx 04_Angebote/",
     "mv 06_Kunden/Partnerunternehmen.md 06_Kunden/alt.md",
     "echo x > 03_Berichte/Unternehmensbericht.md",
+    # fix wave 2
+    "cp 03_Berichte/a.md 06_Kunden/Büunternehmen.md",
+    "cp 03_Berichte/a.md 06_Kunden/unternehmen-alt.md",
+    "cp 03_Berichte/a.md 06_Kunden/Unternehmen.md",
+    "mv -T 03_Berichte/a.md 03_Berichte/b.md",
+    "mv -t 04_Angebote 03_Berichte/a.md",
+    "cd 03_Berichte && rm a.md",
 ]
 
 
@@ -246,6 +264,11 @@ def test_outside_a_workspace_nothing_is_blocked(shell, tmp_path):
     "Move-Item . C:/tmp",
     "Set-Location ..; Remove-Item 'Kundendienst Müller'",
     "Move-Item -Path . -Destination C:/tmp",
+    "Move-Item C:/tmp/x -Path ..",
+    "Remove-Item -Path:Unternehmen/profil.md",
+    "Remove-Item -LiteralPath:01_Vorgaenge/offen/V-0001.md",
+    "Remove-Item 03_Berichte/a.md,Unternehmen/profil.md",
+    "Set-Content -Path:Unternehmen/profil.md -Value x",
 ])
 def test_powershell_cannot_move_the_workspace(shell, kit_ws, command):
     code, err = pre(shell, kit_ws, bash(kit_ws, command, tool="PowerShell"))
@@ -280,3 +303,13 @@ def test_overlong_command_is_blocked_before_parsing(shell, kit_ws):
     assert code == 2 and "zu lang zum Prüfen" in err and "Write-Werkzeug" in err
     assert regel(kit_ws).startswith("shell-zu-lang tool=Bash")
     assert pre(shell, kit_ws, bash(kit_ws, "echo " + "x" * (100 * 1024))) == (0, "")
+
+
+def test_powershell_location_stack_cannot_hide_a_folder_delete(shell, kit_ws):
+    p = bash(kit_ws, "Push-Location 03_Berichte; Pop-Location; Remove-Item 04_Angebote", tool="PowerShell")
+    assert pre(shell, kit_ws, p)[0] == 2 and regel(kit_ws).startswith("shell-rekursiv tool=PowerShell")
+
+
+def test_mv_capital_t_does_not_exempt_the_source(shell, kit_ws):
+    code, err = pre(shell, kit_ws, bash(kit_ws, f'mv -T "{kit_ws}" /tmp/x'))
+    assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=Bash"), err

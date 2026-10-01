@@ -72,6 +72,16 @@ def push_versuche(ws):
     return log.count("\tGIT\tpush fehlgeschlagen")
 
 
+def test_push_marker_cleared_when_the_branch_is_in_sync(shell, kit_ws, tmp_path):
+    bare = github(kit_ws, tmp_path, remote=False)
+    (kit_ws / "03_Berichte" / "a.md").write_text("x", encoding="utf-8")
+    assert "nicht zu GitHub übertragen" in stop(shell, kit_ws, home=tmp_path)["systemMessage"]
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    git(kit_ws, "push", "-q", "-u", "origin", "HEAD")              # the user synced in GitHub Desktop
+    assert stop(shell, kit_ws, home=tmp_path) == {}
+    assert not (kit_ws / ".git" / "kit-push-status").exists()
+
+
 def test_failed_push_is_reported_once_and_backs_off(shell, kit_ws, tmp_path):
     github(kit_ws, tmp_path, remote=False)
     (kit_ws / "03_Berichte" / "a.md").write_text("x", encoding="utf-8")

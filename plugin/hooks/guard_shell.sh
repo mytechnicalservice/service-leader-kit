@@ -42,31 +42,45 @@ wsmsg="Den Kundendienst-Ordner selbst oder einen Ordner darüber zu löschen ode
 lws=$(slk_lower "$ws")
 _slk_ecwd=$cwd   # the shell's folder at the current simple command (a literal cd/pushd/Set-Location moves it)
 
-# True if path $1 (relative to $_slk_ecwd; "~" is $HOME) is the workspace or one of its parent folders.
+# Checks path $1 ("~" is $HOME) resolved against BOTH the hook's cwd and the tracked folder (a cd may have
+# failed, run in a subshell or been undone by popd): 2 = the workspace or a parent folder of it under either,
+# 1 = an existing directory under either, 0 = neither.
 ws_target() {
-  _slk_w=$1
+  _slk_w=$1; _slk_r=0
   case "$_slk_w" in "~"|"~/"*) _slk_w="$HOME${_slk_w#"~"}" ;; esac
-  _slk_w=$(slk_lower "$(slk_norm_path "$_slk_w" "$_slk_ecwd")"); _slk_w=${_slk_w%/}
-  case "$lws/" in "$_slk_w"/*) return 0 ;; esac
-  return 1
+  for _slk_b in "$cwd" "$_slk_ecwd"; do
+    _slk_p=$(slk_norm_path "$_slk_w" "$_slk_b"); _slk_lp=$(slk_lower "$_slk_p"); _slk_lp=${_slk_lp%/}
+    case "$lws/" in "$_slk_lp"/*) return 2 ;; esac
+    [ -d "$_slk_p" ] && _slk_r=1
+  done
+  return "$_slk_r"
 }
 
-# Index of a move's destination among its args (after -Destination/-t, else the last name): 0 if none.
-# The destination may be the workspace itself (mv 03_Berichte/a.md .).
+# Index of a move's destination among its args: 0 if none. The destination may be the workspace itself
+# (mv 03_Berichte/a.md .). It is the arg after -Destination (PowerShell, any case) or mv's -t (case matters:
+# -T means "no target folder"), else the last name. A -Path/-LiteralPath value is always a source.
 move_dest() {
-  _slk_i=0; _slk_d=0; _slk_np=0; _slk_last=0; _slk_nx=0
+  _slk_i=0; _slk_d=0; _slk_np=0; _slk_last=0; _slk_nx=0; _slk_pth=0
   for _slk_a in "$@"; do
-    _slk_i=$((_slk_i + 1)); _slk_l=$(slk_lower "${_slk_a#???}")
-    if [ "$_slk_nx" = 1 ]; then _slk_d=$_slk_i; _slk_nx=0; continue; fi
+    _slk_i=$((_slk_i + 1)); _slk_t=${_slk_a#???}; _slk_l=$(slk_lower "$_slk_t")
+    if [ "$_slk_nx" = d ]; then _slk_d=$_slk_i; _slk_nx=0; continue; fi
+    if [ "$_slk_nx" = p ]; then _slk_nx=0; continue; fi
+    case "$_slk_t" in
+      -t|--target-directory) _slk_nx=d; continue ;;
+      --target-directory=*) _slk_d=-1; continue ;;
+    esac
     case "$_slk_l" in
       -debug) ;;
-      -de*|-t|--target-directory) _slk_nx=1 ;;
-      -de*:*|--target-directory=*) _slk_d=-1 ;;
+      -de*:*) _slk_d=-1 ;;
+      -de*) _slk_nx=d ;;
+      -path:*|-literalpath:*|-lp:*|-pa:*|-pat:*) _slk_pth=1 ;;
+      -path|-literalpath|-lp|-pa|-pat|-li*) _slk_pth=1; _slk_nx=p ;;
       -*) ;;
       *) _slk_np=$((_slk_np + 1)); _slk_last=$_slk_i ;;
     esac
   done
-  [ "$_slk_d" = 0 ] && [ "$_slk_np" -ge 2 ] && _slk_d=$_slk_last
+  # With the source given as -Path, a lone positional name is the destination.
+  [ "$_slk_d" = 0 ] && [ "$_slk_np" -ge $((2 - _slk_pth)) ] && _slk_d=$_slk_last
   echo "$_slk_d"
 }
 
@@ -96,8 +110,10 @@ seg_delete_rules() {
     _slk_f=${_slk_a%"${_slk_a#???}"}; _slk_t=${_slk_a#???}; _slk_n=$((_slk_n + 1))
     case "$_slk_f" in 1??|?1?) _slk_ph=1 ;; esac
     # The workspace itself or a folder above it, deleted or moved away (the destination of a move may be it).
+    _slk_wt=0
     case "$_slk_f$_slk_t" in 1??*|?1?*|???-*) ;; *)
-      [ "$_slk_n" != "$_slk_dest" ] && ws_target "$_slk_t" && block shell-geschuetzt "$wsmsg" ;;
+      ws_target "$_slk_t"; _slk_wt=$?
+      [ "$_slk_n" != "$_slk_dest" ] && [ "$_slk_wt" = 2 ] && block shell-geschuetzt "$wsmsg" ;;
     esac
     in_list "$_slk_v" "$RMLIKE" || continue
     _slk_l=$(slk_lower "$_slk_t")
@@ -106,9 +122,7 @@ seg_delete_rules() {
       *) case "$_slk_l" in -r|-re*|/s) _slk_rec=1 ;; esac ;;
     esac
     # A directory named as the target counts as recursive (trash, rm -d, Remove-Item without -Recurse).
-    case "$_slk_f$_slk_l" in ???-*|???/?|1??*|?1?*) ;; *)
-      [ -d "$(slk_norm_path "$_slk_t" "$_slk_ecwd")" ] && _slk_rec=1 ;;
-    esac
+    case "$_slk_f$_slk_l" in ???-*|???/?|1??*|?1?*) ;; *) [ "$_slk_wt" != 0 ] && _slk_rec=1 ;; esac
   done
   [ "$_slk_rec" = 1 ] && block shell-rekursiv "$recmsg"
   [ "$_slk_ph" = 1 ] && block shell-platzhalter "$platzmsg"
@@ -193,15 +207,18 @@ if has_verb $INLINE $WRAP || { has_verb uv && has_word python python3 py node; }
   case "$full" in *"unlink("*) case "$full" in *rglob*|*"glob("*) block shell-rekursiv "$recmsg" ;; esac ;; esac
 fi
 
-# 3. The protected folders: named in the command, or the shell already sits inside one. Named means a whole
-# path segment (Unternehmensbericht.docx is not Unternehmen/), after the workspace's own path is removed
-# (a workspace may itself live in a folder called Unternehmen).
+# 3. The protected folders: named in the command, or the shell already sits inside one. Named means the
+# name is not part of a longer word: not directly after a letter, digit, "_" or a non-ASCII byte, and not
+# directly before a letter, digit, "_", "." or "-" (Unternehmensbericht.docx, Partnerunternehmen.md and
+# Unternehmen.md are not Unternehmen/; -Path:Unternehmen/…, a,Unternehmen/… and {…,Unternehmen/…} are).
+# The workspace's own path is removed first (a workspace may itself live in a folder called Unternehmen).
 named=0; incwd=0
 nqs=$(printf '%s\n' "$nq" | awk -v p="$lws" 'p != "" {
   o = ""; while ((i = index($0, p)) > 0) { o = o substr($0, 1, i - 1); $0 = substr($0, i + length(p)) }
   $0 = o $0 } { print }')
-grenze='[/[:space:]=;&|()<>`]'
-printf '%s\n' "$nqs" | grep -Eq "(^|$grenze)(01_vorgaenge|unternehmen)($grenze|\$)" && named=1
+vorher=$(printf '[^[:alnum:]_\200-\377]')   # LC_ALL=C: bytes 0x80-0xff belong to a word (UTF-8 letters)
+nachher='[^[:alnum:]_.-]'
+printf '%s\n' "$nqs" | grep -Eq "(^|$vorher)(01_vorgaenge|unternehmen)($nachher|\$)" && named=1
 lcwd=$(slk_lower "$cwd")/
 case "$lcwd" in "$lws"/01_vorgaenge/*|"$lws"/unternehmen/*) named=1; incwd=1 ;; esac
 schutz="01_Vorgaenge/ und Unternehmen/ sind geschützt: kein Löschen, Verschieben, Überschreiben oder Inline-Code per Shell. Vorgänge ändert vorgang.py (zum Löschen: vorgang.py loeschen-markieren), Unternehmen/ der System-Architekt."
@@ -211,7 +228,7 @@ if [ "$named" = 1 ]; then
   has_verb sed perl && has_flag '-i*' && block shell-geschuetzt "$schutz"
   has_verb git && has_word rm mv checkout restore reset stash && block shell-geschuetzt "$schutz"
   has_verb uv && has_word python python3 && has_word -c && block shell-geschuetzt "$schutz"
-  printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*/)?(01_vorgaenge|unternehmen)($grenze|\$)" &&
+  printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&
     block shell-geschuetzt "$schutz"
   if [ "$incwd" = 1 ]; then
     printf '%s' "$nq" | sed -E 's/[0-9]*>>?[[:space:]]*(&[0-9-]?|\/dev\/null)//g' | grep -q '>' &&

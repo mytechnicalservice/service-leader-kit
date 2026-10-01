@@ -55,7 +55,8 @@ EOG
     # After a failed push, $gd/kit-push-status holds three lines: failure kind, epoch, HEAD. The user hears
     # about a failure only when its kind changes; no new push for 10 minutes unless there is a new commit.
     pstat="$gd/kit-push-status"; partalt=""; pzeit=0; pkopf=""
-    [ -f "$pstat" ] && { read -r partalt; read -r pzeit; read -r pkopf; } < "$pstat" 2>/dev/null
+    [ "$vor" = 0 ] && rm -f "$pstat" 2>/dev/null   # in sync (e.g. synced in GitHub Desktop): the failure is over
+    [ -f "$pstat" ] &&{ read -r partalt; read -r pzeit; read -r pkopf; } < "$pstat" 2>/dev/null
     case "$pzeit" in ''|*[!0-9]*) pzeit=0 ;; esac
     jetzt=$(date +%s)
     pause=0
