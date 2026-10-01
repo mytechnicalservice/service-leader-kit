@@ -29,3 +29,8 @@ OK – Python 3.14.4, macOS 26.3 arm64; docx, pptx und xlsx im Temp-Ordner erzeu
 ## C. Windows
 
 NICHT GETESTET – kein Windows-Gerät verfügbar. Plan 2b plant einen Pilot-Laptop ein.
+
+Entscheidung 2026-10-01 (Max): keine Windows-VM vorab. Plan 2b nimmt einen Firmen-Laptop eines
+Pilotkunden als Pilotschritt auf und prüft dort beides: Windows-Grundlagen (Git-Bash-Hooks, Pfade,
+uv) und Firmen-IT (keine Admin-Rechte, Proxy/TLS, OneDrive-Ordner, Virenscanner).
+Risiko bewusst akzeptiert: Windows-Fehler zeigen sich erst beim Kunden.
