@@ -9,7 +9,8 @@ bare=$(printf '%s\n' "$full" | sed -e 's/"[^"]*"/ /g' -e "s/'[^']*'/ /g")  # quo
 nq=$(printf '%s' "$full" | tr -d "\"'")                                    # quote marks removed, text kept
 # One line per simple command, split quote-aware (segments.awk): "verb TAB arg TAB arg …", each arg led
 # by three flag digits (variable, wildcard, quoted). Wrapped commands (bash -c "…") are split as well.
-segs=$(printf '%s\n' "$cmd" | awk -f "$SLK_HOOKS/segments.awk")
+_slk_ps=0; [ "$tool" = PowerShell ] && _slk_ps=1
+segs=$(printf '%s\n' "$cmd" | awk -v ps="$_slk_ps" -f "$SLK_HOOKS/segments.awk")
 verbs=$(printf '%s\n' "$segs" | awk -F '\t' '{ printf " %s", $1 } END { print " " }')
 words=" $(printf '%s' "$bare" | tr '\n\t' '  ') "
 

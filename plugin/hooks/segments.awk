@@ -7,6 +7,9 @@
 # xargs gets a "$xargs" arg (its targets are unknown). A shell wrapper (bash -c "...", powershell
 # -Command "...", eval "...") gets its quoted args split once more. Backslash: an escape before a space,
 # quote or shell operator, otherwise a Windows path separator ("/"). "#" at a word start is a comment.
+# Heredoc bodies are data, not commands. If a text ends inside an open quote (an apostrophe in prose),
+# it is split again with the quote state reset at every newline, so one bad line cannot hide later ones.
+# With -v ps=1 (PowerShell, cmd) a backslash is always a path separator and a backtick escapes.
 BEGIN {
   n = split("sudo command exec xargs env nohup time nice builtin then do else elif if while until ! { }", a, " ")
   for (i = 1; i <= n; i++) skip[a[i]] = 1
@@ -29,7 +32,7 @@ function endword(   lx, b) {
     verb = b
   } else {
     args = args "\t" wv ww wq word
-    if (lvl == 0 && (verb in wrapper) && wq) pend[++np] = word
+    if (lvl == 0 && (verb in wrapper) && wq) { pend[++np] = word; pendps[np] = (verb == "powershell" || verb == "pwsh" || verb == "cmd") }
   }
   reset_word()
 }
@@ -38,7 +41,7 @@ function flush(   line) {
   if (verb != "") {
     line = verb args
     if (fed) line = line "\t100$xargs"
-    print line
+    out = out line "\n"
   }
   reset_cmd()
 }
@@ -64,11 +67,41 @@ function dollar(   rest) {
   if (rest !~ /^(false|true|null)/) wv = 1
   addch("$")
 }
+function heredoc_start(   j, ch, dl, dash) {
+  endword()
+  j = I + 2; dash = 0
+  if (substr(T, j, 1) == "-") { dash = 1; j++ }
+  while (substr(T, j, 1) == " " || substr(T, j, 1) == "\t") j++
+  dl = ""
+  while (j <= N) {
+    ch = substr(T, j, 1)
+    if (ch == "'" || ch == "\"" || ch == "\\") { j++; continue }
+    if (index(" \t\n;&|()<>", ch)) break
+    dl = dl ch; j++
+  }
+  hd_n++; hd_delim[hd_n] = dl; hd_dash[hd_n] = dash
+  I = j - 1
+}
+# Called at the newline ending a line with heredocs: skips the body lines up to each delimiter line.
+function skip_heredocs(   k, st, e, line) {
+  for (k = 1; k <= hd_n; k++) {
+    while (I < N) {
+      st = I + 1
+      e = index(substr(T, st), "\n")
+      if (e == 0) { line = substr(T, st); I = N } else { line = substr(T, st, e - 1); I = st + e - 1 }
+      if (hd_dash[k]) sub(/^[ \t]+/, "", line)
+      sub(/\r$/, "", line)
+      if (line == hd_delim[k]) break
+    }
+  }
+  hd_n = 0
+}
 function backtick() { if (sp > 0 && kd[sp] == "b") { flush(); pop() } else push("b") }
 function parse(text,   c, d) {
-  T = text; N = length(T); sp = 0; inq = 0; reset_cmd(); reset_word()
+  T = text; N = length(T); sp = 0; inq = 0; hd_n = 0; reset_cmd(); reset_word()
   for (I = 1; I <= N; I++) {
     c = substr(T, I, 1)
+    if (nlreset && inq && c == "\n") { inq = 0; flush(); if (hd_n > 0) skip_heredocs(); continue }
     if (inq == 1) {
       if (c == "'") inq = 0
       else { if (c == "*" || c == "?") ww = 1; addch(c == "\\" ? "/" : c) }
@@ -76,33 +109,47 @@ function parse(text,   c, d) {
       if (c == "\"") inq = 0
       else if (c == "\\") {
         d = substr(T, I + 1, 1)
-        if (d == "\"" || d == "$" || d == "`") { addch(d); I++ } else addch("/")
+        if (PS) addch("/")
+        else if (d == "\"" || d == "$" || d == "`") { addch(d); I++ }
+        else if (d == "\\") { addch("\\"); I++ }
+        else addch("/")
       } else if (c == "$") dollar()
-      else if (c == "`") backtick()
+      else if (c == "`") { if (PS) { addch(substr(T, I + 1, 1)); I++ } else backtick() }
       else { if (c == "*" || c == "?") ww = 1; addch(c) }
     } else if (c == "'") { inq = 1; inw = 1; wq = 1 }
     else if (c == "\"") { inq = 2; inw = 1; wq = 1 }
     else if (c == "\\") {
       d = substr(T, I + 1, 1)
-      if (d == "\n") I++
+      if (PS) addch("/")
+      else if (d == "\n") I++
       else if (d != "" && index(SPECIAL, d)) { addch(d); I++ } else addch("/")
     }
     else if (c == "#" && !inw) { while (I < N && substr(T, I + 1, 1) != "\n") I++ }
     else if (c == " " || c == "\t") endword()
-    else if (c == "\n" || c == ";" || c == "&" || c == "|") flush()
+    else if (c == "\n") { flush(); if (hd_n > 0) skip_heredocs() }
+    else if (c == ";" || c == "&" || c == "|") flush()
+    else if (c == "<" && !PS && substr(T, I + 1, 1) == "<" && substr(T, I + 2, 1) != "<") heredoc_start()
     else if (c == "(") push("p")
     else if (c == ")") close_sub()
     else if (c == "$") dollar()
-    else if (c == "`") backtick()
+    else if (c == "`") { if (PS) { addch(substr(T, I + 1, 1)); I++ } else backtick() }
     else { if (c == "*" || c == "?") ww = 1; addch(c) }
   }
+  opened = (inq != 0)
   flush()
   while (sp > 0) { if (kd[sp] == "p") sp--; else pop() }
   flush()
 }
+function run(text, psm,   np0) {
+  PS = psm; np0 = np
+  out = ""; nlreset = 0; parse(text)
+  if (opened) { out = ""; np = np0; nlreset = 1; parse(text); nlreset = 0 }
+  all = all out
+}
 { txt = (NR > 1 ? txt "\n" : "") $0 }
 END {
-  lvl = 0; np = 0; parse(txt)
+  lvl = 0; np = 0; run(txt, ps + 0)
   n0 = np; lvl = 1
-  for (pk = 1; pk <= n0; pk++) parse(pend[pk])
+  for (pk = 1; pk <= n0; pk++) run(pend[pk], pendps[pk])
+  printf "%s", all
 }

