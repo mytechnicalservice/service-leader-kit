@@ -22,7 +22,9 @@ if [ "$(slk_get "$cfg" git_auto)" = ja ]; then
     if [ -n "$aenderungen" ]; then
       groesse=$(find "$ws" -path "$ws/.git" -prune -o -type f -size +184320 -print 2>/dev/null)
       ok=""
-      if _slk_git add -A >/dev/null 2>&1; then
+      # git add exits 1 (yet stages everything else) when an excluded path is also ignored by .gitignore.
+      addout=$(_slk_git add -A 2>&1) && addrc=0 || addrc=1
+      if [ "$addrc" = 0 ] || printf '%s\n' "$addout" | grep -q 'ignored by one of your .gitignore'; then
         ok=1
         if [ -n "$groesse" ]; then
           while IFS= read -r f; do

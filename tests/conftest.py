@@ -23,17 +23,11 @@ def shell(request):
     return request.param
 
 
-KONFIG = ("schema=1\nablage=lokal\ngit_auto=nein\nlaufzeit=claude-code\nbeispieldaten=nein\nmail=postausgang\n"
-          "sprache=de\nwochenstart=mo\nmonatsstart=erster-werktag\n")
-ORDNER = ["00_Eingang", "01_Vorgaenge/offen", "01_Vorgaenge/erledigt", "01_Vorgaenge/_zur-loeschung",
-          "02_Postausgang", "03_Berichte", "04_Angebote", "05_Projekte", "06_Kunden", "07_Daten",
-          "Unternehmen/vorlagen"]
+from testworkspace import KONFIG, ORDNER, baue  # noqa: E402,F401  (tools/ is on sys.path above)
 
 
 @pytest.fixture
 def kit_ws(ws):
-    """A set-up workspace (folders + valid .kit-config) at a path with a space and an umlaut."""
-    for o in ORDNER:
-        (ws / o).mkdir(parents=True, exist_ok=True)
-    (ws / "Unternehmen" / ".kit-config").write_text(KONFIG, encoding="utf-8")
+    """A set-up workspace (folders + valid .kit-config, no cases) at a path with a space and an umlaut."""
+    baue(ws, mit_vorgaengen=False)
     return ws
