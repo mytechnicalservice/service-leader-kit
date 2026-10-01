@@ -115,8 +115,8 @@ def norm_nr(nr: str) -> str:
 
 def pruefe_mensch(wert: str, feld: str) -> None:
     """Decisions and case ownership belong to people, never to an agent (spec §6)."""
-    name = (wert or "").strip().casefold()
-    if name.startswith("service-leader-kit:") or name in AGENTEN:
+    name = (wert or "").strip().casefold().rsplit(":", 1)[-1]
+    if (wert or "").strip().casefold().startswith("service-leader-kit:") or name in AGENTEN:
         raise VorgangFehler(f"'{feld}' muss ein Mensch sein, kein Agent ('{wert.strip()}')")
 
 
@@ -181,7 +181,11 @@ def find_duplicates(ws: Path, meta: dict) -> list[str]:
 
 
 def event(heute: str, art: str, von: str, text: str) -> str:
-    return f"\n### {heute} · {art} · {von}\n\n{text.strip()}\n"
+    for feld, wert in (("art", art), ("von", von)):
+        if "\n" in wert or "\r" in wert:
+            raise VorgangFehler(f"'{feld}' darf keinen Zeilenumbruch enthalten")
+    sicher = "\n".join("  " + z if z.lstrip().startswith("### ") else z for z in text.strip().splitlines())
+    return f"\n### {heute} · {art} · {von}\n\n{sicher}\n"
 
 
 def save(ws: Path, old: Path, meta: dict, body: str) -> Path:
