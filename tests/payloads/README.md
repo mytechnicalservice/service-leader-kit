@@ -1,7 +1,9 @@
 # Raw hook payloads (captured 2026-10-01, Claude Code 2.1.286 (Claude Code), macOS)
 
 Captured by `spikes/payload-capture` (Plan 2b Task 1); workspace path -> `__WS__`, home -> `/Users/test`,
-session id -> `test`. In `transcript_path` the encoded workspace folder name is replaced by `-__WS__`.
+session id -> `test`.
+The transcript filename (session UUID) is zeroed; `prompt_id`, `agent_id` and `tool_use_id` are replaced by
+stable placeholders (`test-prompt`, `test-agent`, `toolu_test_<name>`). In `transcript_path` the encoded workspace folder name is replaced by `-__WS__`.
 
 - PreToolUse carries `cwd`: yes (also on SessionStart and Stop). It was the workspace folder in every capture;
   this run never changed directory, so whether `cwd` follows a `cd` from an earlier call is not observed.
