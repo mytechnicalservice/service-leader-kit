@@ -184,7 +184,8 @@ def event(heute: str, art: str, von: str, text: str) -> str:
     for feld, wert in (("art", art), ("von", von)):
         if "\n" in wert or "\r" in wert:
             raise VorgangFehler(f"'{feld}' darf keinen Zeilenumbruch enthalten")
-    sicher = "\n".join("  " + z if z.lstrip().startswith("### ") else z for z in text.strip().splitlines())
+    # A "### " line in the text would read as an event heading: four spaces make it plain (code) text.
+    sicher = "\n".join("    " + z if z.lstrip().startswith("### ") else z for z in text.strip().splitlines())
     return f"\n### {heute} · {art} · {von}\n\n{sicher}\n"
 
 

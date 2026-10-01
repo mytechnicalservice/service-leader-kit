@@ -1,5 +1,6 @@
 # Sourced by stop.sh when ablage=github and the workspace is a git repo (spec §7.0, §11). Sets $meldung.
-# git_auto=ja: commit everything, then push whatever is not yet on GitHub (so a failed push is retried).
+# git_auto=ja: commit everything, then push whatever is not yet on GitHub (so a failed push is retried:
+# at once after a new commit, otherwise after a 10-minute pause; reported only when the failure changes).
 # git_auto=nein: list the changed files for GitHub Desktop, once per change set.
 # Lock, temp and kit marker files never count (pathspec excludes, independent of any .gitignore).
 # Untracked files are listed one by one (-uall).
@@ -50,7 +51,18 @@ EOG
       fi
     fi
     vor=$(git -C "$ws" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 1)
-    if [ -z "$meldung" ] && [ "$vor" != 0 ] && git -C "$ws" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    kopf=$(git -C "$ws" rev-parse -q --verify HEAD 2>/dev/null) || kopf=""
+    # After a failed push, $gd/kit-push-status holds three lines: failure kind, epoch, HEAD. The user hears
+    # about a failure only when its kind changes; no new push for 10 minutes unless there is a new commit.
+    pstat="$gd/kit-push-status"; partalt=""; pzeit=0; pkopf=""
+    [ -f "$pstat" ] && { read -r partalt; read -r pzeit; read -r pkopf; } < "$pstat" 2>/dev/null
+    case "$pzeit" in ''|*[!0-9]*) pzeit=0 ;; esac
+    jetzt=$(date +%s)
+    pause=0
+    [ -n "$partalt" ] && [ "$pkopf" = "$kopf" ] && [ "$jetzt" -ge "$pzeit" ] && [ $((jetzt - pzeit)) -lt 600 ] && pause=1
+    if [ -z "$meldung" ] && [ "$vor" != 0 ] && [ -n "$kopf" ] && [ "$pause" = 1 ]; then
+      slk_log "$ws" GIT "push pausiert (letzter Versuch fehlgeschlagen)"
+    elif [ -z "$meldung" ] && [ "$vor" != 0 ] && [ -n "$kopf" ]; then
       # Never prompts, never outlasts the hook timeout: a watchdog kills a stuck push after $SLK_PUSH_FRIST seconds.
       plog="$gd/kit-push.log"
       GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never SSH_ASKPASS= \
@@ -62,14 +74,22 @@ EOG
       wachhund=$!
       wait "$pushpid" 2>/dev/null; pushrc=$?
       kill "$wachhund" >/dev/null 2>&1; wait "$wachhund" >/dev/null 2>&1
+      part=""
       if [ "$pushrc" = 0 ]; then
         slk_log "$ws" GIT "gesichert und übertragen"
+        rm -f "$pstat" 2>/dev/null
       elif grep -q -e rejected -e non-fast-forward -e 'fetch first' "$plog" 2>/dev/null; then
-        meldung="Sicherung: GitHub hat neuere Stände – bitte in GitHub Desktop zuerst abgleichen."
+        part=abgelehnt
+        pmeldung="Sicherung: GitHub hat neuere Stände – bitte in GitHub Desktop zuerst abgleichen."
         slk_log "$ws" GIT "push abgelehnt (neuere Stände)"
       else
-        meldung="Sicherung: Die Änderungen sind lokal gespeichert, aber nicht zu GitHub übertragen (keine Verbindung oder keine Berechtigung). Beim nächsten Mal versucht das Kit es erneut."
+        part=verbindung
+        pmeldung="Sicherung: Die Änderungen sind lokal gespeichert, aber nicht zu GitHub übertragen (keine Verbindung oder keine Berechtigung). Das Kit versucht es später erneut."
         slk_log "$ws" GIT "push fehlgeschlagen"
+      fi
+      if [ -n "$part" ]; then
+        [ "$part" = "$partalt" ] || meldung=$pmeldung
+        { printf '%s\n%s\n%s\n' "$part" "$jetzt" "$kopf" > "$pstat"; } 2>/dev/null
       fi
       rm -f "$plog" 2>/dev/null
     fi

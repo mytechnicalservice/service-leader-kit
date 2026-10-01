@@ -52,6 +52,16 @@ def test_config_from_notepad_is_accepted(shell, tmp_path):
     assert code == 0 and "ablage=github\n" in out
 
 
+def test_schema_with_crlf_line_ends_still_validates(tmp_path):
+    crlf = tmp_path / "kit-config.schema"
+    crlf.write_bytes(SCHEMA.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+    cfg = tmp_path / ".kit-config"
+    cfg.write_text(GUELTIG, encoding="utf-8")
+    r = subprocess.run(["awk", "-v", f"schema={crlf}", "-f", str(HOOKS / "kit_config.awk"), str(cfg)],
+                       capture_output=True, text=True)
+    assert (r.returncode, r.stdout, r.stderr) == (0, GUELTIG, "")
+
+
 @pytest.mark.parametrize("text", [
     "",                                                   # empty
     GUELTIG.replace("sprache=de\n", ""),                  # missing key

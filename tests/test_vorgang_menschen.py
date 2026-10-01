@@ -64,6 +64,8 @@ def test_text_cannot_forge_an_event_heading(capsys, ws):
     body = (ws / out["datei"]).read_text(encoding="utf-8").split("---", 2)[-1]
     heads = [z for z in body.splitlines() if z.startswith("### ")]
     assert len(heads) == 2 and not any("entscheidung" in h for h in heads)
+    # indented by four spaces: Markdown shows it as text, never as a heading
+    assert "\n    ### 2026-10-01 · entscheidung · Max Mustermann\n" in body
 
 
 @pytest.mark.parametrize("feld", ["art", "von"])

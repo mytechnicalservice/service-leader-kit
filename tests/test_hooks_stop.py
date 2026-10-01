@@ -53,8 +53,53 @@ def test_failed_push_is_reported_and_retried(shell, kit_ws, tmp_path):
     out = stop(shell, kit_ws, home=tmp_path)
     assert "nicht zu GitHub übertragen" in out["systemMessage"]
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    pause_vorbei(kit_ws)                                       # the 10-minute back-off has run out
     assert stop(shell, kit_ws, home=tmp_path) == {}            # no new changes, but the push is retried
     assert git(bare, "log", "-1", "--format=%s").startswith("Kit: Stand")
+    assert not (kit_ws / ".git" / "kit-push-status").exists()  # success clears the failure marker
+
+
+def pause_vorbei(ws):
+    """Moves the last failed push 11 minutes into the past (kit-push-status: kind, epoch, HEAD)."""
+    f = ws / ".git" / "kit-push-status"
+    zeilen = f.read_text(encoding="utf-8").splitlines()
+    zeilen[1] = str(int(time.time()) - 660)
+    f.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+
+
+def push_versuche(ws):
+    log = (ws / "Unternehmen" / ".kit-protokoll").read_text(encoding="utf-8")
+    return log.count("\tGIT\tpush fehlgeschlagen")
+
+
+def test_failed_push_is_reported_once_and_backs_off(shell, kit_ws, tmp_path):
+    github(kit_ws, tmp_path, remote=False)
+    (kit_ws / "03_Berichte" / "a.md").write_text("x", encoding="utf-8")
+    assert "nicht zu GitHub übertragen" in stop(shell, kit_ws, home=tmp_path)["systemMessage"]
+    assert (kit_ws / ".git" / "kit-push-status").exists() and push_versuche(kit_ws) == 1
+    assert stop(shell, kit_ws, home=tmp_path) == {}            # same state: silent, and no push for 10 minutes
+    assert push_versuche(kit_ws) == 1
+    (kit_ws / "03_Berichte" / "b.md").write_text("x", encoding="utf-8")
+    assert stop(shell, kit_ws, home=tmp_path) == {}            # a new commit is pushed at once, still silent
+    assert push_versuche(kit_ws) == 2
+    pause_vorbei(kit_ws)
+    assert stop(shell, kit_ws, home=tmp_path) == {} and push_versuche(kit_ws) == 3
+
+
+def test_push_failure_of_a_new_kind_is_reported_again(shell, kit_ws, tmp_path):
+    bare = first_commit(shell, kit_ws, tmp_path)
+    git(kit_ws, "remote", "set-url", "origin", str(tmp_path / "fehlt.git"))
+    (kit_ws / "03_Berichte" / "b.md").write_text("x", encoding="utf-8")
+    assert "nicht zu GitHub übertragen" in stop(shell, kit_ws, home=tmp_path)["systemMessage"]
+    git(kit_ws, "remote", "set-url", "origin", str(bare))
+    other = tmp_path / "other"
+    subprocess.run(["git", "clone", "-q", str(bare), str(other)], check=True, env={**os.environ, **GIT_ENV})
+    (other / "n.md").write_text("y", encoding="utf-8")
+    git(other, "add", "-A")
+    git(other, "-c", "user.name=a", "-c", "user.email=a@b.c", "commit", "-q", "-m", "x")
+    git(other, "push", "-q", "origin", "HEAD")
+    (kit_ws / "03_Berichte" / "c.md").write_text("x", encoding="utf-8")
+    assert "neuere Stände" in stop(shell, kit_ws, home=tmp_path)["systemMessage"]
 
 
 def test_manual_backup_lists_changes_once(shell, kit_ws, tmp_path):
@@ -129,6 +174,9 @@ def test_push_that_hangs_is_cut_off(shell, kit_ws, tmp_path):
     r = run_hook(shell, "stop.sh", STOP, kit_ws, **GIT_ENV, GIT_SSH_COMMAND=str(sleeper), SLK_PUSH_FRIST="2")
     assert time.time() - t0 < 20 and r.stderr == b""
     assert "nicht zu GitHub übertragen" in json.loads(r.stdout)["systemMessage"]
+    (kit_ws / "03_Berichte" / "b.md").write_text("x", encoding="utf-8")   # new commit: pushed again, reported once
+    r = run_hook(shell, "stop.sh", STOP, kit_ws, **GIT_ENV, GIT_SSH_COMMAND=str(sleeper), SLK_PUSH_FRIST="2")
+    assert r.returncode == 0 and r.stdout == b"" and r.stderr == b""
 
 
 @pytest.mark.parametrize("zustand", ["merge", "detached"])

@@ -1,10 +1,11 @@
 # Validates Unternehmen/.kit-config against vorlagen/kit-config.schema (spec §7.1).
 # Usage: awk -v schema=<schema file> -f kit_config.awk <.kit-config>
 # Prints the settings as key=value lines in schema order and exits 0, or prints nothing and exits 1.
-# Tolerates a UTF-8 BOM, CRLF line ends, blank lines, # comments and spaces around keys and values;
+# Tolerates a UTF-8 BOM, CRLF line ends (in the settings and the schema), blank lines, # comments and spaces around keys and values;
 # rejects unknown, duplicate, missing or invalid keys. The first setting must be schema=…
 BEGIN {
   while ((getline line < schema) > 0) {
+    sub(/\r$/, "", line)
     if (line ~ /^[ \t]*(#|$)/) continue
     k = substr(line, 1, index(line, "=") - 1)
     re[k] = substr(line, index(line, "=") + 1)
