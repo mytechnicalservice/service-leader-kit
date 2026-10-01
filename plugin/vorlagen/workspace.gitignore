@@ -1,0 +1,11 @@
+# Created by the Service Leader Kit (einrichtung). Files the backup never needs.
+~$*
+.~lock.*
+*.tmp
+.*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+Unternehmen/.kit-protokoll*
+Unternehmen/.kit-stand
+Unternehmen/.kit-letzter-stop
