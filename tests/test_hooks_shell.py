@@ -20,7 +20,7 @@ BLOCK = [
     ("rm -R alt", "shell-rekursiv"),
     ("rmdir 05_Projekte/alt", "shell-rekursiv"),
     ('find . -name "*.tmp" -delete', "shell-rekursiv"),
-    ("git clean -fd", "shell-rekursiv"),
+    ("git clean -fd", "shell-git-verwerfen"),
     ("Remove-Item -Recurse 03_Berichte", "shell-rekursiv"),
     ("python3 -c \"import shutil; shutil.rmtree('03_Berichte')\"", "shell-rekursiv"),
     ("rm 03_Berichte/*.md", "shell-platzhalter"),
@@ -39,6 +39,20 @@ BLOCK = [
     ('cmd /c "del 01_Vorgaenge\\offen\\V-0001.md"', "shell-geschuetzt"),
     ("python3 - <<'EOF'\nimport os\nos.remove('01_Vorgaenge/offen/V-0001.md')\nEOF", "shell-geschuetzt"),
     ("cat <<EOF > Unternehmen/profil.md\nleer\nEOF", "shell-geschuetzt"),
+    ("del /s 03_Berichte", "shell-rekursiv"),
+    ("trash 03_Berichte", "shell-rekursiv"),
+    ("rm -d 05_Projekte", "shell-rekursiv"),
+    ("find . -exec rm {} +", "shell-rekursiv"),
+    ("rm \"$DATEI\"", "shell-platzhalter"),
+    ("git restore .", "shell-git-verwerfen"),
+    ("git checkout .", "shell-git-verwerfen"),
+    ("git -C . checkout .", "shell-git-verwerfen"),
+    ("git reset --hard HEAD~3", "shell-git-verwerfen"),
+    ("git stash -u", "shell-git-verwerfen"),
+    ("git stash --include-untracked", "shell-git-verwerfen"),
+    ("trash 01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
+    ("python3 -c \"import os; os.system('rm -rf .')\"", "shell-rekursiv"),
+    ("node -e \"require('fs').rmSync('.', {recursive:true})\"", "shell-rekursiv"),
 ]
 
 ERLAUBT = [
@@ -56,6 +70,18 @@ ERLAUBT = [
     'bash -c "ls -la 01_Vorgaenge/offen"',
     "sh tools/auswertung.sh",
     'echo "bash -c rm alles"',
+    "rm --force 03_Berichte/alt.md",
+    "Remove-Item -Force 03_Berichte\\alt.md",
+    "Remove-Item 03_Berichte\\alt.md -ErrorAction SilentlyContinue",
+    "rm 03_Berichte/alt.md && grep -r Preis 03_Berichte",
+    "ls -lR 03_Berichte && rm 03_Berichte/alt.md",
+    "del x.md && dir /s",
+    'find 01_Vorgaenge -name "*.md" -exec grep -l Müller {} +',
+    "rm 03_Berichte/alt.md; echo $?",
+    'mv 03_Berichte/a.md 04_Angebote/ && uv run "/p/plugin/scripts/vorgang.py" eintrag --text "Erledigt?"',
+    "git checkout main",
+    "git stash list",
+    "git log",
 ]
 
 
