@@ -93,6 +93,22 @@ BLOCK = [
     ("cat <<EOF\n`rm -rf 03_Berichte`\nEOF", "shell-rekursiv"),
     ("cat <<EOF > /tmp/x\nText $(rm 01_Vorgaenge/offen/V-0001.md) Ende\nEOF\nls", "shell-geschuetzt"),
     ("cat <<EOF\r\nx\r\nEOF\r\nrm -rf 03_Berichte", "shell-rekursiv"),
+    # final review: the whole workspace (or a parent) moved or deleted; cd/pushd earlier on the line count
+    ('mv "../Kundendienst Müller" /tmp/', "shell-geschuetzt"),
+    ('cd .. && trash "Kundendienst Müller"', "shell-geschuetzt"),
+    ('pushd .. && mv "Kundendienst Müller" /tmp/x', "shell-geschuetzt"),
+    ("mv . /tmp/x", "shell-geschuetzt"),
+    ("rm -rf ..", "shell-geschuetzt"),
+    ("rm -rf /", "shell-geschuetzt"),
+    ("cd 03_Berichte; cd ../..; rm -rf 'Kundendienst Müller'", "shell-geschuetzt"),
+    # deletes fed by a pipeline: the targets are unknown
+    ("Get-ChildItem -Recurse -File | Remove-Item", "shell-platzhalter"),
+    ("ls -r | rm", "shell-platzhalter"),
+    ("ls 03_Berichte | rm -f", "shell-platzhalter"),
+    # git rm -r without --cached
+    ("git rm -r 03_Berichte", "shell-rekursiv"),
+    ("git rm -rf alt", "shell-rekursiv"),
+    ("git -C . rm --recursive -q alt", "shell-rekursiv"),
 ]
 
 ERLAUBT = [
@@ -138,6 +154,18 @@ ERLAUBT = [
     'cat <<"EOF" > /tmp/x\n`rm -rf 03_Berichte`\nEOF',
     "cat <<E\"O\"F > /tmp/x\n$(rm -rf 03_Berichte)\nEOF",
     "cat <<EOF > /tmp/x\nPreis \\$(netto) und \\`x\\`\nEOF",
+    # final review
+    "mv 03_Berichte/a.md 04_Angebote/",
+    "mv 03_Berichte/a.md .",
+    "cd 03_Berichte && rm alt.md",
+    "ls | grep x",
+    "cat a | tee /tmp/b",
+    "ls x.md || rm 03_Berichte/alt.md",
+    "git rm --cached -r x",
+    "git rm datei.md",
+    "cp 03_Berichte/Unternehmensbericht.docx 04_Angebote/",
+    "mv 06_Kunden/Partnerunternehmen.md 06_Kunden/alt.md",
+    "echo x > 03_Berichte/Unternehmensbericht.md",
 ]
 
 
@@ -212,3 +240,43 @@ def test_outside_a_workspace_nothing_is_blocked(shell, tmp_path):
     anderes = tmp_path / "myTS_app"
     anderes.mkdir()
     assert pre(shell, anderes, bash(anderes, "curl -s https://example.com && rm -rf build")) == (0, "")
+
+
+@pytest.mark.parametrize("command", [
+    "Move-Item . C:/tmp",
+    "Set-Location ..; Remove-Item 'Kundendienst Müller'",
+    "Move-Item -Path . -Destination C:/tmp",
+])
+def test_powershell_cannot_move_the_workspace(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command, tool="PowerShell"))
+    assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=PowerShell"), err
+
+
+def test_deleting_or_moving_the_workspace_or_a_parent_by_absolute_path(shell, kit_ws):
+    for command in [f'rm -rf "{kit_ws.parent}"', f'trash "{kit_ws}"', f'mv "{kit_ws}/" /tmp/x',
+                    f'rm -rf "{kit_ws.parent.parent}"']:
+        code, err = pre(shell, kit_ws, bash(kit_ws, command))
+        assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=Bash"), command
+    assert pre(shell, kit_ws, bash(kit_ws, f'mv "{kit_ws}/03_Berichte/a.md" "{kit_ws}"')) == (0, "")
+
+
+def test_workspace_inside_a_folder_named_unternehmen(shell, tmp_path):
+    from conftest import baue
+    ws = tmp_path / "Unternehmen" / "Kundendienst"
+    ws.mkdir(parents=True)
+    baue(ws, mit_vorgaengen=False)
+    for command in ["cp 03_Berichte/a.md 03_Berichte/b.md", f'cp "{ws}/03_Berichte/a.md" "{ws}/03_Berichte/b.md"',
+                    f'echo x > "{ws}/03_Berichte/b.md"']:
+        assert pre(shell, ws, bash(ws, command)) == (0, ""), command
+    for command in ["rm Unternehmen/profil.md", f'rm "{ws}/Unternehmen/profil.md"',
+                    f'echo x > "{ws}/01_Vorgaenge/offen/V-0001.md"']:
+        assert pre(shell, ws, bash(ws, command))[0] == 2, command
+        assert regel(ws).startswith("shell-geschuetzt"), command
+
+
+def test_overlong_command_is_blocked_before_parsing(shell, kit_ws):
+    command = "echo " + "x" * (140 * 1024)
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2 and "zu lang zum Prüfen" in err and "Write-Werkzeug" in err
+    assert regel(kit_ws).startswith("shell-zu-lang tool=Bash")
+    assert pre(shell, kit_ws, bash(kit_ws, "echo " + "x" * (100 * 1024))) == (0, "")

@@ -4,7 +4,7 @@
 # options before the verb are skipped. Each arg starts with three flag digits: variable expansion
 # (a $ outside '...', except $false/$true/$null), wildcard (* or ?, quoted or not), came-from-quotes.
 # A "$(...)" or backtick gives its own line AND a "$sub" arg in the command around it; a command fed by
-# xargs gets a "$xargs" arg (its targets are unknown). A shell wrapper (bash -c "...", powershell
+# xargs or by a pipe ("|", "|&") gets a "$xargs" arg (its targets are unknown). A shell wrapper (bash -c "...", powershell
 # -Command "...", eval "...") gets its quoted args split once more. Backslash: an escape before a space,
 # quote or shell operator, otherwise a Windows path separator ("/"). "#" at a word start is a comment.
 # Heredoc bodies are data, except that an unquoted delimiter (<<EOF) lets bash run $(...) and backticks in
@@ -46,8 +46,8 @@ function flush(   line) {
     line = verb args
     if (fed) line = line "\t100$xargs"
     out = out line "\n"
-  }
-  reset_cmd()
+    reset_cmd()
+  } else args = ""   # no command yet: a pending pipe/xargs feed carries over (ls |<newline> rm)
 }
 function push(k) {
   if (k == "p") flush()
@@ -135,6 +135,13 @@ function hd_char(c,   e, line, d) {
   else if (c == "$" && substr(T, I + 1, 1) == "(") { push("s"); if (substr(T, I + 2, 1) == "(") arith(); I++ }
   else if (c == "`") backtick()
 }
+# "|" or "|&" feeds the next command (its targets are unknown, like xargs); "||" and ">|" do not.
+function pipe() {
+  if (substr(T, I + 1, 1) == "|") { flush(); I++; return }
+  if (substr(T, I - 1, 1) == ">") { flush(); return }
+  flush(); fed = 1
+  if (substr(T, I + 1, 1) == "&") I++
+}
 function backtick() { if (sp > 0 && kd[sp] == "b") { flush(); pop() } else push("b") }
 function parse(text,   c, d) {
   T = text; N = length(T); sp = 0; inq = 0; hd_n = 0; hd_on = 0; ar = 0; reset_cmd(); reset_word()
@@ -167,7 +174,8 @@ function parse(text,   c, d) {
     else if (c == "#" && !inw) { while (I < N && substr(T, I + 1, 1) != "\n") I++ }
     else if (c == " " || c == "\t") endword()
     else if (c == "\n") { flush(); if (hd_n > 0 && !hd_on) hd_start() }
-    else if (c == ";" || c == "&" || c == "|") flush()
+    else if (c == "|") pipe()
+    else if (c == ";" || c == "&") flush()
     else if (c == "<" && heredoc_ok()) heredoc_start()
     else if (c == "(") { push("p"); if (substr(T, I + 1, 1) == "(") arith() }
     else if (c == ")") close_sub()
