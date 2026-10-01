@@ -138,6 +138,11 @@ def test_segments_dirs_exe_escapes_and_wrappers():
     assert awk("segments.awk", "bash -c 'rm -rf x' # rm y").splitlines() == ["bash\t000-c\t001rm -rf x", "rm\t000-rf\t000x"]
 
 
+
+def test_segments_heredoc_with_real_crlf_ends_at_the_delimiter():
+    out = awk("segments.awk", "cat <<EOF\r\nx\r\nEOF\r\nrm -rf 03_Berichte").splitlines()
+    assert out[-1] == "rm\t000-rf\t00003_Berichte"
+
 def test_json_awk_value_ending_in_escaped_backslash():
     out = awk("json.awk", '{"file_path":"C:\\\\dir\\\\","x":1}', want="file_path")
     assert out == "C:\\dir\\\n"

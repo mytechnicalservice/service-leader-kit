@@ -84,6 +84,15 @@ BLOCK = [
     ("echo Müller's Anlage\nrm -rf 03_Berichte", "shell-rekursiv"),
     ("cat <<-EOF > /tmp/x\n\tKunde's\n\tEOF\nrm -rf 03_Berichte", "shell-rekursiv"),
     ('powershell -Command "Remove-Item \\"03_Berichte\\\\\\" -Recurse"', "shell-rekursiv"),
+    # heredoc edge cases: arithmetic <<, substitutions in unquoted bodies, CRLF
+    ("echo $((1<<2))\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ("echo $(( 1 << 2 ))\nrm 01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
+    ("(( x = 1<<2 ))\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ("(( x = a << b ))\nrm -rf 03_Berichte", "shell-rekursiv"),
+    ("cat <<EOF\n$(rm -rf 03_Berichte)\nEOF", "shell-rekursiv"),
+    ("cat <<EOF\n`rm -rf 03_Berichte`\nEOF", "shell-rekursiv"),
+    ("cat <<EOF > /tmp/x\nText $(rm 01_Vorgaenge/offen/V-0001.md) Ende\nEOF\nls", "shell-geschuetzt"),
+    ("cat <<EOF\r\nx\r\nEOF\r\nrm -rf 03_Berichte", "shell-rekursiv"),
 ]
 
 ERLAUBT = [
@@ -124,6 +133,11 @@ ERLAUBT = [
     "cat <<'EOF' > 03_Berichte/notiz.md\nMüller's (alt) 5$ * 2\nEOF",
     "cat <<'EOF' > /tmp/x\nrm -rf 01_Vorgaenge\nEOF",
     "cat <<EOF > /tmp/x\nKunde's Anlage\nEOF\nls 03_Berichte",
+    "echo $((1<<2))",
+    "cat <<'EOF' > 03_Berichte/n.md\n$(nicht ausführen)\nEOF",
+    'cat <<"EOF" > /tmp/x\n`rm -rf 03_Berichte`\nEOF',
+    "cat <<E\"O\"F > /tmp/x\n$(rm -rf 03_Berichte)\nEOF",
+    "cat <<EOF > /tmp/x\nPreis \\$(netto) und \\`x\\`\nEOF",
 ]
 
 
