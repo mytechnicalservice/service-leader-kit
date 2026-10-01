@@ -16,7 +16,7 @@ BEGIN {
     m = split(seg[i], w, /[ \t]+/)
     for (j = 1; j <= m; j++) {
       x = w[j]
-      if (x == "" || x ~ /^[a-z_][a-z0-9_]*=/ || x ~ /^-/ || (inner && x ~ /^\/[a-z]$/)) continue
+      if (x == "" || x ~ /^[a-z_][a-z0-9_]*=/ || x ~ /^-/ || x ~ /^[0-9]+$/ || (inner && x ~ /^\/[a-z]$/)) continue
       sub(/^.*\//, "", x); sub(/\.exe$/, "", x)
       if (index(wrap, " " x " ")) continue
       out = out " " x

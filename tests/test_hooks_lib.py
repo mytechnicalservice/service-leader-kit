@@ -47,7 +47,7 @@ def test_config_valid_is_printed_in_schema_order(shell, tmp_path):
 
 
 def test_config_from_notepad_is_accepted(shell, tmp_path):
-    text = "﻿# Einstellungen\r\n" + GUELTIG.replace("\n", "\r\n").replace("ablage=github", "ablage = github ")
+    text = "\ufeff# Einstellungen\r\n" + GUELTIG.replace("\n", "\r\n").replace("ablage=github", "ablage = github ")
     code, out, _ = konfig(shell, tmp_path, text)
     assert code == 0 and "ablage=github\n" in out
 
@@ -104,6 +104,8 @@ def test_ver_gt(shell, a, b, neuer):
 def test_json_str_round_trips(shell):
     out = lib(shell, "slk_json_str \"$(printf 'a\"b\\\\c\\nzwei\\tTab Müller')\"")[1]
     assert json.loads(out) == 'a"b\\c\nzwei\tTab Müller'
+    out = lib(shell, "slk_json_str \"$(printf 'a\\rb\\001c')\"")[1]
+    assert json.loads(out) == "a\rbc"
 
 
 def test_log_appends_and_rotates(shell, tmp_path):
@@ -124,3 +126,65 @@ def test_hook_files_stay_lf_on_windows_checkouts():
         assert out.strip().endswith("eol: lf"), out
     for f in HOOKS.iterdir():
         assert b"\r" not in f.read_bytes(), f
+
+
+def awk(script, text, **v):
+    args = ["awk"] + [f"-v{k}={x}" for k, x in v.items()] + ["-f", str(HOOKS / script)]
+    return subprocess.run(args, input=text, capture_output=True, text=True).stdout
+
+
+def test_cmdwords_skips_numbers_wrappers_dirs_and_exe():
+    assert " rm " in awk("cmdwords.awk", "xargs -n 1 rm x")
+    assert " rm " in awk("cmdwords.awk", "sudo X=1 /bin/RM y".lower())
+    assert " curl " in awk("cmdwords.awk", "curl.exe z")
+
+
+def test_json_awk_value_ending_in_escaped_backslash():
+    out = awk("json.awk", '{"file_path":"C:\\\\dir\\\\","x":1}', want="file_path")
+    assert out == "C:\\dir\\\n"
+
+
+def test_lib_leaves_caller_variables_alone(shell, tmp_path):
+    ws = tmp_path / "ws"
+    (ws / "Unternehmen").mkdir(parents=True)
+    script = (f'd=X f=Y n=Z m=W p=V; slk_ws_from "{ws}" >/dev/null; slk_ws_below "{tmp_path}" >/dev/null; '
+              f'slk_root_of "a/01_x/b" 01_x /c >/dev/null; slk_days 2026-10-01 >/dev/null; slk_ver_gt 1.2.3 1.2.4; '
+              f'slk_log "{ws}" E t >/dev/null; slk_json_str q >/dev/null; slk_config "{ws}" >/dev/null; '
+              f'slk_get "a=b" a >/dev/null; echo "$d$f$n$m$p"')
+    assert lib(shell, script, SLK_KEIN_PROTOKOLL="")[1] == "XYZWV\n"
+
+
+def test_days_rejects_malformed_date(shell):
+    assert lib(shell, "slk_days 2026-10-01x") == (1, "")
+
+
+def test_root_of_relative_prefix_gets_cwd(shell):
+    assert lib(shell, 'slk_root_of "sub/01_vorgaenge/x" 01_vorgaenge /cwd')[1] == "/cwd/sub"
+
+
+def test_ws_below_empty_arg_fails(shell):
+    assert lib(shell, 'slk_ws_below ""') == (1, "")
+
+
+def test_ws_from_deep_path(shell, tmp_path):
+    ws = tmp_path / "ws"
+    deep = ws.joinpath(*["d"] * 15)
+    deep.mkdir(parents=True)
+    (ws / "01_Vorgaenge").mkdir()
+    assert lib(shell, f'slk_ws_from "{deep}"')[1] == str(ws)
+
+
+def test_field_absent_returns_zero(shell):
+    assert lib(shell, "slk_field '{\"a\":1}' zzz") == (0, "")
+
+
+def test_log_flattens_tabs_and_newlines(shell, tmp_path):
+    ws = tmp_path / "ws"
+    (ws / "Unternehmen").mkdir(parents=True)
+    lib(shell, f'slk_log "{ws}" E "$(printf \'a\\tb\\nc\')"')
+    assert (ws / "Unternehmen" / ".kit-protokoll").read_text().endswith("\tE\ta b c\n")
+
+
+def test_get_first_match_and_absent(shell):
+    assert lib(shell, "slk_get \"$(printf 'a=1\\nb=2\\na=3')\" a")[1] == "1\n"
+    assert lib(shell, "slk_get 'a=1' zz")[1] == ""

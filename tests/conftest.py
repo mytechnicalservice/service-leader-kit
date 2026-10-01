@@ -1,3 +1,4 @@
+import shutil
 import sys
 from pathlib import Path
 
@@ -13,8 +14,6 @@ def ws(tmp_path):
     d = tmp_path / "Kundendienst Müller"
     d.mkdir()
     return d
-import shutil
-
 SHELLS = [s for s in ("/bin/sh", shutil.which("dash")) if s]
 
 

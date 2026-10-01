@@ -5,8 +5,8 @@ export LC_ALL
 SLK_HOOKS=${SLK_HOOKS:-$(cd "$(dirname "$0")" && pwd)}
 SLK_PLUGIN=$(dirname "$SLK_HOOKS")
 
-# First value of a JSON key in a payload (see json.awk). Empty if absent.
-slk_field() { printf '%s' "$1" | awk -v want="$2" -f "$SLK_HOOKS/json.awk"; }
+# First value of a JSON key in a payload (see json.awk). Empty if absent; always succeeds.
+slk_field() { printf '%s' "$1" | awk -v want="$2" -f "$SLK_HOOKS/json.awk"; return 0; }
 
 # Backslashes to slashes (Windows paths), and a lower-cased copy for matching (macOS/Windows ignore case).
 slk_slashes() { printf '%s' "$1" | tr '\\' '/'; }
@@ -15,22 +15,24 @@ slk_lower() { printf '%s' "$1" | tr 'A-Z' 'a-z'; }
 # True if $1 is a kit workspace: it has 01_Vorgaenge/ or Unternehmen/.kit-config.
 slk_is_ws() { [ -n "$1" ] && { [ -d "$1/01_Vorgaenge" ] || [ -f "$1/Unternehmen/.kit-config" ]; }; }
 
-# Prints the workspace that contains directory $1 (walking up at most 12 levels); exit 1 if none.
+# Prints the workspace that contains directory $1 (walking up to the root); exit 1 if none.
+# Function-internal variables are _slk_-prefixed so they never clobber a hook's own.
 slk_ws_from() {
-  d=$(slk_slashes "$1"); d=${d%/}; n=0
-  while [ -n "$d" ] && [ "$n" -lt 12 ]; do
-    if slk_is_ws "$d"; then printf '%s' "$d"; return 0; fi
-    p=${d%/*}; [ "$p" = "$d" ] && break
-    d=$p; n=$((n + 1))
+  _slk_d=$(slk_slashes "$1"); _slk_d=${_slk_d%/}
+  while [ -n "$_slk_d" ]; do
+    if slk_is_ws "$_slk_d"; then printf '%s' "$_slk_d"; return 0; fi
+    _slk_p=${_slk_d%/*}; [ "$_slk_p" = "$_slk_d" ] && break
+    _slk_d=$_slk_p
   done
   return 1
 }
 
 # Prints the first workspace directly inside $1 (the user opened the parent folder); exit 1 if none.
 slk_ws_below() {
-  for c in "$1"/*/; do
-    c=${c%/}
-    if slk_is_ws "$c"; then printf '%s' "$c"; return 0; fi
+  [ -n "$1" ] || return 1
+  for _slk_c in "$1"/*/; do
+    _slk_c=${_slk_c%/}
+    if slk_is_ws "$_slk_c"; then printf '%s' "$_slk_c"; return 0; fi
   done
   return 1
 }
@@ -38,12 +40,15 @@ slk_ws_below() {
 # Prints the directory that contains folder $2 (lower-case name) in path $1, in the path's own case.
 # Paths relative to it resolve against $3 (the tool call's cwd).
 slk_root_of() {
-  p=$(slk_slashes "$1"); l=$(slk_lower "$p")
-  case "$l" in
+  _slk_p=$(slk_slashes "$1"); _slk_l=$(slk_lower "$_slk_p")
+  case "$_slk_l" in
     "$2"/*|./"$2"/*) printf '%s' "$3" ;;
     */"$2"/*)
-      pre=${l%%/"$2"/*}
-      if [ -z "$pre" ]; then printf '/'; else printf '%s' "$(printf '%s' "$p" | cut -c "1-${#pre}")"; fi ;;
+      _slk_pre=${_slk_l%%/"$2"/*}
+      if [ -z "$_slk_pre" ]; then printf '/'; return 0; fi
+      _slk_r=$(printf '%s' "$_slk_p" | cut -c "1-${#_slk_pre}")
+      case "$_slk_r" in /*|[A-Za-z]:*) ;; *) _slk_r="$3/$_slk_r" ;; esac
+      printf '%s' "$_slk_r" ;;
   esac
 }
 
@@ -57,43 +62,48 @@ slk_config() {
 slk_get() { printf '%s\n' "$1" | sed -n "s/^$2=//p" | head -n 1; }
 
 # Appends one line to Unternehmen/.kit-protokoll of workspace $1 (kept below 256 KB). Never fails.
+# Tabs and line breaks in the text $3 become spaces, so one event stays one line.
 slk_log() {
   [ "${SLK_KEIN_PROTOKOLL:-}" = 1 ] && return 0
-  f="$1/Unternehmen/.kit-protokoll"
+  _slk_f="$1/Unternehmen/.kit-protokoll"
   [ -d "$1/Unternehmen" ] || return 0
-  if [ -f "$f" ] && [ "$(wc -c < "$f")" -gt 262144 ]; then mv -f "$f" "$f.1" 2>/dev/null; fi
-  printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$2" "$3" >> "$f" 2>/dev/null
+  if [ -f "$_slk_f" ] && [ "$(wc -c < "$_slk_f")" -gt 262144 ]; then mv -f "$_slk_f" "$_slk_f.1" 2>/dev/null; fi
+  _slk_t=$(printf '%s' "$3" | tr '\t\n' '  ')
+  printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$2" "$_slk_t" >> "$_slk_f" 2>/dev/null
   return 0
 }
 
-# Text as a JSON string literal (quotes, backslashes, tabs and line breaks escaped).
+# Text as a JSON string literal (quotes, backslashes, tabs, CR and line breaks escaped; other control chars dropped).
 slk_json_str() {
-  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/\\t/g' |
-    awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }' | { printf '"'; cat; printf '"'; }
+  printf '%s' "$1" | tr -d '\000-\010\013\014\016-\037' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/\\t/g' |
+    awk 'NR > 1 { printf "\\n" } { gsub(/\r/, "\\r"); printf "%s", $0 }' | { printf '"'; cat; printf '"'; }
 }
 
 # Day number (days since 1970-01-01) of date $1 = YYYY-MM-DD (civil-from-days, pure arithmetic).
+# Prints nothing and fails on any other input.
 slk_days() {
-  y=${1%%-*}; m=${1#*-}; d=${m#*-}; m=${m%%-*}; m=${m#0}; d=${d#0}
-  [ "$m" -le 2 ] && y=$((y - 1))
-  era=$((y / 400)); yoe=$((y - era * 400)); mp=$(((m + 9) % 12))
-  doy=$(((153 * mp + 2) / 5 + d - 1)); doe=$((yoe * 365 + yoe / 4 - yoe / 100 + doy))
-  echo $((era * 146097 + doe - 719468))
+  case "$1" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) return 1 ;; esac
+  _slk_y=${1%%-*}; _slk_m=${1#*-}; _slk_dd=${_slk_m#*-}; _slk_m=${_slk_m%%-*}; _slk_m=${_slk_m#0}; _slk_dd=${_slk_dd#0}
+  [ "$_slk_m" -le 2 ] && _slk_y=$((_slk_y - 1))
+  _slk_era=$((_slk_y / 400)); _slk_yoe=$((_slk_y - _slk_era * 400)); _slk_mp=$(((_slk_m + 9) % 12))
+  _slk_doy=$(((153 * _slk_mp + 2) / 5 + _slk_dd - 1))
+  _slk_doe=$((_slk_yoe * 365 + _slk_yoe / 4 - _slk_yoe / 100 + _slk_doy))
+  echo $((_slk_era * 146097 + _slk_doe - 719468))
 }
 
-# Weekday of date $1: 0 = Monday … 6 = Sunday.
-slk_wochentag() { echo $((($(slk_days "$1") + 3) % 7)); }
+# Weekday of date $1: 0 = Monday … 6 = Sunday. Prints nothing and fails on a malformed date.
+slk_wochentag() { _slk_n=$(slk_days "$1") || return 1; echo $(((_slk_n + 3) % 7)); }
 
 # True if version $1 is newer than version $2 (x.y.z, numbers only; missing parts count as 0).
 slk_ver_gt() {
-  a=$1; b=$2; i=0
-  while [ "$i" -lt 3 ]; do
-    x=${a%%.*}; y=${b%%.*}; x=${x:-0}; y=${y:-0}
-    [ "$x" -gt "$y" ] 2>/dev/null && return 0
-    [ "$x" -lt "$y" ] 2>/dev/null && return 1
-    case "$a" in *.*) a=${a#*.} ;; *) a=0 ;; esac
-    case "$b" in *.*) b=${b#*.} ;; *) b=0 ;; esac
-    i=$((i + 1))
+  _slk_a=$1; _slk_b=$2; _slk_i=0
+  while [ "$_slk_i" -lt 3 ]; do
+    _slk_x=${_slk_a%%.*}; _slk_y=${_slk_b%%.*}; _slk_x=${_slk_x:-0}; _slk_y=${_slk_y:-0}
+    [ "$_slk_x" -gt "$_slk_y" ] 2>/dev/null && return 0
+    [ "$_slk_x" -lt "$_slk_y" ] 2>/dev/null && return 1
+    case "$_slk_a" in *.*) _slk_a=${_slk_a#*.} ;; *) _slk_a=0 ;; esac
+    case "$_slk_b" in *.*) _slk_b=${_slk_b#*.} ;; *) _slk_b=0 ;; esac
+    _slk_i=$((_slk_i + 1))
   done
   return 1
 }
