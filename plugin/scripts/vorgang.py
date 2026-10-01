@@ -32,6 +32,9 @@ NR_RE = re.compile(r"^V-\d{4,}$")
 ORDNER = ("offen", "erledigt", "_zur-loeschung")
 TEXT_ENDUNGEN = {".md", ".txt", ".eml", ".csv"}
 OFFICE_ENDUNGEN = {".docx", ".pptx", ".xlsx"}
+AGENTEN = {"assistenz", "betrieb", "projekte", "vertrieb", "angebot", "teile", "personal", "finanzen",
+           "qualitaet-recht", "system-architekt"}
+RESERVIERT = {"angelegt", "entscheidung", "erledigt"}  # events only neu / entscheide / schliesse write
 
 
 class VorgangFehler(Exception):
@@ -108,6 +111,13 @@ def norm_nr(nr: str) -> str:
     if not NR_RE.match(s):
         raise VorgangFehler(f"Nummer '{nr}' ist ungültig (erwartet V-0001)")
     return s
+
+
+def pruefe_mensch(wert: str, feld: str) -> None:
+    """Decisions and case ownership belong to people, never to an agent (spec §6)."""
+    name = (wert or "").strip().casefold()
+    if name.startswith("service-leader-kit:") or name in AGENTEN:
+        raise VorgangFehler(f"'{feld}' muss ein Mensch sein, kein Agent ('{wert.strip()}')")
 
 
 def datei_fehler(ws: Path, p: Path) -> tuple[list[str], dict | None, str]:
@@ -216,6 +226,7 @@ def anlegen(ws: Path, meta: dict, body: str) -> Path:
 
 
 def cmd_neu(a, ws: Path) -> tuple[int, dict]:
+    pruefe_mensch(a.verantwortlich, "verantwortlich")
     try:
         betrag = zahl(a.betrag) if a.betrag not in (None, "") else None
     except ValueError as exc:
@@ -236,6 +247,8 @@ def cmd_neu(a, ws: Path) -> tuple[int, dict]:
 
 
 def cmd_eintrag(a, ws: Path) -> tuple[int, dict]:
+    if a.art.strip().casefold() in RESERVIERT:
+        raise VorgangFehler(f"Ereignis '{a.art}' setzt nur das Skript selbst (neu, entscheide, schliesse)")
     p, meta, body = load(ws, a.nr)
     if a.von not in meta["bearbeitet_von"]:
         meta["bearbeitet_von"] = [*meta["bearbeitet_von"], a.von]
@@ -249,6 +262,8 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
         raise VorgangFehler(f"Feld '{a.feld}' darf nur mit 'entscheide' gesetzt werden (Entscheidung des Menschen)")
     if a.feld not in SETZBAR:
         raise VorgangFehler(f"Feld '{a.feld}' kann nicht gesetzt werden")
+    if a.feld == "verantwortlich":
+        pruefe_mensch(a.wert, "verantwortlich")
     p, meta, body = load(ws, a.nr)
     if a.feld == "betrag_eur":
         try:
@@ -263,6 +278,7 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
 
 
 def cmd_entscheide(a, ws: Path) -> tuple[int, dict]:
+    pruefe_mensch(a.von, "entschieden_von")
     p, meta, body = load(ws, a.nr)
     meta |= {"entscheidung": a.entscheidung, "entschieden_von": a.von, "entschieden_am": a.heute,
              "entschiedenes_dokument": f"{a.dokument} ({a.heute})", "aktualisiert": a.heute}
