@@ -179,6 +179,10 @@ def fremde_beispieldateien(b: Path) -> list[str]:
 
 def cmd_anlegen(a) -> tuple[int, dict]:
     ws = Path(a.ordner).expanduser()
+    try:
+        heute = dt.date.fromisoformat(a.heute)
+    except ValueError:
+        return fehler(f"--heute '{a.heute}' ist kein gültiges Datum (JJJJ-MM-TT).")
     if not ws.is_dir():
         return fehler(f"Den Ordner '{ws}' gibt es nicht.")
     if neuer := ao.neueres_schema(ao.lies_konfig(ws)[0]):
@@ -220,8 +224,18 @@ def cmd_anlegen(a) -> tuple[int, dict]:
     angelegt = ao.ergaenze(ws)
     meldungen: list[str] = []
     beispiel = ws / "Beispiel"
-    if neu["beispieldaten"] == "ja" and not beispiel.exists():
-        shutil.copytree(ao.PLUGIN / "beispiel", beispiel)
+    if a.repo and neu["ablage"] != "github":
+        meldungen.append(f"Die GitHub-Adresse {a.repo} wurde ignoriert, weil die Ablage nicht 'GitHub' ist.")
+    if neu["beispieldaten"] == "ja" and not beispiel.exists() and not beispiel.is_symlink():
+        # Copied next to it first and renamed when complete, so a failed copy never leaves half a sample behind.
+        tmp = ws / f".Beispiel.tmp-{uuid.uuid4().hex[:8]}"
+        try:
+            shutil.copytree(ao.PLUGIN / "beispiel", tmp)
+            tmp.rename(beispiel)
+        except OSError as exc:
+            shutil.rmtree(tmp, ignore_errors=True)
+            return fehler(f"Die Beispieldaten (Beispiel/) konnten nicht angelegt werden ({exc.strerror or exc}). "
+                          "Bitte Speicherplatz prüfen und die Einrichtung erneut ausführen.", angelegt=angelegt)
         angelegt.append("Beispiel/")
     geloescht: list[str] = []
     if a.beispiel_loeschen and beispiel.exists():  # decision D3: the kit's only deletion, on explicit confirmation
@@ -246,7 +260,7 @@ def cmd_anlegen(a) -> tuple[int, dict]:
     U = ws / "Unternehmen"
     if ao.schreibe_falls_fehlt(U / ".kit-version", ao.kit_version() + "\n"):
         angelegt.append("Unternehmen/.kit-version")
-    if ao.schreibe_falls_fehlt(U / ".kit-status", ao.status_start(dt.date.fromisoformat(a.heute))):
+    if ao.schreibe_falls_fehlt(U / ".kit-status", ao.status_start(heute)):
         angelegt.append("Unternehmen/.kit-status")
 
     stand = "keine"

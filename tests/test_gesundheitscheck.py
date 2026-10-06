@@ -79,10 +79,16 @@ def test_old_schema_is_migrated_with_a_backup(capsys, kit_ws, monkeypatch):
 def test_settings_from_a_newer_kit_are_not_touched(capsys, kit_ws):
     p = kit_ws / "Unternehmen" / ".kit-config"
     p.write_text(KONFIG.replace("schema=1", "schema=2"), encoding="utf-8")
+    (kit_ws / "Unternehmen" / ".kit-version").write_text("0.0.9\n", encoding="utf-8")
+    (kit_ws / "03_Berichte" / "LIESMICH.md").unlink()
+    vorher = sorted(x.relative_to(kit_ws).as_posix() for x in kit_ws.rglob("*"))
     code, out = check(capsys, kit_ws)
     assert code == 1 and out["einstellungen"]["status"] == "ungueltig"
     assert any("neueren Kit-Version" in m for m in out["meldungen"])
     assert "schema=2" in p.read_text(encoding="utf-8")
+    assert out["ergaenzt"] == [] and not (kit_ws / "03_Berichte" / "LIESMICH.md").exists()
+    assert sorted(x.relative_to(kit_ws).as_posix() for x in kit_ws.rglob("*")) == vorher
+    assert (kit_ws / "Unternehmen" / ".kit-version").read_text(encoding="utf-8") == "0.0.9\n"
 
 
 def test_missing_settings(capsys, kit_ws):
@@ -136,3 +142,28 @@ def test_a_bare_unternehmen_folder_is_not_a_workspace(capsys, ws):
     code, out = check(capsys, ws)
     assert code == 1 and "richte den Kundendienst ein" in out["meldungen"][0]
     assert [p.relative_to(ws).as_posix() for p in ws.rglob("*")] == ["Unternehmen"]
+
+
+@pytest.mark.parametrize("ordner", ["9.0.0", "0.10.0", "0.1.1"])
+def test_a_newer_folder_version_is_never_lowered(capsys, kit_ws, ordner):
+    v = kit_ws / "Unternehmen" / ".kit-version"
+    v.write_text(ordner + "\n", encoding="utf-8")
+    code, out = check(capsys, kit_ws)
+    assert code == 0 and out["version"] == {"ordner": ordner, "kit": ao.kit_version(), "aktualisiert": False}
+    assert v.read_text(encoding="utf-8") == ordner + "\n"
+    assert any("neueren Kit-Version" in m and ordner in m for m in out["meldungen"])
+
+
+def test_same_folder_version_is_quiet(capsys, kit_ws):
+    (kit_ws / "Unternehmen" / ".kit-version").write_text(ao.kit_version() + "\n", encoding="utf-8")
+    code, out = check(capsys, kit_ws)
+    assert code == 0 and out["version"]["aktualisiert"] is False
+    assert not any("Kit-Version" in m for m in out["meldungen"])
+
+
+def test_retention_front_matter_with_a_bom_is_read(capsys, kit_ws):
+    a = kit_ws / "Unternehmen" / "aufbewahrung.md"
+    a.write_text("\ufeff" + a.read_text(encoding="utf-8").replace("bestaetigt: nein", "bestaetigt: ja"),
+                 encoding="utf-8")
+    _, out = check(capsys, kit_ws)
+    assert out["aufbewahrung"]["bestaetigt"] is True and out["aufbewahrung"]["jahre"] == 6

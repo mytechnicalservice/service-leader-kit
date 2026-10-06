@@ -17,7 +17,7 @@ from slk_common import JsonParser, run, write_atomic
 
 # schema n -> function returning the values for schema n+1. Empty while schema 1 is the only schema.
 MIGRATIONEN: dict[int, Callable[[dict[str, str]], dict[str, str]]] = {}
-KOPF = re.compile(r"\A﻿?---\r?\n(.*?)\r?\n---\r?\n", re.S)
+KOPF = re.compile(r"\A\ufeff?---\r?\n(.*?)\r?\n---\r?\n", re.S)
 ERLEDIGT = re.compile(r"^### (\d{4}-\d{2}-\d{2}) · erledigt · ", re.M)
 
 
@@ -115,7 +115,8 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     v_kit = ao.kit_version()
     meldungen: list[str] = []
 
-    ergaenzt = ao.ergaenze(ws)
+    # A workspace from a newer kit is left exactly as it is (spec §7.2, D6): no files added, no version written.
+    ergaenzt = [] if ao.neueres_schema(ao.lies_konfig(ws)[0]) else ao.ergaenze(ws)
     if ergaenzt:
         meldungen.append("Ergänzt: " + ", ".join(ergaenzt) + ".")
     konfig, m = einstellungen(ws, v_ordner)
@@ -136,7 +137,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
                          ", ".join(f"{x['nr']} (abgeschlossen {x['abgeschlossen']})" for x in liste) +
                          ". Vorschlag: zum Löschen vormerken (\"merk V-… zum Löschen vor\").")
     aktualisiert = False
-    if konfig["status"] in ("ok", "migriert") and v_ordner != v_kit:
+    if v_ordner and ao.version_neuer(v_ordner, v_kit):  # e.g. a second PC with an older kit: never lower it
+        meldungen.append(f"Der Ordner wurde schon mit einer neueren Kit-Version ({v_ordner}) benutzt; hier ist "
+                         f"{v_kit} installiert. Bitte das Kit aktualisieren (/plugin update service-leader-kit).")
+    elif konfig["status"] in ("ok", "migriert") and v_ordner != v_kit:
         write_atomic(v_datei, v_kit + "\n")
         aktualisiert = True
         meldungen.append(f"Kit-Version im Ordner: {v_ordner or 'unbekannt'} → {v_kit}.")

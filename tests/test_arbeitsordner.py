@@ -125,3 +125,34 @@ def test_ist_arbeitsordner_matches_the_hooks(shell, ws, name):
     hooks = run_lib(shell, f'slk_is_ws "{ws}"').returncode == 0
     assert ao.ist_arbeitsordner(ws) == hooks, name
     assert hooks == (name in ("kit-config", "vorgaenge"))
+
+
+def _dangling(link, tmp_path):
+    ziel = tmp_path / "draussen" / "ziel.md"
+    try:
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(ziel)
+    except (OSError, NotImplementedError):
+        pytest.skip("Symlinks werden hier nicht unterstützt")
+    return ziel
+
+
+def test_ergaenze_does_not_write_through_a_dangling_link(ws, tmp_path):
+    link = ws / "Unternehmen" / "profil.md"
+    ziel = _dangling(link, tmp_path)
+    assert "Unternehmen/profil.md" not in ao.ergaenze(ws)
+    assert link.is_symlink() and not ziel.exists() and not ziel.parent.exists()
+
+
+def test_schreibe_falls_fehlt_leaves_a_dangling_link_alone(ws, tmp_path):
+    link = ws / "Unternehmen" / ".kit-status"
+    ziel = _dangling(link, tmp_path)
+    assert ao.schreibe_falls_fehlt(link, "x") is False
+    assert link.is_symlink() and not ziel.exists()
+
+
+@pytest.mark.parametrize("a, b", [("0.1.0", "0.0.9"), ("0.10.0", "0.9.9"), ("1", "0.9"), ("0.1", "0.1.0"),
+                                  ("0.1.0", "0.1.1"), ("abc", "0.1.0"), ("0.1.0", ""), ("2.0.0-beta", "1.9.9")])
+def test_version_neuer_matches_slk_ver_gt(shell, a, b):
+    for x, y in ((a, b), (b, a)):
+        assert ao.version_neuer(x, y) == (run_lib(shell, f'slk_ver_gt "{x}" "{y}"').returncode == 0), (x, y)

@@ -33,14 +33,15 @@ def ergaenze(ws: Path) -> list[str]:
     """Creates missing folders and copies missing template files; returns what was created (relative, POSIX)."""
     neu: list[str] = []
     for d in LEERE_ORDNER:
-        if not (ws / d).is_dir():
+        if not (ws / d).is_dir() and not (ws / d).is_symlink():
             (ws / d).mkdir(parents=True)
             neu.append(f"{d}/")
     quellen = [(p, p.relative_to(VORLAGE).as_posix()) for p in sorted(VORLAGE.rglob("*"))
                if p.is_file() and not p.name.startswith(".")]
     for src, r in quellen + [(GITIGNORE, ".gitignore")]:
         ziel = ws / r
-        if ziel.exists():  # also true for a differently cased file on macOS/Windows: leave it alone
+        # exists() is also true for a differently cased file on macOS/Windows; a dangling link is left alone too.
+        if ziel.exists() or ziel.is_symlink():
             continue
         ziel.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, ziel)
@@ -124,7 +125,18 @@ def status_start(heute: dt.date) -> str:
 
 
 def schreibe_falls_fehlt(p: Path, text: str) -> bool:
-    if p.exists():
+    if p.exists() or p.is_symlink():  # never write through or replace a (dangling) link
         return False
     write_atomic(p, text)
     return True
+
+
+def version_neuer(a: str, b: str) -> bool:
+    """True if version a is newer than b, exactly like slk_ver_gt in hooks/lib.sh (x.y.z, missing parts count
+    as 0, a part that is not a number compares as equal)."""
+    for i in range(3):
+        x, y = (v.split(".")[i] if i < len(v.split(".")) else "0" for v in (a, b))
+        x, y = x or "0", y or "0"
+        if x.isascii() and x.isdigit() and y.isascii() and y.isdigit() and int(x) != int(y):
+            return int(x) > int(y)
+    return False

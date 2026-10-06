@@ -207,3 +207,27 @@ def test_system_files_do_not_block_sample_removal(capsys, ws):
     (ws / "Beispiel" / ".DS_Store").write_bytes(b"x")
     code, out = anlegen(capsys, ws, "--beispieldaten", "nein", "--beispiel-loeschen")
     assert code == 0 and not (ws / "Beispiel").exists()
+
+
+def test_repo_without_github_storage_is_reported_as_ignored(capsys, ws):
+    code, out = anlegen(capsys, ws, *ALLES, "--repo", "https://github.com/firma/kundendienst.git")
+    assert code == 0 and not (ws / ".git").exists()
+    assert any("ignoriert" in m and "github.com/firma/kundendienst.git" in m for m in out["meldungen"])
+
+
+def test_failed_sample_copy_leaves_no_beispiel_folder(capsys, ws, monkeypatch):
+    echt = shutil.copytree
+
+    def halb(src, dst, *args, **kwargs):
+        echt(src / "00_Eingang", dst / "00_Eingang")
+        raise OSError(28, "Kein Speicherplatz")
+    monkeypatch.setattr(e.shutil, "copytree", halb)
+    code, out = anlegen(capsys, ws, *ALLES)
+    assert code == 1 and "Beispiel" in out["fehler"][0]
+    assert not (ws / "Beispiel").exists() and not [p for p in ws.iterdir() if "Beispiel" in p.name]
+
+
+@pytest.mark.parametrize("heute", ["2026-13-01", "morgen", ""])
+def test_malformed_date_is_refused_before_writing(capsys, ws, heute):
+    code, out = anlegen(capsys, ws, *ALLES[:-2], "--heute", heute)
+    assert code == 1 and "--heute" in out["fehler"][0] and list(ws.iterdir()) == []
