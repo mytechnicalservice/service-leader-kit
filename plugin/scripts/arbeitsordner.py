@@ -90,6 +90,15 @@ def lies_konfig(ws: Path) -> tuple[dict[str, str] | None, list[str]]:
     return pruefe_text(p.read_text(encoding="utf-8", errors="replace"))
 
 
+def neueres_schema(werte: dict[str, str] | None) -> str | None:
+    """German message when the settings come from a newer kit (spec §7.2, D6: never migrated or rewritten)."""
+    schema = (werte or {}).get("schema", "")
+    if not (re.fullmatch(r"[0-9]+", schema) and int(schema) > SCHEMA_VERSION):
+        return None
+    return (f"Die Einstellungen stammen von einer neueren Kit-Version (schema={schema}). Bitte das Kit "
+            "aktualisieren (/plugin update service-leader-kit); bis dahin gilt das sichere Verhalten.")
+
+
 def render(werte: dict[str, str]) -> str:
     return "".join(f"{k}={werte[k]}\n" for k in regeln() if k in werte)
 

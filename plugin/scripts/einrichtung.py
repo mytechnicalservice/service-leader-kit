@@ -113,6 +113,8 @@ def cmd_pruefen(a) -> tuple[int, dict]:
         meldungen.append("Automatische Git-Sicherung ist hier nicht möglich. Für die Ablage 'GitHub' nutzt du "
                          "GitHub Desktop; das Kit erinnert dich nach jeder Antwort an geänderte Dateien.")
     werte, fehler = ao.lies_konfig(ordner)
+    if neuer := ao.neueres_schema(werte):
+        meldungen.append(neuer)
     ok = probe["anlegen"] and all(v["ok"] for v in vor if v["pflicht"])
     return (0 if ok else 1), {
         "ok": ok, "ordner": str(ordner), "voraussetzungen": vor, "probe": probe, "git_auto_moeglich": auto,
@@ -167,6 +169,8 @@ def cmd_anlegen(a) -> tuple[int, dict]:
     ws = Path(a.ordner).expanduser()
     if not ws.is_dir():
         return fehler(f"Den Ordner '{ws}' gibt es nicht.")
+    if neuer := ao.neueres_schema(ao.lies_konfig(ws)[0]):
+        return fehler(neuer)
     alt = gueltige_werte(ws)
     gegeben = {k: getattr(a, k) for k in (*FRAGEN, "git_auto") if getattr(a, k) is not None}
     neu = alt | gegeben | {"schema": str(ao.SCHEMA_VERSION), "laufzeit": "claude-code"}

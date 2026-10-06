@@ -63,3 +63,11 @@ def test_existing_settings_are_shown(capsys, ws):
     baue(ws, mit_vorgaengen=False)
     _, out = aufruf(capsys, "pruefen", "--ordner", str(ws))
     assert out["einstellungen"]["ablage"] == "lokal" and out["einstellungen_fehler"] == []
+
+
+def test_settings_from_a_newer_kit_are_reported(capsys, ws):
+    from conftest import KONFIG
+    baue(ws, mit_vorgaengen=False)
+    (ws / "Unternehmen" / ".kit-config").write_text(KONFIG.replace("schema=1", "schema=2"), encoding="utf-8")
+    _, out = aufruf(capsys, "pruefen", "--ordner", str(ws))
+    assert any("neueren Kit-Version (schema=2)" in m for m in out["meldungen"])

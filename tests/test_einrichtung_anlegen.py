@@ -156,3 +156,16 @@ def test_corrected_repo_url_replaces_the_old_origin(capsys, ws):
     assert any("GitHub-Adresse geändert" in m and a in m and b in m for m in out["meldungen"])
     _, again = anlegen(capsys, ws, "--repo", b)
     assert not any("GitHub-Adresse geändert" in m for m in again["meldungen"])
+
+
+def test_settings_from_a_newer_kit_are_never_rewritten(capsys, ws):
+    anlegen(capsys, ws, *ALLES)
+    p = ws / "Unternehmen" / ".kit-config"
+    p.write_text(KONFIG.replace("schema=1", "schema=2") + "farbe=blau\n", encoding="utf-8")
+    vorher = sorted(x.relative_to(ws).as_posix() for x in ws.rglob("*"))
+    inhalt = p.read_bytes()
+    code, out = anlegen(capsys, ws, *ALLES[:-2])
+    assert code == 1 and "neueren Kit-Version (schema=2)" in out["fehler"][0]
+    assert "/plugin update service-leader-kit" in out["fehler"][0]
+    assert p.read_bytes() == inhalt
+    assert sorted(x.relative_to(ws).as_posix() for x in ws.rglob("*")) == vorher

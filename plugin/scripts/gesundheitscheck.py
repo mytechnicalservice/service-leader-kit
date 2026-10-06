@@ -45,10 +45,8 @@ def einstellungen(ws: Path, ordner_version: str | None) -> tuple[dict, list[str]
     if not fehler:
         return {"status": "ok", "fehler": []}, []
     schema = werte.get("schema", "")
-    if schema.isdigit() and int(schema) > ao.SCHEMA_VERSION:
-        return {"status": "ungueltig", "fehler": fehler}, [
-            f"Die Einstellungen stammen von einer neueren Kit-Version (schema={schema}). Bitte das Kit "
-            "aktualisieren (/plugin update service-leader-kit); bis dahin gilt das sichere Verhalten."]
+    if neuer := ao.neueres_schema(werte):
+        return {"status": "ungueltig", "fehler": fehler}, [neuer]
     neu = migriere(werte)
     if neu is None or ao.pruefe_text(ao.render(neu))[1] or set(neu) - set(ao.regeln()):
         return {"status": "ungueltig", "fehler": fehler}, [
