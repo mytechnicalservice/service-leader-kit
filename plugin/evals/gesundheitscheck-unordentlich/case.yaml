@@ -1,0 +1,38 @@
+schema_version: "1.1"
+name: gesundheitscheck-unordentlich
+description: "Beschädigter Vorgang und ungültige Einstellung werden gemeldet, nicht repariert."
+tags: ["skill:gesundheitscheck", unordentlich]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "gesundheitscheck\\.py"
+  - name: einstellung-unangetastet
+    type: regex
+    pattern: "^mail=fax$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-config }
+  - name: vorgang-unangetastet
+    type: regex
+    pattern: "aktualisiert"
+    match: not_contains
+    target: { source: file, path: 01_Vorgaenge/offen/V-0003.md }
+  - name: kein-edit-an-vorgaengen
+    type: tool_used
+    tool: Edit
+    input_match: "01_Vorgaenge"
+    min: 0
+    max: 0
+  - name: bericht
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names V-0003 as damaged and asks the user to fix it in VS Code, says the
+      settings are invalid ("mail") and offers to run the setup again. FAIL if it claims to have repaired V-0003 or
+      the settings itself.

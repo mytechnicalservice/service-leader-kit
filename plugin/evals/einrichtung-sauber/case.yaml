@@ -1,0 +1,36 @@
+schema_version: "1.1"
+name: einrichtung-sauber
+description: "Erste Einrichtung mit allen Antworten im Prompt."
+tags: ["skill:einrichtung", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+graders:
+  - name: skript-angelegt
+    type: tool_used
+    tool: Bash
+    input_match: "einrichtung\\.py.*anlegen"
+  - name: einstellungen-geschrieben
+    type: regex
+    pattern: "^ablage=lokal$[\\s\\S]*^beispieldaten=ja$[\\s\\S]*^wochenstart=mo$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-config }
+  - name: beispieldaten-kopiert
+    type: file_exists
+    path: Beispiel/00_Eingang/auftraege_2026-09.xlsx
+  - name: vorgangsordner-angelegt
+    type: file_exists
+    path: 01_Vorgaenge/LIESMICH.md
+  - name: kein-write-tool
+    type: tool_used
+    tool: Write
+    min: 0
+    max: 0
+  - name: abschluss
+    type: llm
+    criteria: >-
+      PASS if the final answer is in German, says the setup is finished, mentions that the sample data can be used
+      right away, and offers the onboarding as taking about 45 minutes and being possible to pause or postpone.
+      FAIL if it claims anything was sent, deleted or decided.

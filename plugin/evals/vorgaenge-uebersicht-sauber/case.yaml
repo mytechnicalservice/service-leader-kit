@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: vorgaenge-uebersicht-sauber
+description: "Übersicht mit einem überfälligen Vorgang."
+tags: ["skill:vorgaenge-uebersicht", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "vorgaenge_uebersicht\\.py"
+  - name: excel
+    type: file_exists
+    path: "01_Vorgaenge/Vorgaenge-Uebersicht*.xlsx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says 2 cases are open and names V-0001 (Müller GmbH) as overdue, and says
+      the Excel file is a view whose changes are overwritten.

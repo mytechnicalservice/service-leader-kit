@@ -1,0 +1,29 @@
+schema_version: "1.1"
+name: gesundheitscheck-sauber
+description: "Nach einem Update: Version und fehlende Datei."
+tags: ["skill:gesundheitscheck", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "gesundheitscheck\\.py"
+  - name: version-aktualisiert
+    type: regex
+    pattern: "^0\\.0\\.1"
+    match: not_contains
+    target: { source: file, path: Unternehmen/.kit-version }
+  - name: liesmich-ergaenzt
+    type: file_exists
+    path: 03_Berichte/LIESMICH.md
+  - name: bericht
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the version change (from 0.0.1), says a missing file in 03_Berichte
+      was added, and mentions that the retention period is not confirmed yet. FAIL if it proposes deleting anything.

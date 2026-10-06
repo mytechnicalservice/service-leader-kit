@@ -4,3 +4,4 @@ _slk-probe/
 .superpowers/
 __pycache__/
 *.pyc
+plugin/evals/results/

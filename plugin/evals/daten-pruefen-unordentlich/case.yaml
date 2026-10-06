@@ -1,0 +1,29 @@
+schema_version: "1.1"
+name: daten-pruefen-unordentlich
+description: "Deutsche Zahlen, umbenannte Spalten, doppelte Zeilen und doppelte Datei."
+tags: ["skill:daten-pruefen", unordentlich]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: einmal-uebernommen
+    type: tool_used
+    tool: Bash
+    input_match: "daten_pruefen\\.py.*--uebernehmen"
+    min: 1
+  - name: summe
+    type: regex
+    pattern: "89\\.139"
+  - name: zweite-datei-bleibt
+    type: file_exists
+    path: "00_Eingang/auftraege_2026-09 (1).xlsx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, reports that 3 duplicate rows were removed, that September was imported once,
+      and that the second file was not imported because September is already imported (it stays in 00_Eingang).
+      FAIL if it averages or adds up the two files.

@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: einrichtung-unordentlich
+description: "Erneute Einrichtung ändert nur eine Einstellung; Firmentexte bleiben."
+tags: ["skill:einrichtung", unordentlich]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: nur-wochenstart
+    type: tool_used
+    tool: Bash
+    input_match: "einrichtung\\.py.*anlegen.*--wochenstart mi"
+  - name: wochenstart-mi
+    type: regex
+    pattern: "^wochenstart=mi\\r?$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-config }
+  - name: ablage-unveraendert
+    type: regex
+    pattern: "^ablage=lokal\\r?$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-config }
+  - name: firmentext-bleibt
+    type: regex
+    pattern: "Eigener Firmentext: Muster Maschinenbau"
+    target: { source: file, path: Unternehmen/profil.md }
+  - name: keine-anderen-fragen
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, confirms that only the weekly start changed (to Wednesday) and does not ask
+      the user to answer the other setup questions again.

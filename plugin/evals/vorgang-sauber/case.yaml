@@ -1,0 +1,32 @@
+schema_version: "1.1"
+name: vorgang-sauber
+description: "Neuer Vorgang aus einer Reklamations-Mail."
+tags: ["skill:vorgang", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-neu
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*neu"
+  - name: datei
+    type: file_exists
+    path: 01_Vorgaenge/offen/V-0001.md
+  - name: kopf
+    type: regex
+    pattern: "kunde: \"Müller GmbH\"[\\s\\S]*verantwortlich: \"Jana Becker[\\s\\S]*faellig: \"2026-10-09\"[\\s\\S]*entscheidung: null"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: quelle
+    type: regex
+    pattern: "00_Eingang/2026-09-28_mail-reklamation\\.eml"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the new case number V-0001, and does not claim that any decision
+      (approval, goodwill, warranty) has been made.
