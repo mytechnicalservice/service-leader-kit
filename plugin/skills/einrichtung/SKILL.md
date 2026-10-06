@@ -73,5 +73,7 @@ ein Onboarding: etwa 45 Minuten, jederzeit unterbrechbar." If no `onboarding` sk
 with the next kit version and that the files in `Unternehmen/` can be filled in by hand (each lists its questions).
 
 To remove the sample company later ("lösch die Beispieldaten"): ask once "Soll ich den Ordner Beispiel/ mit der
-Musterfirma löschen? Deine eigenen Dateien bleiben unberührt." Only after a clear yes run `anlegen --ordner "<pfad>"
---beispieldaten nein --beispiel-loeschen`. Never delete it any other way.
+Musterfirma löschen? Alles in Beispiel/ wird gelöscht; deine Dateien außerhalb von Beispiel/ bleiben unberührt." Only
+after a clear yes run `anlegen --ordner "<pfad>" --beispieldaten nein --beispiel-loeschen`. Never delete it any other
+way. If the script refuses because Beispiel/ holds files that are not part of the sample, or a file could not be
+deleted, read its message to the user and stop.

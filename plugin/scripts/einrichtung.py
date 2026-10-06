@@ -165,6 +165,18 @@ def richte_git_ein(ws: Path, repo: str | None) -> tuple[str, str | None]:
     return "eingerichtet", None
 
 
+# Files the operating system drops into any folder a user opens; they never block deleting Beispiel/.
+SYSTEMDATEIEN = (".DS_Store", "Thumbs.db", "desktop.ini")
+
+
+def fremde_beispieldateien(b: Path) -> list[str]:
+    """Files in <ws>/Beispiel that are not part of the shipped sample (relative to the workspace, POSIX)."""
+    muster = ao.PLUGIN / "beispiel"
+    mitgeliefert = {p.relative_to(muster).as_posix() for p in muster.rglob("*") if p.is_file()}
+    return [f"Beispiel/{r}" for p in sorted(b.rglob("*")) if (p.is_file() or p.is_symlink())
+            and (r := p.relative_to(b).as_posix()) not in mitgeliefert and p.name not in SYSTEMDATEIEN]
+
+
 def cmd_anlegen(a) -> tuple[int, dict]:
     ws = Path(a.ordner).expanduser()
     if not ws.is_dir():
@@ -200,6 +212,10 @@ def cmd_anlegen(a) -> tuple[int, dict]:
         if b.exists() and (b.is_symlink() or not b.is_dir() or b.resolve().parent != ws.resolve()):
             return fehler("Beispiel/ ist kein normaler Ordner in diesem Kundendienst-Ordner; das Kit löscht ihn nicht. "
                           "Bitte selbst in VS Code prüfen.")
+        fremd = fremde_beispieldateien(b) if b.is_dir() else []
+        if fremd:
+            return fehler("In Beispiel/ liegen Dateien, die nicht zur Musterfirma gehören: " + ", ".join(fremd) +
+                          ". Bitte verschieben oder selbst löschen; das Kit löscht Beispiel/ dann nicht.")
 
     angelegt = ao.ergaenze(ws)
     meldungen: list[str] = []
@@ -209,11 +225,21 @@ def cmd_anlegen(a) -> tuple[int, dict]:
         angelegt.append("Beispiel/")
     geloescht: list[str] = []
     if a.beispiel_loeschen and beispiel.exists():  # decision D3: the kit's only deletion, on explicit confirmation
-        shutil.rmtree(beispiel)
+        try:
+            shutil.rmtree(beispiel)
+        except OSError as exc:  # e.g. a sample file still open in Excel (Windows): settings stay unchanged
+            was = exc.filename or beispiel
+            try:
+                was = Path(was).relative_to(ws).as_posix()
+            except ValueError:
+                pass
+            return fehler(f"Beispiel/ konnte nicht vollständig gelöscht werden: {was} ({exc.strerror or exc}). "
+                          "Ist die Datei noch geöffnet, z. B. in Excel? Bitte schließen und erneut versuchen.",
+                          angelegt=angelegt)
         geloescht.append("Beispiel/")
     elif neu["beispieldaten"] == "nein" and beispiel.exists():
         meldungen.append("Der Ordner Beispiel/ mit der Musterfirma ist noch da. Soll ich ihn löschen? "
-                         "(Deine eigenen Dateien bleiben unberührt.)")
+                         "(Alles in Beispiel/ wird gelöscht; deine Dateien außerhalb von Beispiel/ bleiben unberührt.)")
     geaendert = {k: [alt.get(k), v] for k, v in neu.items() if alt.get(k) != v and k in alt}
     if geaendert or ao.lies_konfig(ws)[1]:
         ao.schreibe_konfig(ws, neu)

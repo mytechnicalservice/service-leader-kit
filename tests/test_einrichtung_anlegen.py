@@ -169,3 +169,41 @@ def test_settings_from_a_newer_kit_are_never_rewritten(capsys, ws):
     assert "/plugin update service-leader-kit" in out["fehler"][0]
     assert p.read_bytes() == inhalt
     assert sorted(x.relative_to(ws).as_posix() for x in ws.rglob("*")) == vorher
+
+
+def test_sample_removal_refuses_when_beispiel_holds_user_files(capsys, ws):
+    anlegen(capsys, ws, *ALLES)
+    eigen = ws / "Beispiel" / "00_Eingang" / "meine_auftraege.xlsx"
+    eigen.write_bytes(b"x")
+    code, out = anlegen(capsys, ws, "--beispieldaten", "nein", "--beispiel-loeschen")
+    assert code == 1 and eigen.is_file() and (ws / "Beispiel" / "00_Eingang" / "auftraege_2026-09.xlsx").is_file()
+    assert "nicht zur Musterfirma gehören" in out["fehler"][0]
+    assert "Beispiel/00_Eingang/meine_auftraege.xlsx" in out["fehler"][0]
+    assert ao.lies_konfig(ws)[0]["beispieldaten"] == "ja"
+
+
+def test_failed_sample_removal_is_reported_and_keeps_the_setting(capsys, ws, monkeypatch):
+    anlegen(capsys, ws, *ALLES)
+    ziel = ws / "Beispiel" / "00_Eingang" / "auftraege_2026-09.xlsx"
+
+    def kaputt(p, *args, **kwargs):
+        raise PermissionError(13, "Zugriff verweigert", str(ziel))
+    monkeypatch.setattr(e.shutil, "rmtree", kaputt)
+    code, out = anlegen(capsys, ws, "--beispieldaten", "nein", "--beispiel-loeschen")
+    assert code == 1 and not out["ok"]
+    assert "Beispiel/00_Eingang/auftraege_2026-09.xlsx" in out["fehler"][0] and "Excel" in out["fehler"][0]
+    assert ao.lies_konfig(ws)[0]["beispieldaten"] == "ja"
+
+
+def test_sample_prompt_says_everything_in_beispiel_is_deleted(capsys, ws):
+    anlegen(capsys, ws, *ALLES)
+    _, out = anlegen(capsys, ws, "--beispieldaten", "nein")
+    assert any("Alles in Beispiel/ wird gelöscht; deine Dateien außerhalb von Beispiel/ bleiben unberührt." in m
+               for m in out["meldungen"])
+
+
+def test_system_files_do_not_block_sample_removal(capsys, ws):
+    anlegen(capsys, ws, *ALLES)
+    (ws / "Beispiel" / ".DS_Store").write_bytes(b"x")
+    code, out = anlegen(capsys, ws, "--beispieldaten", "nein", "--beispiel-loeschen")
+    assert code == 0 and not (ws / "Beispiel").exists()
