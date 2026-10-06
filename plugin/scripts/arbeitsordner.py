@@ -60,7 +60,7 @@ def pruefe_text(text: str) -> tuple[dict[str, str], list[str]]:
     r = regeln()
     werte: dict[str, str] = {}
     fehler: list[str] = []
-    for i, line in enumerate(text.removeprefix("﻿").split("\n"), 1):
+    for i, line in enumerate(text.removeprefix("\ufeff").split("\n"), 1):
         line = line.rstrip("\r")
         if not line.strip(" \t") or line.lstrip(" \t").startswith("#"):
             continue

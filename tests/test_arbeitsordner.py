@@ -48,7 +48,7 @@ def test_retention_blank_has_the_d2_front_matter():
 
 FAELLE = {
     "gueltig": KONFIG,
-    "bom": "﻿" + KONFIG,
+    "bom": "\ufeff" + KONFIG,
     "crlf": KONFIG.replace("\n", "\r\n"),
     "kommentar": "# von Hand\n" + KONFIG,
     "leerzeichen": KONFIG.replace("ablage=lokal", "ablage = lokal"),
