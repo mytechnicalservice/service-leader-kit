@@ -118,7 +118,7 @@ def test_manual_backup_lists_changes_once(shell, kit_ws, tmp_path):
     msg = stop(shell, kit_ws)["systemMessage"]
     assert "Bericht Müller.md" in msg and "GitHub Desktop" in msg
     assert stop(shell, kit_ws) == {}
-    (kit_ws / "03_Berichte" / "b.md").write_text("x", encoding="utf-8")
+    (kit_ws / "00_Eingang" / "b.md").write_text("x", encoding="utf-8")  # sorts early: the list shows 5 names
     assert "b.md" in stop(shell, kit_ws)["systemMessage"]
 
 
@@ -136,6 +136,8 @@ def reminder_ws(ws):
     early = time.time() - 60
     os.utime(stamp, (early, early))
     os.utime(ws / "01_Vorgaenge" / "offen" / "V-0001.md", (early - 60, early - 60))
+    for p in ws.rglob("LIESMICH.md"):  # template readmes predate the stamp: they are not new work
+        os.utime(p, (early - 60, early - 60))
 
 
 def test_reminds_once_when_work_was_done_but_no_case_logged(shell, kit_ws):

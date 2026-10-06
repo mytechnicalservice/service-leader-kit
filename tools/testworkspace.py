@@ -6,20 +6,18 @@
 Not shipped to users; `einrichtung` (Plan 2c) is the real setup."""
 from __future__ import annotations
 
-import shutil
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "plugin" / "scripts"))
 
+import arbeitsordner as ao  # noqa: E402
 import vorgang  # noqa: E402
 
 KONFIG = ("schema=1\nablage=lokal\ngit_auto=nein\nlaufzeit=claude-code\nbeispieldaten=nein\nmail=postausgang\n"
           "sprache=de\nwochenstart=mo\nmonatsstart=erster-werktag\n")
-ORDNER = ["00_Eingang", "01_Vorgaenge/offen", "01_Vorgaenge/erledigt", "01_Vorgaenge/_zur-loeschung",
-          "02_Postausgang", "03_Berichte", "04_Angebote", "05_Projekte", "06_Kunden", "07_Daten",
-          "Unternehmen/vorlagen"]
+ORDNER = sorted({p.parent.relative_to(ao.VORLAGE).as_posix() for p in ao.VORLAGE.rglob("*.md")} | set(ao.LEERE_ORDNER))
 VORGAENGE = [("Reklamation Spindelschaden", "Müller GmbH", "2026-09-01"),
              ("Angebot Retrofit Anlage 2", "Beispiel AG", None)]
 
@@ -27,12 +25,11 @@ VORGAENGE = [("Reklamation Spindelschaden", "Müller GmbH", "2026-09-01"),
 def baue(ziel: Path, mit_vorgaengen: bool = True) -> None:
     if ziel.exists() and any(ziel.iterdir()):
         raise SystemExit(f"{ziel} ist nicht leer")
-    for o in ORDNER:
-        (ziel / o).mkdir(parents=True, exist_ok=True)
+    ziel.mkdir(parents=True, exist_ok=True)
+    ao.ergaenze(ziel)
     (ziel / "Unternehmen" / ".kit-config").write_text(KONFIG, encoding="utf-8")
     (ziel / "Unternehmen" / ".kit-version").write_text("0.1.0\n", encoding="utf-8")
     (ziel / "Unternehmen" / "profil.md").write_text("# Profil\n\nTestfirma für den Schutztest.\n", encoding="utf-8")
-    shutil.copy(ROOT / "plugin" / "vorlagen" / "workspace.gitignore", ziel / ".gitignore")
     if mit_vorgaengen:
         for titel, kunde, faellig in VORGAENGE:
             meta = {k: None for k in vorgang.FIELDS} | {

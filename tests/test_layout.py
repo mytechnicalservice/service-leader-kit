@@ -16,5 +16,6 @@ def test_license_is_polyform_internal_use():
 
 
 def test_plugin_ships_hooks_and_vorlagen():
-    for p in ["hooks/hooks.json", "hooks/lib.sh", "vorlagen/kit-config.schema", "vorlagen/workspace.gitignore"]:
+    for p in ["hooks/hooks.json", "hooks/lib.sh", "vorlagen/kit-config.schema", "vorlagen/workspace.gitignore",
+              "vorlagen/arbeitsordner/Unternehmen/aufbewahrung.md", "scripts/arbeitsordner.py"]:
         assert (ROOT / "plugin" / p).is_file(), p
