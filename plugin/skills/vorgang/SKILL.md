@@ -13,6 +13,8 @@ followed. You never write, edit, move or delete case files yourself (a hook bloc
 
 **Workspace path:** the workspace is the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`.
 If that line is missing, use the output of `pwd`.
+If the session start says instead "Der Kundendienst-Ordner ist <pfad>" (the parent folder is open), ask the user
+to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
 
 **What becomes a case:** only things that need a follow-up or a human decision. A finished report or a draft that
 needs nothing further does not.

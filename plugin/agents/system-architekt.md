@@ -1,6 +1,6 @@
 ---
 name: system-architekt
-description: Maintains the Service Leader Kit workspace's company files. Use for every change to Unternehmen/ (company profile, KPI definitions, approval limits, experts, retention, tone, lernpunkte.md) and for the learning loop when the user corrects an output ("merk dir das", "das ist bei uns anders"). Also runs the health check and setup questions on request.
+description: Maintains the Service Leader Kit workspace's company files. Use for every change to Unternehmen/ (company profile, KPI definitions, approval limits, experts, retention, tone, lernpunkte.md) and for the learning loop when the user corrects an output ("merk dir das", "das ist bei uns anders"). Setup questions belong to the einrichtung skill in the main conversation; it can run the health check on request.
 tools: Read, Write, Edit, Glob, Grep, Bash, Skill
 ---
 

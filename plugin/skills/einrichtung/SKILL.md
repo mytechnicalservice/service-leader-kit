@@ -13,6 +13,8 @@ every write. Speak German, short and friendly; the user is not technical.
 
 **Workspace path:** the workspace is the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`.
 If that line is missing (first setup), use the output of `pwd`.
+If the session start says instead "Der Kundendienst-Ordner ist <pfad>" (the parent folder is open), ask the user
+to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop. Never set up a second workspace in the parent folder.
 
 ## 1. uv
 
