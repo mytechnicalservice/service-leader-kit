@@ -106,7 +106,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap.add_argument("--heute", default=dt.date.today().isoformat())
     a = ap.parse_args(argv)
     ws, heute = Path(a.ws).expanduser(), dt.date.fromisoformat(a.heute)
-    if not (ws / "01_Vorgaenge").is_dir() and not (ws / "Unternehmen").is_dir():
+    if not ao.ist_arbeitsordner(ws):
         text = f"'{ws}' ist kein Kundendienst-Ordner. Bitte zuerst \"richte den Kundendienst ein\" ausführen."
         return 1, {"ok": False, "fehler": [text], "meldungen": [text]}
     U = ws / "Unternehmen"

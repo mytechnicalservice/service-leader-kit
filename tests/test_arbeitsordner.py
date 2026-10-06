@@ -109,3 +109,19 @@ def test_schreibe_falls_fehlt(ws):
     assert ao.schreibe_falls_fehlt(p, "1") is True
     assert ao.schreibe_falls_fehlt(p, "2") is False
     assert p.read_text(encoding="utf-8") == "1"
+
+
+ARBEITSORDNER_FAELLE = {"leer": [], "nur-unternehmen": ["Unternehmen/"],
+                        "kit-config": ["Unternehmen/", "Unternehmen/.kit-config"], "vorgaenge": ["01_Vorgaenge/"]}
+
+
+@pytest.mark.parametrize("name", sorted(ARBEITSORDNER_FAELLE))
+def test_ist_arbeitsordner_matches_the_hooks(shell, ws, name):
+    for r in ARBEITSORDNER_FAELLE[name]:
+        if r.endswith("/"):
+            (ws / r).mkdir()
+        else:
+            (ws / r).write_text(KONFIG, encoding="utf-8")
+    hooks = run_lib(shell, f'slk_is_ws "{ws}"').returncode == 0
+    assert ao.ist_arbeitsordner(ws) == hooks, name
+    assert hooks == (name in ("kit-config", "vorgaenge"))

@@ -24,6 +24,11 @@ def kit_version() -> str:
     return json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
 
 
+def ist_arbeitsordner(ws: Path) -> bool:
+    """Exactly the hooks' rule (slk_is_ws in hooks/lib.sh): 01_Vorgaenge/ or Unternehmen/.kit-config."""
+    return (ws / "01_Vorgaenge").is_dir() or (ws / "Unternehmen" / ".kit-config").is_file()
+
+
 def ergaenze(ws: Path) -> list[str]:
     """Creates missing folders and copies missing template files; returns what was created (relative, POSIX)."""
     neu: list[str] = []

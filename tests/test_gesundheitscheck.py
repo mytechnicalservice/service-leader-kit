@@ -129,3 +129,10 @@ def test_unreadable_retention_file_is_named(capsys, kit_ws, kopf):
 def test_not_a_workspace(capsys, ws):
     code, out = check(capsys, ws)
     assert code == 1 and "richte den Kundendienst ein" in out["meldungen"][0]
+
+
+def test_a_bare_unternehmen_folder_is_not_a_workspace(capsys, ws):
+    (ws / "Unternehmen").mkdir()
+    code, out = check(capsys, ws)
+    assert code == 1 and "richte den Kundendienst ein" in out["meldungen"][0]
+    assert [p.relative_to(ws).as_posix() for p in ws.rglob("*")] == ["Unternehmen"]
