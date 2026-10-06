@@ -140,17 +140,27 @@ def git(ws: Path, *args: str) -> subprocess.CompletedProcess:
                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
 
 
-def richte_git_ein(ws: Path, repo: str | None) -> str:
+def richte_git_ein(ws: Path, repo: str | None) -> tuple[str, str | None]:
+    """Returns the state and, when a corrected --repo replaced the old origin, a message about it."""
     if not (ws / ".git").exists():
         r = git(ws, "init", "-q")
         if r.returncode != 0:
             raise RuntimeError(f"git init fehlgeschlagen: {r.stderr.strip()}")
         git(ws, "symbolic-ref", "HEAD", "refs/heads/main")
-    if repo and git(ws, "remote", "get-url", "origin").returncode != 0:
+    if not repo:
+        return "eingerichtet", None
+    alt = git(ws, "remote", "get-url", "origin")
+    if alt.returncode != 0:
         r = git(ws, "remote", "add", "origin", repo)
-        if r.returncode != 0:
-            raise RuntimeError(f"git remote fehlgeschlagen: {r.stderr.strip()}")
-    return "eingerichtet"
+    elif alt.stdout.strip() != repo:
+        r = git(ws, "remote", "set-url", "origin", repo)
+        if r.returncode == 0:
+            return "eingerichtet", f"GitHub-Adresse geändert: {alt.stdout.strip()} → {repo}."
+    else:
+        return "eingerichtet", None
+    if r.returncode != 0:
+        raise RuntimeError(f"git remote fehlgeschlagen: {r.stderr.strip()}")
+    return "eingerichtet", None
 
 
 def cmd_anlegen(a) -> tuple[int, dict]:
@@ -215,9 +225,11 @@ def cmd_anlegen(a) -> tuple[int, dict]:
                          "Mitarbeiterdaten gehören nicht in ein öffentliches Repo.")
         if neu["git_auto"] == "ja":
             try:
-                stand = richte_git_ein(ws, a.repo)
+                stand, geaendert_msg = richte_git_ein(ws, a.repo)
             except RuntimeError as exc:
                 return fehler(str(exc), angelegt=angelegt)
+            if geaendert_msg:
+                meldungen.append(geaendert_msg)
             meldungen.append("Nach jeder Antwort sichert das Kit den Ordner automatisch auf GitHub.")
         else:
             stand = "github-desktop"

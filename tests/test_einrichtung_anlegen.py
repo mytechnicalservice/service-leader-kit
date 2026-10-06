@@ -144,3 +144,15 @@ def test_session_start_is_quiet_after_setup(capsys, ws, shell):
     text = run_hook(shell, "session-start.sh", {}, ws).stdout.decode()
     assert "Einstellungen unvollständig" not in text and "Neue Kit-Version" not in text
     assert "wochenstart" not in text and "monatsabschluss" not in text and "quartal" not in text
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git fehlt")
+def test_corrected_repo_url_replaces_the_old_origin(capsys, ws):
+    a, b = "https://github.com/firma/falsch.git", "https://github.com/firma/kundendienst.git"
+    anlegen(capsys, ws, *ALLES, "--ablage", "github", "--git-auto", "ja", "--repo", a)
+    code, out = anlegen(capsys, ws, "--repo", b)
+    remote = subprocess.run(["git", "-C", str(ws), "remote", "get-url", "origin"], capture_output=True, text=True)
+    assert code == 0 and remote.stdout.strip() == b
+    assert any("GitHub-Adresse geändert" in m and a in m and b in m for m in out["meldungen"])
+    _, again = anlegen(capsys, ws, "--repo", b)
+    assert not any("GitHub-Adresse geändert" in m for m in again["meldungen"])
