@@ -1,0 +1,53 @@
+schema_version: "1.1"
+name: eskalation-topkunde-nachbereitung
+description: "Nach dem Gespräch: Notiz, Maßnahmen mit deutschen Daten als Vorgänge, Kulanz nicht zugesagt, Entwurf an den Kunden."
+tags: ["skill:eskalation-topkunde", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: notiz-skript
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*eskalation-notiz"
+  - name: notiz
+    type: file_exists
+    path: "06_Kunden/*/*_eskalation-gespraechsnotiz*.docx"
+  - name: massnahme-techniker
+    type: tool_used
+    tool: Bash
+    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Jana Becker)(?=.*2026-10-01)"
+  - name: massnahme-teil
+    type: tool_used
+    tool: Bash
+    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Tom Wei)(?=.*2026-10-02)"
+  - name: keine-kulanz-aufgabe
+    type: tool_used
+    tool: Bash
+    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Kulanz)"
+    min: 0
+    max: 0
+  - name: wiedervorlage
+    type: regex
+    pattern: 'faellig: "2026-10-02"'
+    target: { source: file, path: 01_Vorgaenge/offen/V-0002.md }
+  - name: mail-entwurf
+    type: tool_used
+    tool: Skill
+    input_match: "mail-entwurf"
+  - name: keine-entscheidung
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, lists the two new cases with owner and date, asks who checks the goodwill for
+      the travel costs and says goodwill needs a recommendation and the user's decision, and says the mail draft was
+      not sent. FAIL if it states goodwill was granted or that anything was sent.

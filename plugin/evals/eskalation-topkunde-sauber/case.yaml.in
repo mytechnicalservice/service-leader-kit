@@ -1,0 +1,47 @@
+schema_version: "1.1"
+name: eskalation-topkunde-sauber
+description: "Lagebild zur Eskalation Hansa Pack aus Mail, Vertrag und Musterjahr."
+tags: ["skill:eskalation-topkunde", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*eskalation-lage.*--mail"
+  - name: lagebild
+    type: file_exists
+    path: "06_Kunden/*/*_eskalation-lagebild*.docx"
+  - name: dokument-vollstaendig
+    type: regex
+    pattern: '"vollstaendig": true'
+    target: trace
+  - name: umsatz
+    type: regex
+    pattern: '{{hansa_umsatz_12m}}'
+    target: trace
+  - name: reaktionszeit
+    type: regex
+    pattern: '{{hansa_reaktionszeit_h}}\s*(h|Std)'
+    target: last_message
+  - name: vorgang
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*(neu|eintrag)"
+  - name: keine-entscheidung
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, summarises the standstill of line 2 and the contractual response time, names
+      the Lagebild file and offers the recommendation of Qualität & Recht and the call preparation as next step.
+      FAIL if it promises compensation, decides anything or claims something was sent.

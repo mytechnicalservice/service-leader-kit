@@ -1,0 +1,41 @@
+schema_version: "1.1"
+name: kapazitaet-lage-sauber
+description: "Kapazitätslage des letzten Monats aus dem Musterjahr als Word-Bericht."
+tags: ["skill:kapazitaet-lage", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*kapazitaet-lage"
+  - name: bericht
+    type: file_exists
+    path: "03_Berichte/*_kapazitaet-lage*.docx"
+  - name: dokument-geprueft
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*kapazitaet-lage.*--pruefe"
+  - name: dokument-vollstaendig
+    type: regex
+    pattern: '"vollstaendig": true'
+    target: trace
+  - name: auslastung-gesamt
+    type: regex
+    pattern: '101,2'
+    target: last_message
+  - name: ist-stunden
+    type: regex
+    pattern: '2\.153'
+    target: trace
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, gives the total utilisation with its traffic light and the traffic light per
+      team, names the report file in 03_Berichte and reports only team-level figures. FAIL if it names or evaluates
+      an individual employee or states a number that is not in the script output.

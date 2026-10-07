@@ -1,0 +1,43 @@
+schema_version: "1.1"
+name: teamleiter-runde-sauber
+description: "Agenda der Teamleiter-Runde aus Vorgängen und Musterjahr."
+tags: ["skill:teamleiter-runde", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*teamleiter-runde"
+  - name: agenda
+    type: file_exists
+    path: "03_Berichte/*_teamleiter-runde*.docx"
+  - name: dokument-vollstaendig
+    type: regex
+    pattern: '"vollstaendig": true'
+    target: trace
+  - name: ueberfaellig-genannt
+    type: regex
+    pattern: "V-0001"
+    target: last_message
+  - name: auslastung
+    type: regex
+    pattern: '{{kap_auslastung}}'
+    target: trace
+  - name: keine-entscheidung
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the overdue case V-0001 (Müller GmbH) with its owner, mentions the
+      Hansa Pack escalation V-0002 and the capacity per team, and names the agenda file. FAIL if it evaluates an
+      individual technician or claims a decision was made.

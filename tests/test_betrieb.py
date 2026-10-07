@@ -340,3 +340,39 @@ def test_escalation_skill_delegates_the_review():
     assert 'subagent_type: "service-leader-kit:qualitaet-recht"' in body
     assert "--art empfehlung --von qualitaet-recht" in body
     assert "Das Gespräch führst du." in body and "mail-entwurf" in body
+
+
+def test_eval_expectations_are_current():
+    import erwartet_betrieb
+
+    werte = erwartet_betrieb.berechne()
+    assert json.loads(erwartet_betrieb.ZIEL.read_text(encoding="utf-8")) == werte
+    for pfad, text in erwartet_betrieb.rendern(werte).items():
+        assert pfad.read_text(encoding="utf-8") == text, f"{pfad} veraltet – uv run tools/erwartet_betrieb.py"
+
+
+def test_script_reproduces_the_expected_values_in_sample_mode(capsys, kit_ws):
+    import erwartet_betrieb
+
+    shutil.copytree(ROOT / "plugin" / "beispiel", kit_ws / "Beispiel")
+    cfg = kit_ws / "Unternehmen" / ".kit-config"
+    cfg.write_text(cfg.read_text(encoding="utf-8").replace("beispieldaten=nein", "beispieldaten=ja"), encoding="utf-8")
+    e = json.loads(erwartet_betrieb.ZIEL.read_text(encoding="utf-8"))
+    out = kapazitaet(capsys, kit_ws)
+    g = out["daten"]["kapazitaet"]["gesamt"]
+    assert out["kennzeichnung"] == betrieb.BEISPIEL and out["daten"]["monat"] == e["monat"]
+    assert [betrieb.zahltext(g[k]) for k in ("soll", "ist", "auslastung")] == [e["kap_soll"], e["kap_ist"],
+                                                                              e["kap_auslastung"]]
+    code, esk = run(capsys, "eskalation-lage", "--ws", str(kit_ws), "--heute", HEUTE, "--kunde", "Hansa Pack AG")
+    assert code == 0, esk
+    b = esk["daten"]["kundenbild"]
+    assert [betrieb.zahltext(b["umsatz"]), betrieb.zahltext(b["auftraege"]), betrieb.zahltext(b["anlagen"]),
+            betrieb.zahltext(esk["daten"]["vertrag"]["reaktionszeit"])] == \
+        [e["hansa_umsatz_12m"], e["hansa_auftraege_12m"], e["hansa_anlagen"], e["hansa_reaktionszeit_h"]]
+
+
+def test_messy_graders_match_the_lane_fixture():
+    texte = {p.parent.name: p.read_text(encoding="utf-8") for p in (ROOT / "plugin" / "evals").glob("*/case.yaml")}
+    assert "108,3" in texte["kapazitaet-lage-unordentlich"] and "2\\\\.396" in texte["kapazitaet-lage-unordentlich"]
+    assert "2026-10-09" in texte["teamleiter-runde-unordentlich"]
+    assert "48" in texte["eskalation-topkunde-unordentlich"]
