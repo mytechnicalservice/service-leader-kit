@@ -41,6 +41,14 @@ class VertriebFehler(Exception):
     pass
 
 
+class StufeFehlt(VertriebFehler):
+    """Several contract levels match and no --stufe was given (Max's correction K1): the skill asks the user."""
+
+    def __init__(self, text: str, stufen: list[dict]):
+        super().__init__(text)
+        self.stufen = stufen
+
+
 # --- small helpers ------------------------------------------------------------------------------------------------
 
 def text(v) -> str:
@@ -339,6 +347,12 @@ def baujahr(a: dict) -> int | None:
         return None
 
 
+def jahrtext(a: dict) -> str:
+    """Year of build for documents: '2012', not the float '2012.0' that kennzahlen.lade returns; '' if missing."""
+    bj = baujahr(a)
+    return "" if bj is None else str(bj)
+
+
 def retrofit_grenze(typ: str) -> int:
     for prefix, jahre in RETROFIT_ALTER.items():
         if typ.casefold().startswith(prefix.casefold()):
@@ -491,7 +505,7 @@ def key_account_review(ws: Path, kunde: str | None = None, top: int | None = Non
         konten.append({
             "kunde": k, **u,
             "anlagen": [{"anlage": text(a.get("Anlage")), "typ": text(a.get("Maschinentyp")),
-                         "baujahr": text(a.get("Baujahr")),
+                         "baujahr": jahrtext(a),
                          "alter": ib["stichtag"].year - baujahr(a) if baujahr(a) is not None else None,
                          "vertrag": text(a.get("Vertrag")), "vertragsende": text(a.get("Vertragsende")),
                          "quelle": ort(a)} for a in sorted(eigene, key=lambda a: text(a.get("Anlage")))],
@@ -506,6 +520,188 @@ def key_account_review(ws: Path, kunde: str | None = None, top: int | None = Non
               f"{len(k['anlagen'])} Anlagen, {len(k['vorgaenge'])} offene Vorgänge" for k in konten]
     return ergebnis(ws, {"zeitraum": [monate[0], monate[-1]], "konten": konten, "annahmen": annahmen,
                          "meldungen": meldungen, "ziel": ziel}, zeilen)
+
+
+# --- grossangebot -------------------------------------------------------------------------------------------------
+
+GLIEDERUNG = [
+    "Anschreiben mit Bezug auf die Anfrage (Datum, Absender)",
+    "Leistungsumfang je Anlage: 2 Wartungsbesuche pro Jahr, Verschleißteilsatz, Prüfprotokoll",
+    "Anlagenliste: Kunde, Anlage, Maschinentyp, Baujahr",
+    "Preise: Preis je Anlage und Jahr, Anzahl, Jahreswert vor Rabatt, Rabatt, Jahreswert, Angebotswert über die Laufzeit",
+    "Vertragsbedingungen (Rahmenvertrag, siehe Klauseln)",
+    "Gültigkeit des Angebots: 30 Tage",
+    "Quellen aller Zahlen",
+    "Vermerk: Entwurf – nicht versendet; Freigabe und Unterschrift durch die verantwortliche Person",
+]
+KLAUSELN = [
+    {"titel": "Vertragsgegenstand", "text": "Wartung der in der Anlagenliste genannten Maschinen."},
+    {"titel": "Leistungsumfang", "text": "2 planmäßige Wartungsbesuche pro Jahr inkl. Verschleißteilsatz und Prüfprotokoll."},
+    {"titel": "Reaktionszeit", "text": "48 Stunden an Werktagen (Premium 24 Stunden, falls in leistungen.md angeboten)."},
+    {"titel": "Ersatzteile", "text": "10 % Rabatt auf Ersatzteile für Vertragsanlagen."},
+    {"titel": "Preisanpassung", "text": "Jährlich, höchstens 5 %, mit 3 Monaten Ankündigung."},
+    {"titel": "Laufzeit und Kündigung", "text": "3 Jahre, danach Verlängerung um je 12 Monate; Kündigung 3 Monate vor Ablauf."},
+    {"titel": "Zahlung", "text": "Jährlich im Voraus, 30 Tage netto."},
+    {"titel": "Ausschlüsse", "text": "Bedienfehler, Fremdeingriffe, Verschleißteile außerhalb des Satzes, Verbrauchsmaterial."},
+    {"titel": "Haftung", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen; im Entwurf keine Abweichung."},
+    {"titel": "Gerichtsstand und AGB", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen."},
+]
+
+
+def grenzen(ws: Path) -> dict:
+    fg = definitionen(ws).get("freigabegrenzen") or {}
+    return {"angebot_eur": fg.get("angebot_eur"), "rabatt_prozent": fg.get("rabatt_prozent"),
+            "standard": bool(fg.get("standard", True))}
+
+
+def pruefung(ws: Path, angebotswert: float, rabatt: float, abweichungen: list[str]) -> dict:
+    """Spec §8 rule 1: above a limit (missing limit = always) → finanzen + qualitaet-recht; deviation → qualitaet-recht."""
+    g, finanzen, hinweise = grenzen(ws), [], []
+    if g["angebot_eur"] is None:
+        finanzen.append("Keine Freigabegrenze für Angebote festgelegt (Unternehmen/freigabegrenzen.md) – Prüfung "
+                        "immer nötig.")
+    elif angebotswert > zahl(g["angebot_eur"]):
+        finanzen.append(f"Angebotswert {deutsch(angebotswert)} EUR liegt über der Freigabegrenze "
+                        f"{deutsch(zahl(g['angebot_eur']))} EUR.")
+    if g["rabatt_prozent"] is None:
+        finanzen.append("Keine Rabattgrenze festgelegt (Unternehmen/freigabegrenzen.md) – Prüfung immer nötig.")
+    elif rabatt > zahl(g["rabatt_prozent"]):
+        finanzen.append(f"Rabatt {deutsch(rabatt, 1)} % liegt über der Rabattgrenze "
+                        f"{deutsch(zahl(g['rabatt_prozent']), 1)} %.")
+    recht = (["Großangebot mit Prüfung durch Finanzen – Vertragsbedingungen ebenfalls prüfen."] if finanzen else [])
+    recht += [f"Abweichung von den eigenen Bedingungen: {a} – Prüfung unabhängig vom Wert." for a in abweichungen]
+    fachexperte = None
+    if abweichungen:
+        fachexperte = ((definitionen(ws).get("fachexperten") or {}).get("recht")
+                       or "nicht benannt – bitte in Unternehmen/fachexperten.md eintragen")
+    if g["angebot_eur"] is None:
+        try:
+            n = sum(1 for _, m, _ in all_cases(ws) if m.get("typ") == "angebot")
+        except VorgangFehler:
+            n = 0
+        if n >= 20:
+            hinweise.append(f"Schon {n} Angebotsvorgänge ohne Freigabegrenze – Vorschlag: Grenzen im Onboarding "
+                            "festlegen.")
+    return {"noetig": bool(finanzen or recht), "finanzen": finanzen, "qualitaet_recht": recht,
+            "fachexperte_recht": fachexperte, "grenzen": g, "hinweise": hinweise}
+
+
+def vertragsstufe(preise: dict, typ: str, stufe: str | None) -> dict | None:
+    """K1 (Max, 2026-10-07): the row 'Wartungsvertrag <Typ>' for the quote. One matching row is used directly;
+    several rows (Basis / Standard / Premium …) need --stufe, which picks the one row whose Position contains it."""
+    treffer = [z for z in preise["zeilen"]
+               if "wartungsvertrag" in z["position"].casefold() and typ.casefold() in z["position"].casefold()]
+    namen = ", ".join(z["position"] for z in treffer) or "keine"
+    datei = preise["datei"] or "04_Angebote/preisliste_*.xlsx fehlt"
+    if stufe:
+        wahl = [z for z in treffer if stufe.casefold() in z["position"].casefold()]
+        if len(wahl) != 1:
+            wie = "mehrere" if wahl else "keine"
+            raise VertriebFehler(f"Stufe '{stufe}' passt auf {wie} Zeilen 'Wartungsvertrag {typ}' in {datei} – "
+                                 f"vorhandene Zeilen: {namen}. Bitte die Stufe eindeutig angeben.")
+        return wahl[0]
+    if len(treffer) > 1:
+        raise StufeFehlt(f"Stufe fehlt: für 'Wartungsvertrag {typ}' stehen {len(treffer)} Stufen in {datei} "
+                         f"({namen}) – bitte die Vertragsstufe erfragen und mit --stufe angeben.",
+                         [{"position": z["position"], "preis": z["preis"]} for z in treffer])
+    return treffer[0] if treffer else None
+
+
+def listenpreis(preise: dict, typ: str, annahmen: list[str], stufe: str | None = None) -> tuple[dict, str | None]:
+    zeile = vertragsstufe(preise, typ, stufe)
+    if zeile:
+        return wert(f"Preis {zeile['position']} je Anlage und Jahr", zeile["preis"], [zeile["quelle"]]), \
+            zeile["position"]
+    satz, anfahrt = preis_zeile(preise, "stundensatz"), preis_zeile(preise, "anfahrt")
+    if not satz:
+        raise VertriebFehler(f"Kein Preis 'Wartungsvertrag {typ}' und kein Techniker-Stundensatz in der Preisliste "
+                             f"({preise['datei'] or '04_Angebote/preisliste_*.xlsx fehlt'}) – bitte Preisliste "
+                             "ergänzen oder den Preis nennen.")
+    b, s = BESUCHE_JE_JAHR, STUNDEN_JE_BESUCH
+    annahmen.append(f"Kein Listenpreis für {typ}: {b} Wartungsbesuche je Jahr à {s} Stunden ({STANDARD})")
+    q = [satz["quelle"]] + ([anfahrt["quelle"]] if anfahrt else [])
+    return wert(f"Preis Wartungsvertrag {typ} je Anlage und Jahr (kalkuliert)",
+                round(b * s * satz["preis"] + b * (anfahrt["preis"] if anfahrt else 0.0), 2), q,
+                formel=f"{b} Besuche × {s} h × Stundensatz" + (f" + {b} × Anfahrtspauschale" if anfahrt else "")), \
+        None
+
+
+def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | None = None,
+                 rabatt: float | None = None, abweichungen: list[str] | tuple = (), heute: str | None = None,
+                 stufe: str | None = None) -> dict:
+    kunde, typ, abweichungen = kunde.strip(), typ.strip(), [a.strip() for a in abweichungen if a.strip()]
+    stufe = (stufe or "").strip() or None
+    if not 1 <= anzahl <= 500:
+        raise VertriebFehler("--anzahl muss zwischen 1 und 500 liegen")
+    tag_heute, annahmen, meldungen = heute_von(heute), [], []
+    aufruf = f'grossangebot --kunde "{kunde}" --typ "{typ}" --anzahl {anzahl}'
+    if laufzeit is None:
+        laufzeit = LAUFZEIT_JAHRE
+        annahmen.append(f"Laufzeit {laufzeit} Jahre ({STANDARD})")
+    else:
+        aufruf += f" --laufzeit-jahre {laufzeit}"
+    if not 1 <= laufzeit <= 10:
+        raise VertriebFehler("--laufzeit-jahre muss zwischen 1 und 10 liegen")
+    if rabatt is None:
+        rabatt = next(p for ab, p in RABATT_STAFFEL if anzahl >= ab)
+        annahmen.append(f"Mengenrabatt {deutsch(rabatt, 1)} % bei {anzahl} Anlagen (Staffel: ab 2 Anlagen 5 %, ab 5 "
+                        f"Anlagen 8 %; {STANDARD})")
+    else:
+        aufruf += f" --rabatt-prozent {deutsch(rabatt, 1).replace(',0', '')}"
+    if not 0 <= rabatt <= 50:
+        raise VertriebFehler("--rabatt-prozent muss zwischen 0 und 50 liegen")
+    aufruf += f' --stufe "{stufe}"' if stufe else ""
+    aufruf += "".join(f' --abweichung "{a}"' for a in abweichungen)
+    je, position = listenpreis(preisliste(ws), typ, annahmen, stufe)
+    brutto = wert("Jahreswert vor Rabatt", round(je["betrag"] * anzahl, 2), je["quelle"],
+                  formel=f"{anzahl} Anlagen × Preis je Anlage und Jahr")
+    nachlass = wert("Rabatt je Jahr", round(brutto["betrag"] * rabatt / 100, 2), je["quelle"],
+                    formel=f"Jahreswert vor Rabatt × {deutsch(rabatt, 1)} %")
+    jahr = wert("Jahreswert", round(brutto["betrag"] - nachlass["betrag"], 2), je["quelle"],
+                formel="Jahreswert vor Rabatt − Rabatt je Jahr")
+    gesamt = wert("Angebotswert", round(jahr["betrag"] * laufzeit, 2), je["quelle"],
+                  formel=f"Jahreswert × {laufzeit} Jahre")
+    try:
+        eigene = [a for a in installed_base(ws)[0] if gleich(a.get("Kunde"), kunde) and gleich(a.get("Maschinentyp"), typ)]
+    except VertriebFehler as exc:
+        eigene = []
+        meldungen.append(f"{exc} Anlagenliste bitte von Hand ergänzen.")
+    anlagen = [{"anlage": text(a.get("Anlage")), "typ": typ, "baujahr": jahrtext(a),
+                "vertrag": text(a.get("Vertrag")), "vertragsende": text(a.get("Vertragsende")), "quelle": ort(a)}
+               for a in sorted(eigene, key=lambda a: text(a.get("Anlage")))]
+    if len(anlagen) != anzahl:
+        meldungen.append(f"In der Installed Base stehen {len(anlagen)} Anlagen {typ} von {kunde}; angefragt sind "
+                         f"{anzahl} – Anlagenliste im Vertrag bitte prüfen.")
+    for a in anlagen:
+        if gleich(a["vertrag"], "ja"):
+            ende = datum(a["vertragsende"])
+            meldungen.append(f"{a['anlage']} hat schon einen Vertrag" + (f" bis {ende:%d.%m.%Y}" if ende else "")
+                             + " – Angebot als Verlängerung bzw. Erweiterung formulieren.")
+    pr = pruefung(ws, gesamt["betrag"], rabatt, abweichungen)
+    gueltig = tag_heute + dt.timedelta(days=GUELTIG_TAGE)
+    zeilen = [f"Preis je Anlage und Jahr: {deutsch(je['betrag'])} EUR; {anzahl} Anlagen: {deutsch(brutto['betrag'])} "
+              f"EUR; Rabatt {deutsch(rabatt, 1)} %: {deutsch(nachlass['betrag'])} EUR; Jahreswert: "
+              f"{deutsch(jahr['betrag'])} EUR.",
+              f"Angebotswert über {laufzeit} Jahre: {deutsch(gesamt['betrag'])} EUR (gültig bis {gueltig:%d.%m.%Y}).",
+              ("Prüfung nötig: " + " ".join(pr["finanzen"] + pr["qualitaet_recht"])) if pr["noetig"]
+              else "Unter allen Freigabegrenzen, keine Abweichung – keine Prüfung nötig."]
+    return ergebnis(ws, {
+        "kunde": kunde, "typ": typ, "anzahl": anzahl, "stufe": position,
+        "werte": {"preis_je_anlage": je, "jahreswert_vor_rabatt": brutto, "rabatt": nachlass, "jahreswert": jahr,
+                  "angebotswert": gesamt},
+        "rabatt_prozent": rabatt, "laufzeit_jahre": laufzeit, "gueltig_bis": gueltig.isoformat(), "anlagen": anlagen,
+        "gliederung": GLIEDERUNG, "klauseln": KLAUSELN, "pruefung": pr, "aufruf": aufruf, "annahmen": annahmen,
+        "meldungen": meldungen,
+        "ziel": f"04_Angebote/{ordnername(kunde)}/{tag_heute.isoformat()}_angebot-wartungsvertrag.docx"}, zeilen)
+
+
+def prozent(s: str | None) -> float | None:
+    if s is None:
+        return None
+    try:
+        return zahl(s)
+    except ValueError as exc:
+        raise VertriebFehler(f"Rabatt '{s}' ist keine Zahl") from exc
 
 
 # --- CLI ----------------------------------------------------------------------------------------------------------
@@ -529,6 +725,14 @@ def parser() -> JsonParser:
     k = add("key-account-review")
     k.add_argument("--kunde")
     k.add_argument("--top", type=int)
+    g = add("grossangebot")
+    g.add_argument("--kunde", required=True)
+    g.add_argument("--typ", required=True)
+    g.add_argument("--anzahl", type=int, required=True)
+    g.add_argument("--stufe")
+    g.add_argument("--laufzeit-jahre", dest="laufzeit", type=int)
+    g.add_argument("--rabatt-prozent", dest="rabatt")
+    g.add_argument("--abweichung", action="append", default=[])
     return ap
 
 
@@ -536,6 +740,8 @@ BEFEHLE = {
     "verlaengerungs-radar": lambda a, ws: verlaengerungs_radar(ws, a.monate, a.stichtag, a.heute),
     "installed-base-potenziale": lambda a, ws: installed_base_potenziale(ws, a.kunde, a.stichtag, a.heute),
     "key-account-review": lambda a, ws: key_account_review(ws, a.kunde, a.top, a.heute),
+    "grossangebot": lambda a, ws: grossangebot(ws, a.kunde, a.typ, a.anzahl, a.laufzeit, prozent(a.rabatt),
+                                               a.abweichung, a.heute, a.stufe),
 }
 
 
@@ -546,6 +752,8 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
         if not (ws / "Unternehmen").is_dir():
             raise VertriebFehler(f"{ws} ist kein Kit-Arbeitsordner (Unternehmen/ fehlt).")
         return 0, BEFEHLE[a.cmd](a, ws)
+    except StufeFehlt as exc:
+        return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)], "stufen": exc.stufen}
     except (VertriebFehler, KennzahlFehler) as exc:
         return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)]}
 

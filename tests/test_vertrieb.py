@@ -241,3 +241,123 @@ def test_damaged_case_file_does_not_stop_the_review(vws):
     (vws / "01_Vorgaenge" / "offen" / "V-0007.md").write_text("---\nnr: \"V-0007\"\n", encoding="utf-8")
     r = vertrieb.key_account_review(vws, kunde="Hansa Pack AG", heute=HEUTE)
     assert r["konten"][0]["vorgaenge"] == [] and any("Vorgänge nicht lesbar" in m for m in r["meldungen"])
+
+
+# --- grossangebot -------------------------------------------------------------------------------------------------
+
+WERTE = ("preis_je_anlage", "jahreswert_vor_rabatt", "rabatt", "jahreswert", "angebotswert")
+
+
+def test_quote_price_build_up_and_review_trigger(vws):
+    r = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, heute=HEUTE)
+    assert [r["werte"][k]["betrag"] for k in WERTE] == [4800, 9600, 480, 9120, 27360]
+    assert "preisliste_2026.xlsx" in r["werte"]["preis_je_anlage"]["quelle"][0]
+    assert r["werte"]["angebotswert"]["formel"] == "Jahreswert × 3 Jahre"
+    assert r["rabatt_prozent"] == 5 and r["laufzeit_jahre"] == 3 and r["gueltig_bis"] == "2026-11-05"
+    p = r["pruefung"]
+    assert p["noetig"] and any("über der Freigabegrenze" in g for g in p["finanzen"]) and p["qualitaet_recht"]
+    assert r["ziel"] == "04_Angebote/Nordmetall GmbH/2026-10-06_angebot-wartungsvertrag.docx"
+    assert [a["anlage"] for a in r["anlagen"]] == ["Anlage 1", "Anlage 2"]
+    assert any("Anlage 1" in m and "30.11.2026" in m for m in r["meldungen"])
+    assert len(r["klauseln"]) == 10 and r["gliederung"][-1].startswith("Vermerk")
+    assert r["aufruf"] == 'grossangebot --kunde "Nordmetall GmbH" --typ "MM-400" --anzahl 2'
+    assert "Angebotswert über 3 Jahre: 27.360 EUR" in " ".join(r["zusammenfassung"])
+
+
+def test_discount_above_limit_and_deviation_trigger_review_regardless_of_value(vws):
+    datei(vws / "Unternehmen" / "fachexperten.md",
+          '---\nrecht: "Dr. Anna Schmidt"\nqualitaet: null\nproduktsicherheit: null\narbeitssicherheit: null\n'
+          "datenschutz: null\n---\n")
+    r = vertrieb.grossangebot(vws, "Müller GmbH", "MM-600", 1, laufzeit=1, rabatt=7,
+                              abweichungen=["Haftung bis 5 Mio. EUR statt AGB"], heute=HEUTE)
+    assert r["werte"]["angebotswert"]["betrag"] == 5766
+    p = r["pruefung"]
+    assert p["noetig"] and any("Rabatt 7,0 %" in g for g in p["finanzen"])
+    assert any("Haftung bis 5 Mio" in g for g in p["qualitaet_recht"]) and p["fachexperte_recht"] == "Dr. Anna Schmidt"
+    assert "--abweichung" in r["aufruf"] and "--rabatt-prozent 7" in r["aufruf"]
+
+
+def test_below_limits_needs_no_review_and_fallback_price_is_calculated(vws):
+    r = vertrieb.grossangebot(vws, "Müller GmbH", "MM-999", 1, heute=HEUTE)
+    assert r["werte"]["preis_je_anlage"]["betrag"] == 2078 and r["werte"]["preis_je_anlage"]["berechnet"]
+    assert r["rabatt_prozent"] == 0 and r["werte"]["angebotswert"]["betrag"] == 6234
+    assert r["pruefung"]["noetig"] is False
+    assert any("2 Wartungsbesuche" in a and vertrieb.STANDARD in a for a in r["annahmen"])
+
+
+def test_missing_limits_always_trigger_review(vws):
+    datei(vws / "Unternehmen" / "freigabegrenzen.md", "---\nangebot_eur: null\nrabatt_prozent: null\nkulanz_eur: null\n---\n")
+    r = vertrieb.grossangebot(vws, "Müller GmbH", "MM-999", 1, heute=HEUTE)
+    p = r["pruefung"]
+    assert p["noetig"] and any("Keine Freigabegrenze" in g for g in p["finanzen"]) and p["qualitaet_recht"]
+
+
+def test_no_price_at_all_is_an_error_not_a_guess(vws):
+    (vws / "04_Angebote" / "preisliste_2026.xlsx").unlink()
+    with pytest.raises(vertrieb.VertriebFehler, match="Preisliste"):
+        vertrieb.grossangebot(vws, "Müller GmbH", "MM-400", 1, heute=HEUTE)
+
+
+def test_grossangebot_cli_accepts_german_numbers_and_rejects_nonsense(vws, capsys):
+    base = ["grossangebot", "--ws", str(vws), "--kunde", "Nordmetall GmbH", "--typ", "MM-400", "--heute", HEUTE]
+    assert vertrieb.main(base + ["--anzahl", "2", "--rabatt-prozent", "7,5"]) == 0
+    assert json.loads(capsys.readouterr().out)["rabatt_prozent"] == 7.5
+    assert vertrieb.main(base + ["--anzahl", "0"]) == 1
+    assert "--anzahl" in json.loads(capsys.readouterr().out)["fehler"][0]
+    assert vertrieb.main(base + ["--anzahl", "2", "--rabatt-prozent", "viel"]) == 1
+    assert "keine Zahl" in json.loads(capsys.readouterr().out)["fehler"][0]
+
+
+def stufen_preisliste(ws):
+    """A newer price list with three contract levels for MM-400 (as in the sample company)."""
+    wb = Workbook()
+    wb.active.append(["Bezeichnung", "Preis_EUR"])
+    for r in [("Wartungsvertrag Basis MM-400", 4800), ("Wartungsvertrag Standard MM-400", 7800),
+              ("Wartungsvertrag Premium MM-400", 13200), ("Techniker-Stundensatz", 118)]:
+        wb.active.append(list(r))
+    wb.save(ws / "04_Angebote" / "preisliste_2027.xlsx")
+
+
+def test_several_contract_levels_without_stufe_are_refused_with_the_levels(vws, capsys):
+    """K1 (Max, 2026-10-07): grossangebot asks for the contract level instead of picking the shortest name."""
+    stufen_preisliste(vws)
+    with pytest.raises(vertrieb.StufeFehlt) as e:
+        vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, heute=HEUTE)
+    assert e.value.stufen == [{"position": "Wartungsvertrag Basis MM-400", "preis": 4800},
+                              {"position": "Wartungsvertrag Standard MM-400", "preis": 7800},
+                              {"position": "Wartungsvertrag Premium MM-400", "preis": 13200}]
+    base = ["grossangebot", "--ws", str(vws), "--kunde", "Nordmetall GmbH", "--typ", "MM-400", "--anzahl", "2",
+            "--heute", HEUTE]
+    assert vertrieb.main(base) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["ok"] is False and out["fehler"][0].startswith("Stufe fehlt")
+    assert [s["position"] for s in out["stufen"]] == [s["position"] for s in e.value.stufen]
+
+
+def test_stufe_premium_selects_that_level(vws, capsys):
+    stufen_preisliste(vws)
+    r = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, stufe="premium", heute=HEUTE)
+    assert r["stufe"] == "Wartungsvertrag Premium MM-400"
+    assert [r["werte"][k]["betrag"] for k in WERTE] == [13200, 26400, 1320, 25080, 75240]
+    assert r["aufruf"] == 'grossangebot --kunde "Nordmetall GmbH" --typ "MM-400" --anzahl 2 --stufe "premium"'
+    r = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, stufe="Basis", heute=HEUTE)
+    assert r["werte"]["preis_je_anlage"]["betrag"] == 4800
+    with pytest.raises(vertrieb.VertriebFehler, match="Gold.*Wartungsvertrag Basis MM-400"):
+        vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, stufe="Gold", heute=HEUTE)
+    with pytest.raises(vertrieb.VertriebFehler, match="mehrere.*Wartungsvertrag Standard MM-400"):
+        vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, stufe="MM-400", heute=HEUTE)
+    base = ["grossangebot", "--ws", str(vws), "--kunde", "Nordmetall GmbH", "--typ", "MM-400", "--anzahl", "2",
+            "--heute", HEUTE]
+    assert vertrieb.main(base + ["--stufe", "Premium"]) == 0
+    assert json.loads(capsys.readouterr().out)["werte"]["angebotswert"]["betrag"] == 75240
+
+
+def test_one_matching_row_is_used_without_stufe(vws):
+    r = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, heute=HEUTE)
+    assert r["stufe"] == "Wartungsvertrag MM-400" and "--stufe" not in r["aufruf"]
+
+
+def test_machine_lists_show_the_year_of_build_as_a_whole_year(vws):
+    k = vertrieb.key_account_review(vws, kunde="Nordmetall GmbH", heute=HEUTE)["konten"][0]
+    a = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, heute=HEUTE)["anlagen"]
+    assert k["anlagen"][0]["baujahr"] == "2012" and a[0]["baujahr"] == "2012"
