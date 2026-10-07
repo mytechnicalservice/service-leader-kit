@@ -393,3 +393,21 @@ def test_grader_zahlen_kommen_aus_erwartet():
 @pytest.mark.parametrize("name", [f"{s}-unordentlich" for s in SKILLS_4H if s != "mitarbeitergespraech"])
 def test_unordentliche_faelle_pruefen_namen(name):
     assert any(g.get("match") == "not_contains" and "Tobias Rehm" in g.get("pattern", "") for g in fall(name)["graders"])
+
+
+def test_staff_cost_and_net_hours_come_from_ergebnisrechnung_before_the_kit_standard():
+    import argparse
+
+    import personal
+
+    defs = {"kpi-ziele": {"standard": True, "kennzahlen": []},
+            "ergebnisrechnung": {"personal": {"vollkosten_techniker_eur": 82000, "netto_stunden": 1520}}}
+    p, liste = personal.parameter(argparse.Namespace(), defs)
+    assert p["vollkosten_eur"] == 82000 and p["netto_stunden"] == 1520
+    herkunft = {x["name"]: x["herkunft"] for x in liste}
+    assert herkunft[personal.TEXT["vollkosten_eur"]] == "Unternehmen/ergebnisrechnung.md"
+    assert herkunft[personal.TEXT["netto_stunden"]] == "Unternehmen/ergebnisrechnung.md"
+    p, _ = personal.parameter(argparse.Namespace(vollkosten_eur=90000.0), defs)
+    assert p["vollkosten_eur"] == 90000.0  # the user's word wins
+    p, _ = personal.parameter(argparse.Namespace(), {"kpi-ziele": {"standard": True}, "ergebnisrechnung": {"personal": None}})
+    assert p["vollkosten_eur"] == personal.STANDARD["vollkosten_eur"]

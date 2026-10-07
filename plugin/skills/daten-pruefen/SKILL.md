@@ -1,6 +1,6 @@
 ---
 name: daten-pruefen
-description: Validates a data export from 00_Eingang/ against one of the five import templates (orders, installed base, spare parts, service P&L, capacity per team) and files it in 07_Daten/. Use for any .xlsx or .csv export the user drops in or names ("prüf den Export", "übernimm die Auftragsliste").
+description: Validates a data export from 00_Eingang/ against one of the six import templates (orders, installed base, spare parts, service P&L, capacity per team, qualification counts per team) and files it in 07_Daten/. Use for any .xlsx or .csv export the user drops in or names ("prüf den Export", "übernimm die Auftragsliste").
 ---
 
 # Daten prüfen (spec §7.3)
@@ -18,7 +18,8 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
 ## Templates
 
 `auftraege` (Serviceaufträge/Tickets), `installed_base`, `ersatzteile` (Ersatzteilverkauf und Bestand), `ergebnis`
-(Service-Ergebnisrechnung), `kapazitaet` (Kapazität, je Team). Pick the template from the file name and its column
+(Service-Ergebnisrechnung), `kapazitaet` (Kapazität, je Team), `qualifikation` (Qualifikation je Team, Maschinentyp
+und Auftragsart – nur Anzahlen, keine Namen). Pick the template from the file name and its column
 headers; ask the user if unsure. Capacity data is aggregated per team; never report per-person values (spec §9.3).
 
 ## Steps

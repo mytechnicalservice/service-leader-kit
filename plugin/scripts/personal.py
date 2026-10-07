@@ -159,6 +159,11 @@ def parameter(a, defs: dict) -> tuple[dict, list[dict]]:
     ziel = kpi_auslastung(defs)
     if ziel is not None:
         p["auslastung"], herkunft["auslastung"] = ziel, "Unternehmen/kpi-ziele.md"
+    firma = (defs.get("ergebnisrechnung") or {}).get("personal")
+    if isinstance(firma, dict):  # Plan 3: ergebnisrechnung.md front matter `personal: {…}` (4h-G4)
+        for quelle, k in (("vollkosten_techniker_eur", "vollkosten_eur"), ("netto_stunden", "netto_stunden")):
+            if firma.get(quelle) not in (None, ""):
+                p[k], herkunft[k] = float(zahl(firma[quelle])), "Unternehmen/ergebnisrechnung.md"
     for k in ("netto_stunden", "vollkosten_eur", "einmalkosten_eur"):
         if getattr(a, k, None) is not None:
             p[k], herkunft[k] = getattr(a, k), "Angabe im Gespräch"

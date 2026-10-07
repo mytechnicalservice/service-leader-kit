@@ -32,3 +32,10 @@ def test_new_service_product_uses_the_company_level_names_first():
     abschnitt = pfad.read_text(encoding="utf-8").split("## Default levels (Vorschlag)")[1]
     assert "Unternehmen/leistungen.md" in abschnitt and "Basis / Standard / Premium" in abschnitt
     assert "Basis" in (BEISPIEL / "Unternehmen" / "leistungen.md").read_text(encoding="utf-8")
+
+
+def test_daten_pruefen_lists_every_import_template():
+    text = (ROOT / "plugin" / "skills" / "daten-pruefen" / "SKILL.md").read_text(encoding="utf-8")
+    vorlagen = sorted(p.stem for p in (ROOT / "plugin" / "vorlagen" / "import").glob("*.json"))
+    for v in vorlagen:
+        assert f"`{v}`" in text, v
