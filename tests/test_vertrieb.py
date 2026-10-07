@@ -192,3 +192,52 @@ def test_potentials_use_the_base_level_and_say_so(vws):
     assert any("Basisstufe" in a for a in r["annahmen"])
     k = {e["kunde"]: e for e in r["kunden"]}
     assert "Basisstufe" in k["Müller GmbH"]["ohne_vertrag"][0]["potenzial"]["name"]
+
+
+# --- key-account-review -------------------------------------------------------------------------------------------
+
+def test_top_accounts_rank_by_12_month_revenue_incl_parts(vws):
+    r = vertrieb.key_account_review(vws, heute=HEUTE)
+    assert [(k["kunde"], k["umsatz_12m"]["betrag"]) for k in r["konten"]] == [
+        ("Hansa Pack AG", 25200), ("Nordmetall GmbH", 12000), ("Müller GmbH", 6000)]
+    assert r["zeitraum"] == ["2025-10", "2026-09"] and r["ziel"] == "03_Berichte/2026-10-06_key-account-review.docx"
+    hansa = r["konten"][0]
+    assert hansa["ersatzteile"]["betrag"] == 1200 and hansa["ersatzteile"]["berechnet"]
+    assert len(hansa["monate"]) == 12 and hansa["monate"][0]["betrag"] == 2100
+    assert any("Top 5" in a for a in r["annahmen"])
+    assert "Hansa Pack AG: Umsatz 12 Monate 25.200 EUR" in " ".join(r["zusammenfassung"])
+
+
+def test_one_account_shows_base_contract_cases_renewal_and_potential(vws):
+    meta = {k: None for k in vorgang.FIELDS} | {
+        "titel": "Eskalation Stillstand", "typ": "eskalation", "status": "offen", "kunde": "Nordmetall GmbH",
+        "verantwortlich": "Jana Becker", "bearbeitet_von": ["betrieb"], "erstellt": "2026-09-30",
+        "aktualisiert": "2026-09-30"}
+    vorgang.anlegen(vws, meta, vorgang.event("2026-09-30", "angelegt", "betrieb", "Test."))
+    r = vertrieb.key_account_review(vws, kunde=" nordmetall gmbh", heute=HEUTE)
+    (k,) = r["konten"]
+    assert k["kunde"] == "Nordmetall GmbH" and k["umsatz_12m"]["betrag"] == 12000
+    assert [a["anlage"] for a in k["anlagen"]] == ["Anlage 1", "Anlage 2"] and k["anlagen"][0]["alter"] == 14
+    assert k["vertrag"]["jahreswert_eur"] == "4500"
+    assert [v["nr"] for v in k["vorgaenge"]] == ["V-0001"]
+    assert k["verlaengerung"][0]["status"] == "dringend"
+    assert k["potenzial"]["vertragspotenzial"]["betrag"] == 4800
+    assert r["ziel"] == "06_Kunden/Nordmetall GmbH/2026-10-06_key-account-review.docx"
+
+
+def test_missing_month_is_named_not_extrapolated(vws):
+    (vws / "07_Daten" / "auftraege_2026-03.csv").unlink()
+    r = vertrieb.key_account_review(vws, kunde="Nordmetall GmbH", heute=HEUTE)
+    assert r["konten"][0]["umsatz_12m"]["betrag"] == 11000
+    assert any("März 2026" in m and "nicht hochgerechnet" in m for m in r["meldungen"])
+
+
+def test_unknown_customer_is_said_not_zero_filled(vws):
+    with pytest.raises(vertrieb.VertriebFehler, match="Schreibweise prüfen.*Hansa Pack AG"):
+        vertrieb.key_account_review(vws, kunde="Unbekannt AG", heute=HEUTE)
+
+
+def test_damaged_case_file_does_not_stop_the_review(vws):
+    (vws / "01_Vorgaenge" / "offen" / "V-0007.md").write_text("---\nnr: \"V-0007\"\n", encoding="utf-8")
+    r = vertrieb.key_account_review(vws, kunde="Hansa Pack AG", heute=HEUTE)
+    assert r["konten"][0]["vorgaenge"] == [] and any("Vorgänge nicht lesbar" in m for m in r["meldungen"])

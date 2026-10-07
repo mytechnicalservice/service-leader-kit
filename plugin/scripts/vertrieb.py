@@ -419,6 +419,95 @@ def installed_base_potenziale(ws: Path, kunde: str | None = None, stichtag: str 
         "ziel": f"03_Berichte/{tag_heute.isoformat()}_installed-base-potenziale.xlsx"}, zeilen)
 
 
+# --- key-account-review -------------------------------------------------------------------------------------------
+
+def monat_von(z: dict) -> str:
+    return re.search(r"(\d{4}-\d{2})\.csv$", z["_datei"]).group(1)
+
+
+def kundenumsatz(kunde: str, auf: list[dict], et: list[dict], monate: list[str]) -> dict:
+    a = [z for z in auf if text(z.get("Kunde")) == kunde]
+    e = [z for z in et if text(z.get("Kunde")) == kunde]
+    service = summe_oder_null(a, "Umsatz_EUR", f"Serviceumsatz 12 Monate {kunde}", "Aufträge: keine Zeilen im Zeitraum")
+    teile = wert(f"Ersatzteilumsatz 12 Monate {kunde}",
+                 round(sum(betrag(z.get("Menge")) * betrag(z.get("Stueckpreis_EUR")) for z in e), 2),
+                 quelle(e) or ["Ersatzteile: keine Zeilen im Zeitraum"], formel="Σ Menge × Stueckpreis_EUR")
+    reihe = []
+    for m in monate:
+        zm = [z for z in a + e if monat_von(z) == m]
+        reihe.append(wert(f"Umsatz {kunde} {monatsname(m)}",
+                          round(sum(betrag(z.get("Umsatz_EUR")) if "Umsatz_EUR" in z
+                                    else betrag(z.get("Menge")) * betrag(z.get("Stueckpreis_EUR")) for z in zm), 2),
+                          quelle(zm) or [f"{monatsname(m)}: keine Zeilen"],
+                          formel="Umsatz_EUR (Aufträge) + Menge × Stueckpreis_EUR (Ersatzteile)"))
+    gesamt = addiere(f"Umsatz 12 Monate {kunde}", [service, teile], "Serviceumsatz (Aufträge) + Ersatzteilumsatz")
+    return {"umsatz_12m": gesamt, "service": service, "ersatzteile": teile, "monate": reihe}
+
+
+def offene_vorgaenge(ws: Path) -> tuple[list[dict], list[str]]:
+    try:
+        return [{"nr": m["nr"], "titel": m["titel"], "typ": m["typ"], "status": m["status"],
+                 "faellig": m.get("faellig"), "kunde": text(m.get("kunde"))}
+                for _, m, _ in all_cases(ws, ("offen",))], []
+    except VorgangFehler as exc:
+        return [], [f"Vorgänge nicht lesbar: {exc} – offene Vorgänge fehlen im Review."]
+
+
+def key_account_review(ws: Path, kunde: str | None = None, top: int | None = None, heute: str | None = None) -> dict:
+    tag_heute = heute_von(heute)
+    monate = zeitraum(ws)
+    auf, l1 = lade_zeitraum(ws, "auftraege", monate)
+    et, l2 = lade_zeitraum(ws, "ersatzteile", monate)
+    meldungen, annahmen = l1 + l2, [f"Umsatz = Serviceaufträge + Ersatzteile, {monatsname(monate[0])} bis "
+                                     f"{monatsname(monate[-1])} ({STANDARD})"]
+    try:
+        anlagen, ib = installed_base(ws)
+        radar = verlaengerungs_radar(ws, heute=tag_heute.isoformat())
+        pot = installed_base_potenziale(ws, heute=tag_heute.isoformat())
+        meldungen += [m for m in radar["meldungen"] + pot["meldungen"] if m not in meldungen]
+    except VertriebFehler as exc:
+        anlagen, ib, radar, pot = [], {"stichtag": None}, {"vertraege": []}, {"kunden": []}
+        meldungen.append(f"{exc} Anlagen, Verträge, Verlängerungen und Potenziale fehlen im Review.")
+    bekannt = sorted({text(z.get("Kunde")) for z in auf + et + anlagen} - {""})
+    if kunde:
+        treffer = [k for k in bekannt if gleich(k, kunde)]
+        if not treffer:
+            raise VertriebFehler(f"Kunde '{kunde.strip()}' kommt in Aufträgen, Ersatzteilen und Installed Base nicht "
+                                 f"vor – Schreibweise prüfen. Bekannte Kunden: {', '.join(bekannt)}")
+        auswahl = treffer[:1]
+    else:
+        if top is None:
+            top = TOP_N
+            annahmen.append(f"Top {top} Kunden nach Umsatz der letzten 12 Monate ({STANDARD})")
+        if not 1 <= top <= 50:
+            raise VertriebFehler("--top muss zwischen 1 und 50 liegen")
+        auswahl = sorted(bekannt, key=lambda k: (-kundenumsatz(k, auf, et, monate)["umsatz_12m"]["betrag"], k))[:top]
+    faelle, fehler = offene_vorgaenge(ws)
+    meldungen += fehler
+    konten = []
+    for k in auswahl:
+        u = kundenumsatz(k, auf, et, monate)
+        eigene = [a for a in anlagen if text(a.get("Kunde")) == k]
+        konten.append({
+            "kunde": k, **u,
+            "anlagen": [{"anlage": text(a.get("Anlage")), "typ": text(a.get("Maschinentyp")),
+                         "baujahr": text(a.get("Baujahr")),
+                         "alter": ib["stichtag"].year - baujahr(a) if baujahr(a) is not None else None,
+                         "vertrag": text(a.get("Vertrag")), "vertragsende": text(a.get("Vertragsende")),
+                         "quelle": ort(a)} for a in sorted(eigene, key=lambda a: text(a.get("Anlage")))],
+            "vertrag": {s: v for s, v in vertragsdaten(ws, k).items()},
+            "verlaengerung": [v for v in radar["vertraege"] if v["kunde"] == k],
+            "vorgaenge": [f for f in faelle if gleich(f["kunde"], k)],
+            "potenzial": next((p for p in pot["kunden"] if p["kunde"] == k), None)})
+    ziel = (f"06_Kunden/{ordnername(auswahl[0])}/{tag_heute.isoformat()}_key-account-review.docx" if kunde
+            else f"03_Berichte/{tag_heute.isoformat()}_key-account-review.docx")
+    zeilen = [f"{k['kunde']}: Umsatz 12 Monate {deutsch(k['umsatz_12m']['betrag'])} EUR (Service "
+              f"{deutsch(k['service']['betrag'])}, Ersatzteile {deutsch(k['ersatzteile']['betrag'])}), "
+              f"{len(k['anlagen'])} Anlagen, {len(k['vorgaenge'])} offene Vorgänge" for k in konten]
+    return ergebnis(ws, {"zeitraum": [monate[0], monate[-1]], "konten": konten, "annahmen": annahmen,
+                         "meldungen": meldungen, "ziel": ziel}, zeilen)
+
+
 # --- CLI ----------------------------------------------------------------------------------------------------------
 
 def parser() -> JsonParser:
@@ -437,12 +526,16 @@ def parser() -> JsonParser:
     p = add("installed-base-potenziale")
     p.add_argument("--kunde")
     p.add_argument("--stichtag")
+    k = add("key-account-review")
+    k.add_argument("--kunde")
+    k.add_argument("--top", type=int)
     return ap
 
 
 BEFEHLE = {
     "verlaengerungs-radar": lambda a, ws: verlaengerungs_radar(ws, a.monate, a.stichtag, a.heute),
     "installed-base-potenziale": lambda a, ws: installed_base_potenziale(ws, a.kunde, a.stichtag, a.heute),
+    "key-account-review": lambda a, ws: key_account_review(ws, a.kunde, a.top, a.heute),
 }
 
 
