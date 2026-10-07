@@ -59,3 +59,60 @@ def test_kit_scripts_run_through_uv_offline_with_an_empty_cache(tmp_path):
         assert "No module named" not in r.stderr and "not found in the cache" not in r.stderr, r.stderr
         assert r.returncode in (0, 1), (skript, r.stderr)
         json.loads(r.stdout)  # the script ran and answered (its own verdict on the file does not matter here)
+
+
+def baue_fall(fall, ziel, home):
+    return subprocess.run(["/bin/sh", str(EVALS / fall / "scaffold.sh")], cwd=ziel, env=runner_env(home),
+                          capture_output=True, text=True, timeout=120)
+
+
+def test_every_case_has_a_scaffold():
+    # einrichtung-sauber had none (eval run 0.2.2): without the scaffold's uv.toml its `uv run einrichtung.py`
+    # went to pypi.org and the setup never started.
+    ohne = [c.parent.name for c in EVALS.glob("*/case.yaml")
+            if "scaffold_script" not in c.read_text(encoding="utf-8")]
+    assert ohne == []
+
+
+def test_setup_case_gets_offline_uv_but_no_workspace(tmp_path):
+    ws = tmp_path / "home" / "cwd"
+    ws.mkdir(parents=True)
+    r = baue_fall("einrichtung-sauber", ws, tmp_path / "home")
+    assert r.returncode == 0, r.stderr
+    assert "no-index = true" in (ws / "uv.toml").read_text(encoding="utf-8")
+    assert not (ws / "Unternehmen").exists() and not (ws / "01_Vorgaenge").exists()
+
+
+def test_uv_settings_also_reach_runs_that_start_outside_the_workspace(tmp_path):
+    # Eval run 0.2.2: scripts written to $TMPDIR and started from there (`cd $TMPDIR && uv run --with python-docx …`)
+    # never saw the workspace's uv.toml and went to pypi.org. In a run the workspace is $HOME/cwd, so the scaffold
+    # also writes the user-level uv config.
+    ws = tmp_path / "home" / "cwd"
+    ws.mkdir(parents=True)
+    assert baue(ws, HOME=str(tmp_path / "home")).returncode == 0
+    nutzer = tmp_path / "home" / ".config" / "uv" / "uv.toml"
+    assert nutzer.read_text(encoding="utf-8") == (ws / "uv.toml").read_text(encoding="utf-8")
+
+
+def test_user_uv_config_is_left_alone_when_home_is_not_the_parent(tmp_path):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    assert baue(ws, HOME=str(tmp_path / "anderswo")).returncode == 0
+    assert not (tmp_path / "anderswo" / ".config").exists()
+
+
+@pytest.mark.skipif(not wheels_da(), reason=f"Wheel-Ordner fehlt ({WHEELS}) – bauen mit: sh tools/eval_wheels.sh")
+@pytest.mark.skipif(not shutil.which("uv"), reason="uv nicht installiert")
+def test_a_temp_script_runs_offline_from_outside_the_workspace(tmp_path):
+    home, tmp = tmp_path / "home", tmp_path / "tmp"
+    ws = home / "cwd"
+    ws.mkdir(parents=True)
+    tmp.mkdir()
+    assert baue(ws, HOME=str(home)).returncode == 0
+    skript = tmp / "vorlage.py"
+    skript.write_text("import docx, openpyxl\ndocx.Document().save('t.docx')\nprint('ok')\n", encoding="utf-8")
+    env = runner_env(home) | {"UV_CACHE_DIR": str(tmp_path / "uv-cache"), "UV_OFFLINE": "1",
+                              "UV_PYTHON_DOWNLOADS": "never"}
+    r = subprocess.run(["uv", "run", "--with", "python-docx==1.1.2", "--with", "openpyxl==3.1.5", "python",
+                        str(skript)], cwd=tmp, env=env, capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0 and r.stdout.strip() == "ok", r.stderr

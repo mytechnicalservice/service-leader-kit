@@ -11,12 +11,9 @@ if [ ! -f "$SLK_P/.claude-plugin/plugin.json" ]; then
   exit 1
 fi
 
-# baue leer|sauber|unordentlich|jahr|jahr-unordentlich: tree + settings (+ the dataset's files).
-# jahr = the onboarded sample company as the user's own workspace (Plan 3, D14): 07_Daten/ (twelve months, budget,
-# qualification), filled Unternehmen/ incl. vorlagen/, 04_Angebote/, 05_Projekte/, 06_Kunden/ and the mails (no
-# September exports: they are already in 07_Daten/). jahr-unordentlich adds the messy inbox documents: injection
-# mail, scanned offer (instead of the Hydraulik Nord mail) and the controlling report that contradicts 07_Daten/.
-baue() {
+# uv_offline: lets `uv run` install only from the copied wheels (eval runs have no network and an empty uv
+# cache). Every scaffold calls it, through baue or directly (einrichtung-sauber starts from an empty folder).
+uv_offline() {
   if ! ls "$SLK_WHEELS"/*.whl >/dev/null 2>&1; then
     echo "Scaffold: Wheel-Ordner fehlt oder ist leer: $SLK_WHEELS – ohne ihn kann uv run im Eval-Lauf keine" \
       "Bibliotheken laden. Vor dem Eval-Lauf im Kit-Repo bauen: sh tools/eval_wheels.sh" >&2
@@ -27,6 +24,22 @@ baue() {
   mkdir -p .slk-wheels
   cp "$SLK_WHEELS"/*.whl .slk-wheels/
   printf 'no-index = true\nfind-links = ["%s"]\n' "$(pwd)/.slk-wheels" > uv.toml
+  # uv reads uv.toml only from the folder it starts in (and its parents): a script in $TMPDIR or a subagent after
+  # `cd` would miss it and go to pypi.org (eval run 0.2.2). In a run the workspace is $HOME/cwd, so the same settings
+  # also go to the user-level config there. Anywhere else (a real HOME) it is left alone.
+  if [ -n "${HOME:-}" ] && [ -d "$HOME" ] && [ "$(cd .. && pwd -P)" = "$(cd "$HOME" && pwd -P)" ]; then
+    mkdir -p "$HOME/.config/uv"
+    cp uv.toml "$HOME/.config/uv/uv.toml"
+  fi
+}
+
+# baue leer|sauber|unordentlich|jahr|jahr-unordentlich: tree + settings (+ the dataset's files).
+# jahr = the onboarded sample company as the user's own workspace (Plan 3, D14): 07_Daten/ (twelve months, budget,
+# qualification), filled Unternehmen/ incl. vorlagen/, 04_Angebote/, 05_Projekte/, 06_Kunden/ and the mails (no
+# September exports: they are already in 07_Daten/). jahr-unordentlich adds the messy inbox documents: injection
+# mail, scanned offer (instead of the Hydraulik Nord mail) and the controlling report that contradicts 07_Daten/.
+baue() {
+  uv_offline
   cp -R "$SLK_P/vorlagen/arbeitsordner/." .
   mkdir -p 01_Vorgaenge/offen 01_Vorgaenge/erledigt 01_Vorgaenge/_zur-loeschung
   cp "$SLK_P/vorlagen/workspace.gitignore" .gitignore

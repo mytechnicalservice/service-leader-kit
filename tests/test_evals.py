@@ -58,7 +58,9 @@ def test_case_format(case):
 def test_scaffold_runs_in_the_runner_environment(case, tmp_path, shell):
     r = scaffold(case, tmp_path, shell)
     assert r.returncode == 0, r.stderr
-    assert (tmp_path / "Unternehmen" / ".kit-config").is_file()
+    assert (tmp_path / "uv.toml").is_file()
+    # every case starts in a set-up workspace except the first setup itself, which starts empty
+    assert (tmp_path / "Unternehmen" / ".kit-config").is_file() == (case.name != "einrichtung-sauber")
 
 
 def test_shared_scaffold_builds_the_messy_case_workspace(tmp_path, shell):

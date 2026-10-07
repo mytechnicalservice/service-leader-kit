@@ -7,6 +7,8 @@ execution:
   max_turns: 30
   timeout_seconds: 600
   allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
 graders:
   - name: skript-angelegt
     type: tool_used
