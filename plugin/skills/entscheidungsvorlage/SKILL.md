@@ -36,9 +36,11 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
    "Entscheidung: ________ durch <verantwortlich>, Datum ______". No recommendation of your own beyond the reviewers'.
 4. **File:** `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" ablage --ws "<workspace>" --ordner 04_Angebote --thema "entscheidungsvorlage <thema>" --endung docx`.
    Write it with Claude's docx skill on the letterhead from `layout.py firma` (`briefkopf`): copy the letterhead
-   and add the content below its header. If the docx skill is not available, write it with
+   and add the content below its header. If the docx skill is not available, copy the letterhead out first
+   (`cp "<workspace>/<briefkopf>" "<temporärer Ordner>/briefkopf.docx"` – copying out of `Unternehmen/vorlagen/` is
+   allowed, writing into `Unternehmen/` is not) and write the memo with
    `uv run --with python-docx==1.1.2 python "<temporärer Ordner>/vorlage.py"` (script outside the workspace) that
-   opens the letterhead with `Document(briefkopf)`.
+   opens that copy with `Document(...)`.
 5. **Check:** `layout.py pruefe-datei --ws "<workspace>" --datei "<datei>" --erwarte "<Betrag>"` with the case
    amount in German format. Fix and re-check until `ok` is true.
 6. **Record the exact version:** `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" eintrag --ws "<workspace>" --nr V-… --art vorlage --von <agent> --text "Entscheidungsvorlage: <version aus pruefe-datei>"`.

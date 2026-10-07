@@ -228,9 +228,58 @@ fi
 # Unternehmen.md are not Unternehmen/; -Path:Unternehmen/…, a,Unternehmen/… and {…,Unternehmen/…} are).
 # The workspace's own path is removed first (a workspace may itself live in a folder called Unternehmen).
 named=0; incwd=0
-nqs=$(printf '%s\n' "$nq" | awk -v p="$lws" 'p != "" {
+# ohne <text> <part>: <text> without any occurrence of the literal <part>; zahl <text> <part>: how often it occurs.
+ohne() { printf '%s\n' "$1" | awk -v p="$2" 'p != "" {
   o = ""; while ((i = index($0, p)) > 0) { o = o substr($0, 1, i - 1); $0 = substr($0, i + length(p)) }
-  $0 = o $0 } { print }')
+  $0 = o $0 } { print }'; }
+zahl() { printf '%s\n' "$1" | awk -v p="$2" '{ while ((i = index($0, p)) > 0) { n++; $0 = substr($0, i + length(p)) } }
+  END { print n + 0 }'; }
+nqs=$(ohne "$nq" "$lws")
+# 3a. Templates may be copied OUT of Unternehmen/vorlagen/: the document skills build on the letterhead and the
+# master. A source of cp/Copy-Item under unternehmen/vorlagen/ (no "..") does not count as naming the protected
+# folder, if every mention of that exact text in the command is such a source. Writes stay blocked: the copy's
+# destination, any other command, a redirection or a second mention still name Unternehmen/ below.
+vorlage_quellen() {
+  _slk_oifs=$IFS
+  IFS='
+'
+  for _slk_line in $segs; do
+    IFS='	'
+    # shellcheck disable=SC2086
+    set -- $_slk_line
+    IFS=$_slk_oifs
+    _slk_vb=$1; shift
+    case "$_slk_vb" in cp|copy|copy-item|cpi)
+      # cp shares mv's -t/--target-directory (mv's short-flag rules); Copy-Item has -Destination.
+      _slk_mvv=$_slk_vb; [ "$_slk_vb" = cp ] && _slk_mvv=mv
+      _slk_dest=$(move_dest "$_slk_mvv" "$@")
+      _slk_i=0
+      [ "$_slk_dest" -gt 0 ] && for _slk_a in "$@"; do
+        _slk_i=$((_slk_i + 1)); [ "$_slk_i" = "$_slk_dest" ] && continue
+        _slk_t=$(slk_lower "$(slk_slashes "${_slk_a#???}")")
+        case "/$_slk_t/" in */../*|/-*) continue ;; esac
+        _slk_k=$(ohne "$_slk_t" "$lws")
+        case "$_slk_k" in unternehmen/vorlagen|unternehmen/vorlagen/*|*/unternehmen/vorlagen|*/unternehmen/vorlagen/*)
+          printf '%s\n' "$_slk_k" ;;
+        esac
+      done ;;
+    esac
+    IFS='
+'
+  done
+  IFS=$_slk_oifs
+}
+_slk_q=$(vorlage_quellen)
+if [ -n "$_slk_q" ]; then
+  _slk_oifs=$IFS
+  IFS='
+'
+  for _slk_s in $(printf '%s\n' "$_slk_q" | sort -u); do
+    IFS=$_slk_oifs
+    [ "$(zahl "$nqs" "$_slk_s")" = "$(printf '%s\n' "$_slk_q" | grep -cxF -- "$_slk_s")" ] && nqs=$(ohne "$nqs" "$_slk_s")
+  done
+  IFS=$_slk_oifs
+fi
 vorher=$(printf '[^[:alnum:]_\200-\377]')   # LC_ALL=C: bytes 0x80-0xff belong to a word (UTF-8 letters)
 nachher=$(printf '[^[:alnum:]_.\200-\377-]')
 printf '%s\n' "$nqs" | grep -Eq "(^|$vorher)(01_vorgaenge|unternehmen)($nachher|\$)" && named=1

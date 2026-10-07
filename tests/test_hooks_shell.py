@@ -330,3 +330,52 @@ def test_powershell_location_stack_cannot_hide_a_folder_delete(shell, kit_ws):
 def test_mv_capital_t_does_not_exempt_the_source(shell, kit_ws):
     code, err = pre(shell, kit_ws, bash(kit_ws, f'mv -T "{kit_ws}" /tmp/x'))
     assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=Bash"), err
+
+
+VORLAGE_RAUS = [
+    "cp Unternehmen/vorlagen/briefkopf.docx /tmp/briefkopf.docx",
+    'cp "Unternehmen/vorlagen/briefkopf.docx" "$TMPDIR/nm/ref.docx"',
+    "cp Unternehmen/vorlagen/briefkopf.docx 04_Angebote/entwurf.docx",
+    "cp -r Unternehmen/vorlagen /tmp/vorlagen",
+    "mkdir -p /tmp/x && cp Unternehmen/vorlagen/master.pptx /tmp/x/ && ls /tmp/x",
+    "Copy-Item -Path Unternehmen\\vorlagen\\briefkopf.docx -Destination C:\\Temp\\b.docx",
+]
+
+
+@pytest.mark.parametrize("command", VORLAGE_RAUS)
+def test_templates_may_be_copied_out_of_the_template_folder(shell, kit_ws, command):
+    # Letterhead and master are read by Claude's document skills (entscheidungsvorlage: "copy the letterhead").
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
+
+
+def test_templates_copied_out_by_absolute_path(shell, kit_ws):
+    command = f'cp "{kit_ws}/Unternehmen/vorlagen/briefkopf.docx" /tmp/ref.docx'
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, "")
+
+
+@pytest.mark.parametrize("command", [
+    "cp /tmp/x.docx Unternehmen/vorlagen/briefkopf.docx",                   # overwrite a template
+    "cp Unternehmen/vorlagen/briefkopf.docx Unternehmen/vorlagen/b.docx",   # write into the folder
+    "cp Unternehmen/vorlagen/briefkopf.docx Unternehmen/profil.md",
+    "cp -t Unternehmen Unternehmen/vorlagen/briefkopf.docx",
+    "cp --target-directory=Unternehmen/vorlagen Unternehmen/vorlagen/briefkopf.docx",
+    "cp Unternehmen/profil.md /tmp/p.md",                                   # only the template folder
+    "cp Unternehmen/vorlagen/../profil.md /tmp/p.md",
+    "cp Unternehmen/vorlagen/briefkopf.docx /tmp/b.docx && rm Unternehmen/profil.md",
+    "cp Unternehmen/vorlagen/briefkopf.docx /tmp/b.docx; echo x > Unternehmen/vorlagen/briefkopf.docx",
+    "mv Unternehmen/vorlagen/briefkopf.docx /tmp/b.docx",                   # a move deletes the source
+    "cp Unternehmen/vorlagen/briefkopf.docx /tmp/a; cp /tmp/x Unternehmen/vorlagen/briefkopf.docx",
+    "rsync -a --delete Unternehmen/vorlagen/ /tmp/v/",
+    "ln -s /tmp/x Unternehmen/vorlagen/briefkopf.docx",
+    "python3 -c \"open('Unternehmen/vorlagen/briefkopf.docx','w')\"",
+    "cp Unternehmen/vorlagen/briefkopf.docx 01_Vorgaenge/offen/V-0001.md",
+    "Copy-Item -Path C:\\Temp\\b.docx -Destination Unternehmen\\vorlagen\\briefkopf.docx",
+])
+def test_template_folder_stays_protected_against_writes(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt"), (command, err)
+
+
+def test_copying_out_from_inside_a_protected_folder_stays_blocked(shell, kit_ws):
+    p = bash(kit_ws, "cp briefkopf.docx /tmp/b.docx", cwd=kit_ws / "Unternehmen" / "vorlagen")
+    assert pre(shell, kit_ws, p)[0] == 2
