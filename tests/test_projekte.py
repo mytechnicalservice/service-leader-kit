@@ -208,3 +208,87 @@ def test_empty_portfolio_and_wrong_folder(kit_ws, tmp_path, defs, rufe):
     assert code == 0 and out["zaehler"] == {"rot": 0, "gelb": 0, "gruen": 0} and "noch kein Projekt" in out["meldungen"][-1]
     code, out = rufe("ampel", "--ws", tmp_path / "leer")
     assert code == 1 and "kein Kundendienst-Ordner" in out["fehler"][0]
+
+
+def test_delay_decision_options(tmp_path, defs, rufe):
+    ws = fall(tmp_path, "verzug-entscheidung-sauber")
+    code, s = rufe("setze", "--ws", ws, "--projekt", HANSA, "--meilenstein", "Abnahme", "--prognose", "2026-11-05")
+    assert code == 0 and (s["alt"], s["neu"]) == (None, "2026-11-05")
+    code, out = rufe("verzug", "--ws", ws, "--projekt", HANSA, "--stichtag", STICHTAG, "--heute", "2026-10-07",
+                     "--beschleunigung-eur", "6.500", "--beschleunigung-tage", "14")
+    assert code == 0 and out["entscheidung_noetig"] is True
+    assert (out["verzug"]["betrag"], out["bezug_meilenstein"], out["mehrkosten"]["betrag"]) == (21, "Abnahme", 14000)
+    o = {x["kennung"]: x for x in out["optionen"]}
+    assert (o["A"]["strafe"]["betrag"], o["A"]["belastung"]["betrag"], o["A"]["ergebnis"]["betrag"]) == (3600, 17600, 38400)
+    assert (o["B"]["strafe"]["betrag"], o["B"]["belastung"]["betrag"], o["B"]["ergebnis"]["betrag"]) == (1200, 21700, 34300)
+    assert o["C"]["belastung"]["betrag"] == 14000 and "Zustimmung des Kunden" in o["C"]["voraussetzung"]
+    assert o["D"]["berechnet"] is False and "Nachtrag" in o["D"]["titel"]
+    assert out["vorschlag"] == "A"
+    assert [p["reviewer"] for p in out["pruefung"]] == ["finanzen", "qualitaet-recht"]
+    assert out["pruefung"][1]["fachexperte"] is None
+    assert out["ziel"] == f"05_Projekte/{HANSA}/2026-10-07_verzug-entscheidung.docx"
+    assert out["faellig_vorschlag"] == "2026-10-14" and out["projektleitung"] == "Tom Krüger"
+    assert out["pruefzahlen"] == ["21", "14.000", "3.600", "17.600", "1.200", "21.700"]
+
+
+def test_reviewers_follow_the_limit_and_name_the_expert(tmp_path, defs, rufe):
+    ws = fall(tmp_path, "verzug-entscheidung-sauber")
+    rufe("setze", "--ws", ws, "--projekt", HANSA, "--meilenstein", "Abnahme", "--prognose", "2026-11-05")
+    defs["freigabegrenzen"]["projekt_mehrkosten_eur"] = 50000
+    defs["fachexperten"]["recht"] = "Dr. Anna Weiß (Justiziariat)"
+    p = rufe("verzug", "--ws", ws, "--projekt", HANSA, "--stichtag", STICHTAG)[1]["pruefung"]
+    assert [(x["reviewer"], x.get("fachexperte")) for x in p] == [("qualitaet-recht", "Dr. Anna Weiß (Justiziariat)")]
+    defs["freigabegrenzen"]["projekt_mehrkosten_eur"] = 17000
+    p = rufe("verzug", "--ws", ws, "--projekt", HANSA, "--stichtag", STICHTAG)[1]["pruefung"]
+    assert p[0]["reviewer"] == "finanzen" and "17.600" in p[0]["grund"] and "17.000" in p[0]["grund"]
+
+
+def test_incomplete_penalty_is_never_guessed(tmp_path, defs, rufe):
+    ws = fall(tmp_path, "verzug-entscheidung-unordentlich")
+    code, out = rufe("verzug", "--ws", ws, "--projekt", HANSA, "--stichtag", STICHTAG)
+    assert code == 0
+    o = {x["kennung"]: x for x in out["optionen"]}
+    assert o["A"]["strafe"] is None and o["A"]["belastung"]["betrag"] == 14000
+    assert "Mindestwert" in o["A"]["belastung"]["formel"]
+    assert o["B"]["berechnet"] is False and out["vorschlag"] is None
+    assert "qualitaet-recht" in [p["reviewer"] for p in out["pruefung"]]
+    assert any("vertragsstrafe_max_prozent: fehlt" in m for m in out["meldungen"])
+    assert "3.600" not in json.dumps(out, ensure_ascii=False) and out["pruefzahlen"] == ["21", "14.000"]
+
+
+def test_no_delay_no_decision_and_broken_costs_block(kit_ws, defs, rufe):
+    projekt(kit_ws, "Im Plan")
+    code, out = rufe("verzug", "--ws", kit_ws, "--projekt", "Im Plan", "--stichtag", STICHTAG)
+    assert code == 0 and out["entscheidung_noetig"] is False and out["optionen"] == []
+    projekt(kit_ws, "Kaputt", budget_eur="96.000 €")
+    code, out = rufe("verzug", "--ws", kit_ws, "--projekt", "Kaputt", "--stichtag", STICHTAG)
+    assert code == 1 and "budget_eur" in out["fehler"][0]
+
+
+def test_unknown_or_unsafe_project_names(kit_ws, defs, rufe):
+    projekt(kit_ws, "Im Plan")
+    code, out = rufe("verzug", "--ws", kit_ws, "--projekt", "Gibt es nicht")
+    assert code == 1 and "Vorhanden: Im Plan" in out["fehler"][0]
+    code, out = rufe("verzug", "--ws", kit_ws, "--projekt", "../Unternehmen")
+    assert code == 1 and "Ungültiger Projektname" in out["fehler"][0]
+
+
+def test_setze_changes_one_line_and_keeps_the_rest(kit_ws, defs, rufe):
+    datei = projekt(kit_ws, "Im Plan")
+    datei.write_text(datei.read_text(encoding="utf-8") + "\n## Notizen\n\nKunde will Oktober.\n", encoding="utf-8")
+    vorher = datei.read_text(encoding="utf-8")
+    code, out = rufe("setze", "--ws", kit_ws, "--projekt", "Im Plan", "--feld", "kosten_prognose_eur", "--wert", "104.500")
+    assert code == 0 and (out["alt"], out["neu"]) == (100000, 104500)
+    nachher = datei.read_text(encoding="utf-8")
+    assert nachher == vorher.replace("kosten_prognose_eur: 100000\n", "kosten_prognose_eur: 104500\n")
+
+
+def test_setze_refuses_what_it_cannot_take(kit_ws, defs, rufe):
+    projekt(kit_ws, "Im Plan")
+    for argv, text in ((["--meilenstein", "Abnahme", "--prognose", "05.11.2026"], "JJJJ-MM-TT"),
+                       (["--meilenstein", "Montage", "--prognose", "2026-11-05"], "Vorhanden: Abnahme"),
+                       (["--feld", "budget_eur", "--wert", "1"], "nicht änderbar"),
+                       (["--feld", "projektleitung", "--wert", "projekte"], "kein Agent"),
+                       (["--feld", "kosten_ist_eur", "--wert", "viel"], "keine Zahl")):
+        code, out = rufe("setze", "--ws", kit_ws, "--projekt", "Im Plan", *argv)
+        assert code == 1 and text in " ".join(out["fehler"]), (argv, out)

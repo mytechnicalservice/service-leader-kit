@@ -307,6 +307,203 @@ def cmd_ampel(a, ws: Path) -> tuple[int, dict]:
                "ziel": f"03_Berichte/{a.stichtag.isoformat()}_projektportfolio-ampel.md", "meldungen": meldungen}
 
 
+def pruefungen(ws: Path, belastung: float, vertragsthema: bool) -> list[dict]:
+    """Spec §8 rule 1: finanzen above the limit (or with no limit), qualitaet-recht for a penalty regardless of value."""
+    defs = kennzahlen.definitionen(ws)
+    grenze = (defs.get("freigabegrenzen") or {}).get("projekt_mehrkosten_eur")
+    out = []
+    if not ist_zahl(grenze):
+        out.append({"reviewer": "finanzen", "grund": "Keine Freigabegrenze für Projektmehrkosten festgelegt "
+                    "(Unternehmen/freigabegrenzen.md: projekt_mehrkosten_eur) – deshalb immer eine Empfehlung."})
+    elif belastung > grenze:
+        out.append({"reviewer": "finanzen", "grund": f"Ergebnisbelastung {kennzahlen.deutsch(belastung)} EUR liegt über "
+                    f"der Freigabegrenze von {kennzahlen.deutsch(grenze)} EUR."})
+    if vertragsthema:
+        recht = (defs.get("fachexperten") or {}).get("recht")
+        out.append({"reviewer": "qualitaet-recht", "grund": "Vertragsstrafe bzw. Abweichung vom vereinbarten Termin – "
+                    "Vertragsthema, unabhängig vom Betrag.", "fachexperte": recht if ist_text(recht) else None})
+    return out
+
+
+def optionen_fuer(meta: dict, quelle: str, a, bezug: str, v: int, mehr: float, klausel: bool, strafe_ok: bool) -> list[dict]:
+    q_kosten = [f"{quelle}: budget_eur", f"{quelle}: kosten_prognose_eur"]
+    d = kennzahlen.deutsch
+
+    def strafe(tage: int) -> dict | None:
+        if not klausel:
+            return kennzahlen.wert("Vertragsstrafe", 0, [f"{quelle}: vertragsstrafe_*"], formel="keine Vertragsstrafe vereinbart")
+        if not strafe_ok:
+            return None
+        return kennzahlen.wert("Vertragsstrafe", strafe_eur(meta, tage), [f"{quelle}: {k}" for k in STRAFE],
+                               formel=f"min(⌈{tage} Tage / 7⌉ × {d(meta[STRAFE[0]], 1)} %, {d(meta[STRAFE[1]], 1)} %) × "
+                                      f"{d(meta[STRAFE[2]])} EUR")
+
+    def option(kennung, titel, extra, st, kunde, voraussetzung) -> dict:
+        teil = st["betrag"] if st else 0
+        zusatz = "" if st else " – ohne Vertragsstrafe, weil nicht berechenbar"
+        out = {"kennung": kennung, "titel": titel, "berechnet": True, "strafe": st, "kunde": kunde,
+               "voraussetzung": voraussetzung, "ergebnis": None,
+               "belastung": kennzahlen.wert(f"Ergebnisbelastung Option {kennung}", mehr + extra + teil, q_kosten,
+                                            formel="max(0, kosten_prognose_eur − budget_eur) + Zusatzkosten der Option "
+                                                   "+ Vertragsstrafe" + (zusatz + ": Mindestwert" if zusatz else ""))}
+        if meta.get("erloes_eur") is not None:
+            out["ergebnis"] = kennzahlen.wert(
+                f"Projektergebnis Option {kennung}", meta["erloes_eur"] - meta["kosten_prognose_eur"] - extra - teil,
+                [f"{quelle}: erloes_eur", f"{quelle}: kosten_prognose_eur"],
+                formel="erloes_eur − kosten_prognose_eur − Zusatzkosten − Vertragsstrafe" + (zusatz + ": Höchstwert" if zusatz else ""))
+        return out
+
+    def offen(kennung, titel, fehlt, kunde, voraussetzung) -> dict:
+        return {"kennung": kennung, "titel": titel, "berechnet": False, "offen": fehlt, "kunde": kunde,
+                "voraussetzung": voraussetzung}
+
+    titel_b = "Beschleunigen (Zusatzkapazität, Überstunden, Fremdmontage)"
+    liste = [option("A", "Weiterlaufen lassen, neuen Termin mitteilen", 0, strafe(v),
+                    f"{bezug} {v} Tage später als vereinbart" + (", Vertragsstrafe wird fällig" if klausel and v else ""),
+                    "keine")]
+    if a.beschleunigung_eur is not None:
+        rest = max(0, v - a.beschleunigung_tage)
+        liste.append(option("B", titel_b, a.beschleunigung_eur, strafe(rest),
+                            f"{bezug} {rest} Tage später als vereinbart" if rest else f"{bezug} zum vereinbarten Termin",
+                            f"Kapazität verfügbar; Kosten und Zeitgewinn laut Angabe ({d(a.beschleunigung_eur)} EUR, "
+                            f"{a.beschleunigung_tage} Tage)"))
+    else:
+        liste.append(offen("B", titel_b, "Mehrkosten der Beschleunigung (EUR) und aufgeholte Tage angeben",
+                           "Verzug sinkt um die aufgeholten Tage", "Kapazität verfügbar"))
+    if klausel:
+        liste.append(option("C", "Neuen Termin mit dem Kunden vereinbaren (Verzicht auf die Vertragsstrafe)", 0,
+                            kennzahlen.wert("Vertragsstrafe", 0, [f"{quelle}: vertragsstrafe_meilenstein"], formel="Verzicht des Kunden"),
+                            f"{bezug} {v} Tage später, neuer Termin schriftlich vereinbart",
+                            "schriftliche Zustimmung des Kunden – ohne sie gilt Option A"))
+    titel_d = "Nachtrag an den Kunden"
+    if a.nachtrag_eur is not None:
+        liste.append(option("D", titel_d, -a.nachtrag_eur, strafe(v), f"Kunde trägt {d(a.nachtrag_eur)} EUR per Nachtrag",
+                            "Verzug oder Mehrkosten vom Kunden verursacht und schriftlich belegt (z. B. Änderungswunsch)"))
+    else:
+        liste.append(offen("D", titel_d, "Nur wenn der Kunde Verzug oder Mehrkosten verursacht hat: abrechenbaren "
+                           "Betrag (EUR) angeben", "Kunde trägt einen Teil der Mehrkosten",
+                           "Verursachung durch den Kunden schriftlich belegt"))
+    return liste
+
+
+def cmd_verzug(a, ws: Path) -> tuple[int, dict]:
+    d, beispiel = finde(ws, a.projekt)
+    quelle = rel(ws, d / "projekt.md")
+    meta = lies(d / "projekt.md")
+    probleme = pruefe(meta, a.stichtag)
+    noetig = sorted(k for k in probleme if k in DIMENSION["kosten"] or k == "meilensteine")
+    if noetig:
+        fehler = [f"{quelle}: {k}: {probleme[k]}" for k in noetig]
+        return 1, {"ok": False, "fehler": fehler, "meldungen": fehler + [KEINE_SCHAETZUNG]}
+    if (a.beschleunigung_eur is None) != (a.beschleunigung_tage is None):
+        raise ProjektFehler("Für die Beschleunigung bitte beides angeben: --beschleunigung-eur und --beschleunigung-tage")
+    meldungen = [f"{quelle}: {k}: {t}" for k, t in sorted(probleme.items())]
+    tage = verzug_tage(meta)
+    klausel = any(meta.get(k) is not None for k in STRAFE)
+    strafe_ok = klausel and not any(k in probleme for k in ("vertragsstrafe", *STRAFE))
+    sms = meta.get("vertragsstrafe_meilenstein")
+    bezug = sms if isinstance(sms, str) and sms in tage else max(tage, key=tage.get)
+    v = tage[bezug]
+    mehr = max(0, meta["kosten_prognose_eur"] - meta["budget_eur"])
+    if v == 0 and mehr == 0:
+        return 0, {"ok": True, "projekt": d.name, "entscheidung_noetig": False, "optionen": [], "pruefung": [],
+                   "meldungen": meldungen + ["Kein Verzug und keine Mehrkosten – es gibt nichts zu entscheiden."]}
+    optionen = optionen_fuer(meta, quelle, a, bezug, v, mehr, klausel, strafe_ok)
+    if klausel and not strafe_ok:
+        vorschlag, grund = None, "Kein Vorschlag: die Vertragsstrafe ist nicht berechenbar (Angaben in projekt.md unvollständig)."
+    else:
+        best = min((o for o in optionen if o["berechnet"] and o["kennung"] != "C"), key=lambda o: o["belastung"]["betrag"])
+        vorschlag = best["kennung"]
+        grund = (f"Option {vorschlag} hat die geringste Ergebnisbelastung ({kennzahlen.deutsch(best['belastung']['betrag'])} EUR)"
+                 + ("; Option C nur mit Zustimmung des Kunden." if klausel else "."))
+    zahlen = [str(v), kennzahlen.deutsch(mehr)]
+    for o in (o for o in optionen if o["berechnet"]):
+        if o["strafe"] and o["strafe"]["betrag"] > 0:
+            zahlen.append(kennzahlen.deutsch(o["strafe"]["betrag"]))
+        zahlen.append(kennzahlen.deutsch(o["belastung"]["betrag"]))
+    return 0, {"ok": True, "projekt": d.name, "datei": quelle, "kunde": meta.get("kunde"),
+               "projektleitung": None if "projektleitung" in probleme else meta.get("projektleitung"),
+               "stichtag": a.stichtag.isoformat(), "beispiel": beispiel, "entscheidung_noetig": True,
+               "verzug": kennzahlen.wert("Terminverzug", v, [f"{quelle}: meilensteine/{bezug}"],
+                                         formel="(Ist, sonst Prognose) − Plantermin", einheit="Tage"),
+               "bezug_meilenstein": bezug,
+               "mehrkosten": kennzahlen.wert("Mehrkosten", mehr, [f"{quelle}: budget_eur", f"{quelle}: kosten_prognose_eur"],
+                                             formel="max(0, kosten_prognose_eur − budget_eur)"),
+               "optionen": optionen, "vorschlag": vorschlag, "vorschlag_grund": grund,
+               "pruefung": pruefungen(ws, optionen[0]["belastung"]["betrag"], klausel and v > 0),
+               "faellig_vorschlag": (a.heute + dt.timedelta(days=7)).isoformat(),
+               "ziel": rel(ws, d / f"{a.heute.isoformat()}_verzug-entscheidung.docx"),
+               "pruefzahlen": list(dict.fromkeys(zahlen)), "meldungen": meldungen}
+
+
+SETZBAR = ("status", "projektleitung", "kosten_ist_eur", "kosten_prognose_eur", "kosten_stand")
+
+
+def schreibe_feld(datei: Path, key: str, value) -> None:
+    """Replaces exactly one front-matter line (or appends it); every other line and the body stay as they are."""
+    text = datei.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+    parse_case(text)
+    ende = text.find("\n---\n", 4)
+    zeilen = text[4:ende].split("\n")
+    neu = f"{key}: {zeige(value)}"
+    for i, z in enumerate(zeilen):
+        if z.partition(":")[0].strip() == key:
+            zeilen[i] = neu
+            break
+    else:
+        zeilen.append(neu)
+    write_atomic(datei, "---\n" + "\n".join(zeilen) + text[ende:])
+
+
+def setz_wert(feld: str, roh: str):
+    if feld == "status":
+        if roh not in STATUS:
+            raise ProjektFehler(f"status muss {', '.join(STATUS)} sein")
+        return roh
+    if feld == "projektleitung":
+        pruefe_mensch(roh, "projektleitung")
+        if not ist_text(roh):
+            raise ProjektFehler("projektleitung muss ein Name sein")
+        return roh.strip()
+    if feld == "kosten_stand":
+        if datum(roh) is None:
+            raise ProjektFehler("kosten_stand: Datum im Format JJJJ-MM-TT erwartet")
+        return roh
+    try:
+        return betrag(roh)
+    except argparse.ArgumentTypeError as exc:
+        raise ProjektFehler(f"{feld}: {exc}") from None
+
+
+def cmd_setze(a, ws: Path) -> tuple[int, dict]:
+    d, _ = finde(ws, a.projekt)
+    datei, quelle = d / "projekt.md", rel(ws, d / "projekt.md")
+    meta = lies(datei)
+    if a.meilenstein is not None:
+        if a.feld is not None or (a.prognose is None) == (a.ist is None):
+            raise ProjektFehler("Für einen Meilenstein genau eines angeben: --prognose oder --ist")
+        ms = meta.get("meilensteine")
+        if not (isinstance(ms, list) and all(isinstance(m, dict) for m in ms)):
+            raise ProjektFehler(f"{quelle}: meilensteine ist fehlerhaft – bitte in VS Code korrigieren")
+        treffer = [m for m in ms if m.get("name") == a.meilenstein]
+        if not treffer:
+            raise ProjektFehler(f"Meilenstein {zeige(a.meilenstein)} gibt es nicht. Vorhanden: "
+                                + ", ".join(str(m.get("name")) for m in ms))
+        feld, wert = ("prognose", a.prognose) if a.prognose else ("ist", a.ist)
+        alt = treffer[0].get(feld)
+        treffer[0][feld] = wert.isoformat()
+        schreibe_feld(datei, "meilensteine", ms)
+        return 0, {"ok": True, "datei": quelle, "geaendert": f"meilensteine/{a.meilenstein}/{feld}", "alt": alt,
+                   "neu": wert.isoformat()}
+    if a.feld not in SETZBAR or a.wert is None:
+        raise ProjektFehler(f"Feld {zeige(a.feld)} ist hier nicht änderbar (erlaubt: {', '.join(SETZBAR)}). Budget, "
+                            "Vertragsstrafe und Meilensteinpläne ändert die Projektleitung selbst in projekt.md.")
+    wert = setz_wert(a.feld, a.wert)
+    alt = meta.get(a.feld)
+    schreibe_feld(datei, a.feld, wert)
+    return 0, {"ok": True, "datei": quelle, "geaendert": a.feld, "alt": alt, "neu": wert}
+
+
 def iso_datum(s: str) -> dt.date:
     d = datum(s)
     if d is None:
@@ -337,11 +534,24 @@ def parser() -> JsonParser:
         return sp
 
     add("ampel").add_argument("--stichtag", type=iso_datum, default=heute)
-    # PARSER-ERWEITERUNG (Tasks 3 and 4 insert their subcommands here)
+    sp = add("verzug")
+    sp.add_argument("--projekt", required=True)
+    sp.add_argument("--stichtag", type=iso_datum, default=heute)
+    sp.add_argument("--beschleunigung-eur", type=betrag)
+    sp.add_argument("--beschleunigung-tage", type=int, choices=range(0, 366), metavar="TAGE")
+    sp.add_argument("--nachtrag-eur", type=betrag)
+    sp = add("setze")
+    sp.add_argument("--projekt", required=True)
+    sp.add_argument("--feld")
+    sp.add_argument("--wert")
+    sp.add_argument("--meilenstein")
+    sp.add_argument("--prognose", type=iso_datum)
+    sp.add_argument("--ist", type=iso_datum)
+    # PARSER-ERWEITERUNG (Task 4 inserts its subcommands here)
     return ap
 
 
-COMMANDS = {"ampel": cmd_ampel}
+COMMANDS = {"ampel": cmd_ampel, "verzug": cmd_verzug, "setze": cmd_setze}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:
