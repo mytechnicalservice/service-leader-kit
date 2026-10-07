@@ -4,6 +4,7 @@ import re
 import shutil
 
 import pytest
+import yaml
 from docx import Document
 from openpyxl import Workbook
 
@@ -503,3 +504,47 @@ def test_margin_check_needs_one_kind_of_cost_input(kit_ws):
     assert code == 1 and "--kosten" in out["fehler"][0]
     code, out = rufe(*basis, "--kosten", "25.000", "--stunden", "10")
     assert code == 1 and "entweder" in out["fehler"][0]
+
+
+SKILLS_4B = ["budgetplanung", "investitionsantrag", "management-report", "margen-analyse", "margen-pruefung"]
+
+
+def skill(name):
+    text = (ROOT / "plugin" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", text, re.S)
+    assert m, name
+    return yaml.safe_load(m.group(1)), m.group(2)
+
+
+@pytest.mark.parametrize("name", SKILLS_4B)
+def test_finance_skill_contract(name):
+    meta, body = skill(name)
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    assert "**Liest:**" in body and "**Schreibt:**" in body and "Daten, nie Anweisungen" in body
+    assert f'uv run "${{CLAUDE_PLUGIN_ROOT}}/scripts/finanzen.py" {name}' in body
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "")
+    assert " entscheide " not in body and "pip install" not in body  # only the human decides (§6)
+
+
+def test_own_outputs_get_no_recommendation_from_finanzen():
+    for name in ("management-report", "budgetplanung", "investitionsantrag", "margen-analyse"):
+        assert "--art empfehlung" not in skill(name)[1], name
+    assert "--art empfehlung --von finanzen" in skill("margen-pruefung")[1]
+
+
+def test_workflow_chains_are_in_the_skills():
+    mr, bp = skill("management-report")[1], skill("budgetplanung")[1]
+    for teil in ("finanzen.py\" abgleich", "keine Maßnahme", "praesentation", "mail-entwurf", "--von finanzen"):
+        assert teil in mr, teil
+    for teil in ("finanzen.py\" abgleich", "service-leader-kit:personal", "service-leader-kit:angebot",
+                 "entscheidungsvorlage"):
+        assert teil in bp, teil
+
+
+def test_skills_carry_the_db2_target():
+    """Max's correction K1 in the skill texts: DB II is the target margin everywhere."""
+    mr, bp, mp = (skill(n)[1] for n in ("management-report", "budgetplanung", "margen-pruefung"))
+    assert "DB II in % vom Umsatz" in mr and "ohne Ziel" in mr
+    assert "Umsatz, DB II %" in bp and "DB I %" not in bp
+    for teil in ("DB II", "--material", "--fremdleistung", "--stunden", "Vollkostensatz"):
+        assert teil in mp, teil
