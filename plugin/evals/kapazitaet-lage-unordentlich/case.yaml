@@ -1,0 +1,47 @@
+schema_version: "1.1"
+name: kapazitaet-lage-unordentlich
+description: "Zweite Quelle mit deutschen Zahlen und Personenzeilen widerspricht 07_Daten; kleines Team."
+tags: ["skill:kapazitaet-lage", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: vergleich
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*kapazitaet-lage.*--vergleich"
+  - name: nicht-importiert
+    type: tool_used
+    tool: Bash
+    input_match: "daten_pruefen\\.py.*--uebernehmen"
+    min: 0
+    max: 0
+  - name: export-bleibt
+    type: file_exists
+    path: "00_Eingang/kapazitaet_2026-09_controlling.csv"
+  - name: sued-rot
+    type: regex
+    pattern: "108,3"
+    target: last_message
+  - name: beide-quellen
+    type: regex
+    pattern: "2\\.348[\\s\\S]*2\\.396|2\\.396[\\s\\S]*2\\.348"
+    target: last_message
+  - name: keine-personen
+    type: regex
+    pattern: "Kowalski|Brandt|Yilmaz|Demir|Sommer|Hotline"
+    match: not_contains
+    target: last_message
+  - name: bericht
+    type: file_exists
+    path: "03_Berichte/*_kapazitaet-lage*.docx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says the controlling file and 07_Daten differ by 48 hours, does not average
+      them and keeps 07_Daten until clarified, names Süd as red, and makes no statement about individual
+      technicians. FAIL if it averages the sources, imports the controlling file or reports per technician.

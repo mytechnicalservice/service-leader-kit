@@ -1,0 +1,7 @@
+Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-260901,Hansa Pack AG,Anlage 2,Reparatur,2026-09-02,2026-09-03,abgeschlossen,16.0,2400.0,1500.0,Nord,auftraege_2026-09.xlsx,Tabelle1,2
+SA-260902,Müller GmbH,Anlage 4,Reparatur,2026-09-03,2026-09-04,abgeschlossen,8.0,1100.0,650.0,Süd,auftraege_2026-09.xlsx,Tabelle1,3
+SA-260903,Weber Kunststofftechnik,Anlage 1,Wartung,2026-09-10,,in Arbeit,6.0,0.0,0.0,Süd,auftraege_2026-09.xlsx,Tabelle1,4
+SA-260904,Hansa Pack AG,Anlage 1,Wartung,2026-09-28,,offen,8.0,0.0,0.0,Nord,auftraege_2026-09.xlsx,Tabelle1,5
+SA-260905,Alpen Getränke AG,Anlage 3,Inbetriebnahme,2026-09-15,2026-09-18,abgeschlossen,24.0,3100.0,2000.0,West,auftraege_2026-09.xlsx,Tabelle1,6
+SA-260906,Nordmetall GmbH,Anlage 2,Reparatur,2026-09-21,,offen,4.0,0.0,0.0,Hotline,auftraege_2026-09.xlsx,Tabelle1,7

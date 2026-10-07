@@ -1,0 +1,5 @@
+Monat,Team,Techniker_Anzahl,Soll_Stunden,Ist_Stunden,_quelle_datei,_quelle_blatt,_quelle_zeile
+2026-07,Nord,6.0,900.0,810.0,kapazitaet_2026-07.xlsx,Tabelle1,2
+2026-07,Süd,5.0,750.0,690.0,kapazitaet_2026-07.xlsx,Tabelle1,3
+2026-07,West,4.0,600.0,474.0,kapazitaet_2026-07.xlsx,Tabelle1,4
+2026-07,Hotline,2.0,300.0,270.0,kapazitaet_2026-07.xlsx,Tabelle1,5

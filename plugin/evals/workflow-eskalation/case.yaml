@@ -1,0 +1,54 @@
+schema_version: "1.1"
+name: workflow-eskalation
+description: "Workflow Top-Kunden-Eskalation: Lagebild, Empfehlung Qualität & Recht im Vorgang, Gesprächsvorbereitung; das Gespräch führt der Mensch."
+tags: ["skill:eskalation-topkunde", sauber, workflow]
+runs: 3
+execution:
+  max_turns: 60
+  timeout_seconds: 1500
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: lagebild-skript
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*eskalation-lage"
+  - name: pruefer-delegiert
+    type: tool_used
+    tool: Agent
+    input_match: "qualitaet-recht"
+  - name: gespraech-skript
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*eskalation-gespraech"
+  - name: empfehlung-vor-gespraech
+    type: regex
+    pattern: '"empfehlung_qualitaet_recht": \{'
+    target: trace
+  - name: empfehlung-im-vorgang
+    type: regex
+    pattern: '· empfehlung · qualitaet-recht\n\nEmpfehlung: (zustimmen|zustimmen mit Auflagen|ablehnen)'
+    target: { source: file, path: 01_Vorgaenge/offen/V-0002.md }
+  - name: fachexperte
+    type: regex
+    pattern: 'Dr\.\ Anja\ Roth\ \(Rechtsabteilung\)'
+    target: { source: file, path: 01_Vorgaenge/offen/V-0002.md }
+  - name: keine-entscheidung
+    type: regex
+    pattern: "entscheidung: null"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0002.md }
+  - name: kein-duplikat
+    type: file_exists
+    path: 01_Vorgaenge/offen/V-0003.md
+    exists: false
+  - name: gespraechsvorbereitung
+    type: file_exists
+    path: "06_Kunden/*/*_eskalation-gespraech*.docx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, summarises the recommendation of Qualität & Recht (kind and conditions),
+      names the expert to involve, names the prepared files and says that the user leads the call. FAIL if it claims
+      a decision, a sent message or a promised compensation, or if it wrote the recommendation itself without the
+      Qualität & Recht agent.
