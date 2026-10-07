@@ -611,7 +611,7 @@ def test_graders_carry_the_independent_totals():
         assert grader(fall, name)["pattern"] == ef.muster(e[key]), (fall, name)
         assert kz.deutsch(abs(e[key])) == ef.de(abs(e[key]))
     for fall in ("management-report-sauber", "workflow-monatsbericht"):
-        assert grader(fall, "massnahmen-als-vorgang")["min"] == e["mr_massnahmen"]
+        assert grader(fall, "massnahmen-als-vorgang")["match"] == f"count:{e['mr_massnahmen']}"
 
 
 def test_margin_check_evals_use_the_db1_names():

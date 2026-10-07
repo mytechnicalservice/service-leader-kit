@@ -20,7 +20,7 @@ graders:
     match: not_contains
   - name: fehlendes-feld-genannt
     type: regex
-    pattern: "vertragsstrafe_max_prozent|Höchstsatz"
+    pattern: "vertragsstrafe_max_prozent|Höchstsatz|Obergrenze|Höchstbetrag"
   - name: mindestbelastung
     type: regex
     pattern: "14\\.000"

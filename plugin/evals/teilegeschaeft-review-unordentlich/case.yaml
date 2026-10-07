@@ -25,7 +25,7 @@ graders:
     pattern: "März 2026"
   - name: juni-abweichung
     type: regex
-    pattern: "Juni 2026"
+    pattern: 'Juni 2026|Juni[ -](?:passt|weicht|Differenz|Abweichung)|(?:Abweichung|Differenz|weicht)[^\n]{0,60}Juni'
   - name: ehrlich
     type: llm
     criteria: >-

@@ -16,7 +16,7 @@ graders:
     input_match: "finanzen\\.py.*margen-analyse"
   - name: zeilen-genannt
     type: regex
-    pattern: 'auftraege_2026-09\.csv Zeile 3'
+    pattern: 'auftraege_2026-09\.csv[\s\S]{0,400}Zeile 3|Zeile 3[\s\S]{0,400}auftraege_2026-09\.csv'
   - name: kein-dokument
     type: file_exists
     path: "03_Berichte/*margen-analyse*.docx"

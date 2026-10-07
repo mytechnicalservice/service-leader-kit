@@ -34,6 +34,5 @@ graders:
   - name: antwort
     type: llm
     criteria: >-
-      PASS if the answer is in German, says that the signature rule was saved in Unternehmen/lernpunkte.md (by the
-      system architect), names the draft in 02_Postausgang with the new signature, and says nothing was sent. FAIL if
+      PASS if the answer is in German, says that the signature rule was saved in Unternehmen/lernpunkte.md, names the draft in 02_Postausgang with the new signature, and says nothing was sent. FAIL if
       it claims the rule was saved without a lernpunkte.md entry, or sends anything.

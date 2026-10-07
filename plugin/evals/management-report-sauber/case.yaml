@@ -24,11 +24,17 @@ graders:
   - name: umsatz
     type: regex
     pattern: '(?<![\d.,])436\.019(?!\d)'
-  - name: massnahmen-als-vorgang
+  - name: massnahmen-skript
     type: tool_used
     tool: Bash
     input_match: "vorgang\\.py.*neu.*--von finanzen"
-    min: 2
+  # Counts the new case files, not the Bash calls (several cases may be created in one call).
+  - name: massnahmen-als-vorgang
+    type: regex
+    pattern: "01_Vorgaenge/offen/V-\\d{4}\\.md$"
+    flags: m
+    match: "count:2"
+    target: files
   - name: keine-selbst-empfehlung
     type: regex
     pattern: "· empfehlung · finanzen"

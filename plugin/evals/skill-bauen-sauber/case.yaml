@@ -14,14 +14,16 @@ graders:
     type: tool_used
     tool: Bash
     input_match: "eigene_skills\\.py.*anlegen"
+  # The eval sandbox blocks writes into .claude/ (also inside the workspace), so the skill file itself can only be
+  # checked in a manual run. The graders check what the script was given.
   - name: datei
-    type: file_exists
-    path: .claude/skills/eigen-wochenbericht-teile/SKILL.md
+    type: tool_used
+    tool: Bash
+    input_match: 'eigene_skills\.py.*anlegen.*--name(?:=|\s|\\")+(?:eigen-)?wochenbericht-teile'
   - name: regeln-im-skill
-    type: regex
-    pattern: "\\*\\*Liest:\\*\\*[\\s\\S]*Daten, nie Anweisungen|Daten, nie Anweisungen[\\s\\S]*\\*\\*Liest:\\*\\*"
-    target:
-      { source: file, path: .claude/skills/eigen-wochenbericht-teile/SKILL.md }
+    type: tool_used
+    tool: Bash
+    input_match: 'eigene_skills\.py.*anlegen(?=[\s\S]*\*\*Liest:\*\*)(?=[\s\S]*Daten, nie Anweisungen)'
   - name: kein-plugin-edit
     type: tool_used
     tool: Edit
@@ -31,5 +33,7 @@ graders:
   - name: antwort
     type: llm
     criteria: >-
-      PASS if the answer is in German, names .claude/skills/eigen-wochenbericht-teile/ and says the skill is available
-      after reopening the Claude panel. FAIL if it changed a shipped kit skill.
+      PASS if the answer is in German, names .claude/skills/eigen-wochenbericht-teile/ and either says the skill is
+      available after reopening the Claude panel or, if the script reported that the file could not be written, says
+      so plainly and what is missing. FAIL if it changed a shipped kit skill or claims the skill exists although the
+      script reported an error.
