@@ -436,6 +436,140 @@ def quellenvergleich(r: dict, b: dict) -> list[dict]:
     return out
 
 
+# ---------- second source and reconciliation ----------
+
+SUMMENSPALTE = {"ergebnis": "Ist_EUR", "auftraege": "Umsatz_EUR", "kapazitaet": "Ist_Stunden"}
+
+
+def zweitquelle(ws: Path, datei: str, monat: str, r: dict) -> list[dict]:
+    """A second P&L export for the month, read like daten-pruefen but never imported; differences are listed."""
+    pfad = Path(datei) if Path(datei).is_absolute() else ws / datei
+    rel = pfad.resolve().relative_to(ws.resolve()).as_posix() if pfad.resolve().is_relative_to(ws.resolve()) else pfad.name
+    tpl = json.loads((dp.VORLAGEN / "ergebnis.json").read_text(encoding="utf-8"))
+    try:
+        _, rows, kopf, header, mapping, konflikte, _ = dp.kopf_finden(
+            dp.lese(pfad), tpl, {}, dp.load_zuordnung(ws).get("ergebnis", {}))
+    except dp.ImportFehler as exc:
+        raise FinanzFehler(f"Zweitquelle {rel}: {exc}") from exc
+    idx = {t: header.index(h) for h, t in mapping.items()}
+    fehlt = [f"Spalte '{s}' fehlt" for s in ("Monat", "Position", "Ist_EUR") if s not in idx]
+    if konflikte or fehlt:
+        raise FinanzFehler(f"Zweitquelle {rel}: " + "; ".join(konflikte + fehlt))
+    werte: dict[str, list[tuple[int, float]]] = {}
+    for nr, raw in enumerate(rows[kopf + 1:], start=kopf + 2):
+        if all(dp.leer(c) for c in raw) or any(isinstance(c, str) and dp.SUMMENZEILE.match(c) for c in raw):
+            continue
+        try:
+            m, pos, ist = dp.monat(raw[idx["Monat"]]), str(raw[idx["Position"]]).strip(), zahl(raw[idx["Ist_EUR"]])
+        except (ValueError, IndexError) as exc:
+            raise FinanzFehler(f"Zweitquelle {rel}, Zeile {nr}: nicht lesbar") from exc
+        if m == monat:
+            werte.setdefault(pos, []).append((nr, ist))
+    eigene = {p["position"]: p for p in r["positionen"]}
+    out = []
+    for pos in dict.fromkeys([*eigene, *werte]):
+        a_, b_ = eigene.get(pos), werte.get(pos)
+        bb = None
+        if b_ is not None:
+            bb = round(sum(v for _, v in b_), 2)
+            bb = bb if klasse(pos) == "umsatz" else abs(bb)
+        if a_ and bb is not None and abs(a_["ist"]["betrag"] - bb) < 0.005:
+            continue
+        bq = [f"{rel} Zeilen {min(n for n, _ in b_)}–{max(n for n, _ in b_)}"] if b_ else []
+        out.append({"position": pos, "uebernommen": a_["ist"] if a_ else None,
+                    "zweitquelle": w(f"{pos} laut {pfad.name}", bb, bq) if bb is not None else None,
+                    "differenz": w(f"{pos} Differenz der Quellen", bb - a_["ist"]["betrag"], quellen(a_["ist"]) + bq,
+                                   "Zweitquelle − geprüfte Daten") if a_ and bb is not None else None,
+                    "hinweis": "Quellen widersprechen sich. Der Bericht verwendet die geprüften Daten aus 07_Daten; "
+                               "nichts wird gemittelt. Bitte klären, welche Zahl gilt."})
+    return out
+
+
+def nachrechnen(ws: Path, p: dict, cache: dict) -> float:
+    """Recomputes one number from the cited CSV rows with the csv module (not kennzahlen)."""
+    total = 0.0
+    for datei, nummern in p["teile"].items():
+        if datei not in cache:
+            pfad = ws / datei
+            if not pfad.is_file():
+                raise FinanzFehler(f"{datei} fehlt – Zahl '{p['name']}' nicht nachprüfbar")
+            with pfad.open(encoding="utf-8-sig", newline="") as fh:
+                cache[datei] = list(csv.DictReader(fh))
+        for n in nummern:
+            if not 1 <= n <= len(cache[datei]):
+                raise FinanzFehler(f"{datei}: Zeile {n} gibt es nicht mehr")
+            z = cache[datei][n - 1]
+            if isinstance(p["spalte"], list):
+                total += (betrag(z[p["spalte"][0]]) or 0) * (betrag(z[p["spalte"][1]]) or 0)
+            else:
+                total += betrag(z[p["spalte"]]) or 0
+    return round(abs(total) if p["kosten"] else total, 2)
+
+
+def original_pruefen(ws: Path, datei: str, daten: list[dict], heute: str) -> tuple[str, str] | None:
+    """daten-pruefen reconciliation: the imported CSV's total as control total of the original export."""
+    m = re.fullmatch(r"(?:.*/)?(\w+?)_(\d{4}-\d{2})\.csv", datei)
+    if not m or m.group(1) not in SUMMENSPALTE:
+        return None
+    vorlage, monat = m.groups()
+    originale = sorted((ws / datei).parent.joinpath("original").glob(f"{vorlage}_{monat}__*"))
+    if not originale:
+        return "hinweis", f"{datei}: kein Original in 07_Daten/original/ – Kontrollsumme nicht prüfbar"
+    soll = round(sum(betrag(z.get(SUMMENSPALTE[vorlage])) or 0 for z in daten), 2)
+    r = dp.pruefe(ws, originale[-1], vorlage, f"{soll:.2f}", [], False, heute)
+    falsch = [x for x in r["meldungen"] if "Kontrollsumme" in x]
+    if falsch:
+        return "abweichung", f"{datei} gegen Original {originale[-1].name}: {falsch[0]}"
+    andere = [x for x in r["meldungen"] if "bereits importiert" not in x]
+    return ("hinweis", f"Original {originale[-1].name} nicht prüfbar: {andere[0]}") if andere else None
+
+
+def dokument_text(pfad: Path) -> str:
+    if not pfad.is_file():
+        raise FinanzFehler(f"Dokument {pfad.name} nicht gefunden")
+    if pfad.suffix.lower() in (".md", ".txt", ".csv"):
+        return pfad.read_text(encoding="utf-8", errors="ignore")
+    try:
+        with zipfile.ZipFile(pfad) as z:
+            xml = " ".join(z.read(n).decode("utf-8", "ignore") for n in z.namelist() if n.endswith(".xml"))
+    except zipfile.BadZipFile as exc:
+        raise FinanzFehler(f"{pfad.name} ist kein Word-, PowerPoint- oder Excel-Dokument") from exc
+    return re.sub(r"<[^>]+>", "", re.sub(r"</(w:p|a:p|c|si|row)>", " ", xml))
+
+
+def zahl_im_text(k: dict, text: str) -> bool:
+    n = 1 if k["anzeige"].endswith("%") else 0
+    formen = {de(k["betrag"], n), de(abs(k["betrag"]), n), f"{k['betrag']:.0f}", f"{k['betrag']:.2f}", f"{k['betrag']:g}"}
+    return any(re.search(rf"(?<![\d.,]){re.escape(f)}(?!\d)", text) for f in formen)
+
+
+def cmd_abgleich(a, ws: Path) -> tuple[int, dict]:
+    try:
+        z = json.loads((ws / a.zahlen).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FinanzFehler(f"Zahlendatei {a.zahlen} nicht lesbar: {exc}") from exc
+    abw, hinweise, cache = [], [], {}
+    for p in z["posten"]:
+        neu = nachrechnen(ws, p, cache)
+        if abs(neu - p["betrag"]) > 0.005:
+            abw.append(f"{p['name']}: im Bericht {de(p['betrag'], 2)}, aus den Daten nachgerechnet {de(neu, 2)}")
+    for datei in sorted(cache):
+        befund = original_pruefen(ws, datei, cache[datei], a.heute)
+        if befund:
+            (abw if befund[0] == "abweichung" else hinweise).append(befund[1])
+    if a.dokument:
+        text = dokument_text(ws / a.dokument)
+        abw += [f"{k['name']} ({k['anzeige']}) steht nicht im Dokument {a.dokument}"
+                for k in z["kernzahlen"] if not zahl_im_text(k, text)]
+    else:
+        hinweise.append("Kein Dokument angegeben – nur die Zahlen wurden geprüft")
+    ok = not abw
+    return (0 if ok else 1), {
+        "ok": ok, "geprueft": len(z["posten"]), "abweichungen": abw, "hinweise": hinweise,
+        "meldung": "Abgleich ohne Abweichung. Jetzt prüft die Leitung Kundendienst (§8 Regel 3)." if ok
+        else "Abgleich mit Abweichungen – so nicht weitergeben."}
+
+
 # ---------- files ----------
 
 def freier_name(ws: Path, ordner: str, stamm: str, endung: str) -> tuple[str, str]:
@@ -471,7 +605,7 @@ def cmd_management_report(a, ws: Path) -> tuple[int, dict]:
     abw, std = abweichungen(ws, r)
     b = betrieb(ws, monat, posten, datenlage)
     kern = kernzahlen(r, ry, defs) + [x for x in (b["auftragseingang"], b["auslastung"]) if x]
-    konflikte: list[dict] = []
+    konflikte = [k for datei in a.zweitquelle for k in zweitquelle(ws, datei, monat, r)]
     dokument, zahlen = freier_name(ws, "03_Berichte", f"{a.heute}_management-report", ".docx")
     ablegen(ws, zahlen, "management-report", a.heute, dokument, posten, kern)
     return 0, {
@@ -503,10 +637,14 @@ def parser() -> JsonParser:
 
     sp = add("management-report")
     sp.add_argument("--monat", required=True)
+    sp.add_argument("--zweitquelle", action="append", default=[])
+    sp = add("abgleich")
+    sp.add_argument("--zahlen", required=True)
+    sp.add_argument("--dokument")
     return ap
 
 
-COMMANDS = {"management-report": cmd_management_report}
+COMMANDS = {"management-report": cmd_management_report, "abgleich": cmd_abgleich}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:

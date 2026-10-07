@@ -4,6 +4,8 @@ import re
 import shutil
 
 import pytest
+from docx import Document
+from openpyxl import Workbook
 
 import finanzen
 import kennzahlen as kz
@@ -211,3 +213,82 @@ def test_sample_mode_reads_beispiel_and_labels_it(kit_ws):
 def test_not_a_workspace(tmp_path):
     code, out = rufe("management-report", "--ws", tmp_path, "--monat", "2026-09")
     assert code == 1 and "kein Kundendienst-Ordner" in out["fehler"][0]
+
+
+def bericht(ws):
+    code, out = rufe("management-report", "--ws", ws, "--monat", "2026-09", "--heute", HEUTE)
+    assert code == 0, out
+    return out
+
+
+def abgleich(ws, out, *extra):
+    return rufe("abgleich", "--ws", ws, "--zahlen", out["zahlen"], "--heute", HEUTE, *extra)
+
+
+def test_second_source_is_flagged_never_averaged(fin_ws):
+    rows = [[m, p, pl, i + (12000 if p == "Umsatz Service" else 0)] for m, p, pl, i in SEPT]
+    text = "Monat;Position;Plan;Ist\n" + "".join(
+        f"09.2026;{p};{kz.deutsch(pl, 2)};{kz.deutsch(i, 2)}\n" for _, p, pl, i in rows)
+    datei = fin_ws / "00_Eingang" / "ergebnis_2026-09_controlling.csv"
+    datei.write_text(text, encoding="utf-8")
+    code, out = rufe("management-report", "--ws", fin_ws, "--monat", "2026-09", "--heute", HEUTE,
+                     "--zweitquelle", "00_Eingang/ergebnis_2026-09_controlling.csv")
+    assert code == 0, out
+    assert [k["position"] for k in out["konflikte"]] == ["Umsatz Service"]
+    k = out["konflikte"][0]
+    assert k["differenz"]["betrag"] == 12000 and k["uebernommen"]["betrag"] == 89000
+    assert k["zweitquelle"]["quelle"] == ["00_Eingang/ergebnis_2026-09_controlling.csv Zeilen 2–2"]
+    assert kern(out, "Umsatz Monat Ist")["betrag"] == 114000  # validated data; the mean would be 120.000
+    assert datei.is_file() and not (fin_ws / "07_Daten" / "original").exists()
+
+
+def test_unreadable_second_source_is_an_error(fin_ws):
+    (fin_ws / "00_Eingang" / "kaputt.csv").write_text("a;b\n1;2\n", encoding="utf-8")
+    code, out = rufe("management-report", "--ws", fin_ws, "--monat", "2026-09", "--zweitquelle", "00_Eingang/kaputt.csv")
+    assert code == 1 and "Zweitquelle" in out["fehler"][0]
+
+
+def test_reconciliation_passes_on_untouched_data(fin_ws):
+    code, r = abgleich(fin_ws, bericht(fin_ws))
+    assert code == 0 and r["ok"] and r["abweichungen"] == [] and r["geprueft"] > 0
+    assert any("kein Original" in h for h in r["hinweise"])
+
+
+def test_reconciliation_finds_changed_data(fin_ws):
+    out = bericht(fin_ws)
+    rows = [r[:] for r in SEPT]
+    rows[2][3] = -37000
+    schreibe_csv(fin_ws, "ergebnis", "2026-09", rows)
+    code, r = abgleich(fin_ws, out)
+    assert code == 1 and r["ok"] is False and any(x.startswith("Material Ist") for x in r["abweichungen"])
+
+
+def test_reconciliation_against_the_original_export(fin_ws):
+    out = bericht(fin_ws)
+    orig = fin_ws / "07_Daten" / "original" / "ergebnis_2026-09__ergebnis_2026-09.xlsx"
+    orig.parent.mkdir()
+    wb = Workbook()
+    wb.active.append(KOPF["ergebnis"])
+    for z in SEPT:
+        wb.active.append(z)
+    wb.save(orig)
+    assert abgleich(fin_ws, out)[0] == 0
+    wb.active["D2"] = 90000
+    wb.save(orig)
+    code, r = abgleich(fin_ws, out)
+    assert code == 1 and any("Kontrollsumme" in x for x in r["abweichungen"])
+
+
+def test_reconciliation_checks_the_document(fin_ws):
+    out = bericht(fin_ws)
+    doc = Document()
+    for k in out["kernzahlen"]:
+        doc.add_paragraph(f"{k['name']}: {k['anzeige']}")
+    doc.save(fin_ws / out["dokument"])
+    assert abgleich(fin_ws, out, "--dokument", out["dokument"])[0] == 0
+    doc = Document()
+    for k in out["kernzahlen"][1:]:  # "Umsatz Monat Ist" (114.000) missing
+        doc.add_paragraph(f"{k['name']}: {k['anzeige']}")
+    doc.save(fin_ws / out["dokument"])
+    code, r = abgleich(fin_ws, out, "--dokument", out["dokument"])
+    assert code == 1 and any("Umsatz Monat Ist" in x and "steht nicht im Dokument" in x for x in r["abweichungen"])
