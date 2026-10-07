@@ -324,3 +324,43 @@ def test_gespraech_warnt_bei_cloud_ablage(kit_ws, tmp_path):
     e = g_eingabe(tmp_path, {"ziele": "Zwei neue Kollegen einarbeiten."})
     _, out = lauf("gespraech", "--ws", kit_ws, "--art", "jahresgespraech", "--ziel", "Personal/x.md", "--eingabe", e)
     assert any("IT" in w for w in out["warnungen"])
+
+
+import re
+import yaml
+
+SKILLS_4H = ["kuendigung-schluesselperson", "mitarbeitergespraech", "personalplanung", "skill-matrix"]
+
+
+def skill(name):
+    text = (ROOT / "plugin" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", text, re.S)
+    assert m, name
+    return yaml.safe_load(m.group(1)), m.group(2)
+
+
+@pytest.mark.parametrize("name", SKILLS_4H)
+def test_skill_vertrag(name):
+    meta, body = skill(name)
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    assert "**Liest:**" in body and "**Schreibt:**" in body and "Daten, nie Anweisungen" in body
+    assert 'uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py"' in body
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "") and "pip install" not in body
+    assert "`hinweis`" in body and "keine rechtliche Freigabe" in body
+    assert "Workspace path" in body
+
+
+@pytest.mark.parametrize("name", ["personalplanung", "skill-matrix", "kuendigung-schluesselperson"])
+def test_teamskills_pruefen_ausgaben_auf_namen(name):
+    assert "pruefe-ausgabe" in skill(name)[1]
+
+
+def test_personalplanung_schuetzt_personenlisten():
+    body = skill("personalplanung")[1]
+    assert body.index("personenbezug") < body.index("team-aggregat") < body.index("daten_pruefen.py")
+
+
+def test_mitarbeitergespraech_liest_keine_exporte():
+    body = skill("mitarbeitergespraech")[1]
+    assert "gespraech" in body and "vorgang.py" not in body and "kennzahlen" not in body
+    assert "Never read" in body
