@@ -2,6 +2,52 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.2 – 2026-10-07
+
+Korrekturen aus der Eval-Diagnose von 0.2.1.
+
+### Behoben
+
+- **Briefkopf und Master lassen sich wieder verwenden.** Der Schutz von `Unternehmen/` sperrte auch das Kopieren von
+  `Unternehmen/vorlagen/briefkopf.docx` in einen Temp-Ordner, das die Entscheidungsvorlage verlangt. Kopieren *aus*
+  `Unternehmen/vorlagen/` ist jetzt erlaubt; Schreiben, Löschen und Verschieben in `Unternehmen/` bleiben gesperrt
+  (auch über das Kopierziel, eine Umleitung oder einen zweiten Befehl). Die Entscheidungsvorlage kopiert den
+  Briefkopf im Ersatzweg zuerst heraus.
+- **Gesprächsnotizen landen beim richtigen Skill.** „Mach daraus das Protokoll“ geht an `besprechung`, auch wenn der
+  Kunde gerade eskaliert; `eskalation-topkunde` schreibt die Gesprächsnotiz zur Eskalation.
+- **Wochenplanung:** Termine mit Endzeit („10:00 bis 11:00“) behalten die Endzeit, ganztägige Termine heißen nur
+  einmal „ganztägig“.
+- **Personalplanung:** nennt Kosten und Erlös im ersten Jahr je Einstellung und den Hinweis zu Betriebsrat und
+  Datenschutz wörtlich; eine Stundenliste je Techniker wird auf Teamebene verdichtet statt abgelehnt.
+- **Kapazitätslage:** zusammengefasste Kleinteams (unter 3 Technikern) werden nie mit Namen genannt.
+- **Mail-Entwurf:** Fehlen einer Anfrage Angaben (z. B. die Vertragsstufe), entsteht ein Entwurf mit Rückfrage statt
+  eines Abbruchs.
+- **Portfolio-Review** nennt den Auftragsumsatz des Zeitraums; **Budgetplanung** und **Preisliste** fragen nicht
+  noch einmal nach, was der Nutzer schon festgelegt hat (auslaufende Verträge, Marktanpassung in Prozentpunkten).
+
+### Neu
+
+- **Regel „Nie vortäuschen“ in jedem Skill und Agenten:** Fehlt eine Bibliothek, ein Skript oder ein Werkzeug, baut
+  Claude keinen Ersatz (kein Stub, keine Ersatz-Bibliothek), damit eine Prüfung durchläuft, sondern hält an und sagt
+  genau, was fehlt.
+- README: Abschnitt „Was das Kit nicht verhindert“ (Lesen ist nicht geschützt, absichtliche Verschleierung wird nicht
+  erkannt).
+
+### Evals (für Entwickler)
+
+- Evals laufen ohne Internet: `tools/eval_wheels.sh` legt die Bibliotheken (openpyxl, python-docx, python-pptx samt
+  Abhängigkeiten) einmal nach `plugin/evals/_gemeinsam/wheels/` (nicht im Repo, je Rechner bauen); das Scaffold
+  schreibt eine `uv.toml` ohne Paketindex in jeden Lauf und bricht mit Hinweis ab, wenn der Ordner fehlt.
+- Grader, die nie bestehen konnten, korrigiert: „…-bleibt“-Prüfungen auf Dateien aus dem Scaffold prüfen jetzt den
+  Inhalt; `input_match` trifft das maskierte Anführungszeichen und Zeilenumbrüche; `vorgang.py entscheide` trifft nur
+  den Befehl, nicht „entscheidet“ im Text; `max: 0` mit `min: 0`; `flags: i` statt `(?i)`. Tests prüfen alle Fälle
+  auf diese Fehlerklassen.
+- Fälle angepasst: Verbots-Prüfungen auf Aktionen statt auf die gelesene Mail (reklamation-entscheidung,
+  besprechung), Maßnahmen zählen angelegte Vorgänge statt Aufrufe, fünf Prompts ohne erzwungene Rückfrage
+  (workflow-budget, jahresplanung, preisliste-update ×2, mail-triage) bzw. mit Stichtag vor den Terminen
+  (eskalation-nachbereitung), zu enge Muster erweitert (Juni-Abweichung, Datei und Zeile, Obergrenze),
+  skill-bauen-sauber prüft den Skriptaufruf (die Sandbox sperrt `.claude/`).
+
 ## 0.2.1 – 2026-10-07
 
 ### Geändert
