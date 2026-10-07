@@ -8,7 +8,7 @@ from openpyxl import load_workbook
 
 import angebot
 from angebot_fixtures import PREISLISTE_SAUBER, PREISLISTE_UNORDENTLICH, schreibe_preisliste
-from conftest import ROOT
+from conftest import ROOT, runner_env
 
 PLUGIN = ROOT / "plugin"
 FIX = PLUGIN / "evals" / "_angebot"
@@ -422,7 +422,7 @@ def test_reference_agrees_with_the_script_on_the_sample_year(kit_ws):
 
 def test_messy_scaffold_removes_one_month_only(tmp_path):
     import subprocess, os
-    env = {"PATH": os.environ["PATH"], "HOME": str(tmp_path), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+    env = runner_env(tmp_path)
     r = subprocess.run(["/bin/sh", str(EVALS / "portfolio-review-unordentlich" / "scaffold.sh")], cwd=tmp_path,
                        env=env, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stderr

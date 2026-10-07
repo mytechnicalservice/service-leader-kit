@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 import projekte
-from conftest import ROOT
+from conftest import ROOT, runner_env
 
 EVALS = ROOT / "plugin" / "evals"
 STICHTAG = "2026-09-30"
@@ -58,7 +58,7 @@ def fall(tmp_path, name):
     """Builds an eval workspace exactly like the runner: the case's scaffold.sh in an empty folder."""
     ws = tmp_path / "lauf"
     ws.mkdir()
-    env = {"PATH": os.environ["PATH"], "HOME": str(ws), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+    env = runner_env(ws)
     r = subprocess.run(["/bin/sh", str(EVALS / name / "scaffold.sh")], cwd=ws, env=env, capture_output=True,
                        text=True, timeout=120)
     assert r.returncode == 0, r.stderr

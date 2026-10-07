@@ -3,6 +3,9 @@
 set -eu
 SLK_P=$(cd "$(dirname "$0")/../.." && pwd)
 SLK_G="$SLK_P/evals/_gemeinsam"
+# Wheels for offline `uv run` (eval runs have no network and an empty uv cache). Built per machine with
+# tools/eval_wheels.sh; SLK_WHEELS is only for the kit's unit tests (the runner passes no such variable).
+SLK_WHEELS=${SLK_WHEELS:-$SLK_G/wheels}
 if [ ! -f "$SLK_P/.claude-plugin/plugin.json" ]; then
   echo "Scaffold: Plugin nicht gefunden über \$0=$0 – der Runner startet das Skript nicht aus dem Fall-Ordner." >&2
   exit 1
@@ -14,6 +17,13 @@ fi
 # September exports: they are already in 07_Daten/). jahr-unordentlich adds the messy inbox documents: injection
 # mail, scanned offer (instead of the Hydraulik Nord mail) and the controlling report that contradicts 07_Daten/.
 baue() {
+  if ! ls "$SLK_WHEELS"/*.whl >/dev/null 2>&1; then
+    echo "Scaffold: Wheel-Ordner fehlt oder ist leer: $SLK_WHEELS – ohne ihn kann uv run im Eval-Lauf keine" \
+      "Bibliotheken laden. Vor dem Eval-Lauf im Kit-Repo bauen: sh tools/eval_wheels.sh" >&2
+    exit 1
+  fi
+  # uv reads uv.toml from the working directory: install only from the wheel folder, never from the index.
+  printf 'no-index = true\nfind-links = ["%s"]\n' "$SLK_WHEELS" > uv.toml
   cp -R "$SLK_P/vorlagen/arbeitsordner/." .
   mkdir -p 01_Vorgaenge/offen 01_Vorgaenge/erledigt 01_Vorgaenge/_zur-loeschung
   cp "$SLK_P/vorlagen/workspace.gitignore" .gitignore

@@ -3,7 +3,7 @@ import re
 import assistenz
 import pytest
 import yaml
-from conftest import ROOT
+from conftest import ROOT, runner_env
 
 PLUGIN = ROOT / "plugin"
 SKILLS = ["besprechung", "freigabe-queue", "mail-triage", "morgen-briefing", "wochenplanung"]
@@ -57,7 +57,7 @@ FLAGS = {"m": re.M, "i": re.I, "s": re.S}
 
 
 def scaffold(case, ziel):
-    env = {"PATH": os.environ["PATH"], "HOME": str(ziel), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+    env = runner_env(ziel)
     r = subprocess.run(["/bin/sh", str(EVALS / case / "scaffold.sh")], cwd=ziel, env=env, capture_output=True,
                        text=True, timeout=120)
     assert r.returncode == 0, r.stderr

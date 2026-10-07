@@ -5,3 +5,4 @@ _slk-probe/
 __pycache__/
 *.pyc
 plugin/evals/results/
+plugin/evals/_gemeinsam/wheels/

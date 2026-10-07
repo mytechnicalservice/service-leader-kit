@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 import vorgang
-from conftest import KONFIG, ROOT
+from conftest import KONFIG, ROOT, runner_env
 from hookrun import run_lib
 
 EVALS = ROOT / "plugin" / "evals"
@@ -25,8 +25,7 @@ def mit_scaffold():
 
 
 def scaffold(case, ziel, shell="/bin/sh"):
-    # The eval runner's environment (plugin-evals docs): PATH, a temporary HOME, TMPDIR, TERM=dumb.
-    env = {"PATH": os.environ["PATH"], "HOME": str(ziel), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+    env = runner_env(ziel)
     return subprocess.run([shell, str(case / lade(case)["context"]["scaffold_script"])], cwd=ziel, env=env,
                           capture_output=True, text=True, timeout=120)
 
@@ -98,7 +97,7 @@ def jahr_scaffold(tmp_path):
     def bau(datensatz, ziel, shell):
         (case / "scaffold.sh").write_text(f'#!/bin/sh\n. "$(dirname "$0")/../_gemeinsam/arbeitsordner.sh"\nbaue {datensatz}\n',
                                           encoding="utf-8")
-        env = {"PATH": os.environ["PATH"], "HOME": str(ziel), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+        env = runner_env(ziel)
         return subprocess.run([shell, str(case / "scaffold.sh")], cwd=ziel, env=env, capture_output=True, text=True,
                               timeout=120)
     yield bau

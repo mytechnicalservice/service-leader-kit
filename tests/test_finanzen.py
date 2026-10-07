@@ -14,7 +14,7 @@ import erwartet_finanzen as ef
 import finanzen
 import kennzahlen as kz
 import vorgang
-from conftest import ROOT
+from conftest import ROOT, runner_env
 
 KOPF = {
     "ergebnis": ["Monat", "Position", "Plan_EUR", "Ist_EUR"],
@@ -591,7 +591,6 @@ BINDUNG = {("management-report-sauber", "umsatz"): "mr_umsatz_ist",
            ("investitionsantrag-sauber", "kapitalwert"): "inv_kw_sauber",
            ("investitionsantrag-unordentlich", "szenario-a"): "inv_kw_a",
            ("investitionsantrag-unordentlich", "szenario-b"): "inv_kw_b"}
-RUNNER_ENV = {"PATH": os.environ["PATH"], "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
 
 
 def grader(fall, name):
@@ -644,7 +643,7 @@ def test_finanzen_agrees_with_the_independent_totals(kit_ws):
 
 def test_messy_report_scaffold_builds_the_conflict(tmp_path, shell):
     r = subprocess.run([shell, str(EVALS / "management-report-unordentlich" / "scaffold.sh")], cwd=tmp_path,
-                       env=RUNNER_ENV | {"HOME": str(tmp_path)}, capture_output=True, text=True, timeout=120)
+                       env=runner_env(tmp_path), capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stderr
     text = (tmp_path / "00_Eingang" / "ergebnis_2026-09_controlling.csv").read_text(encoding="utf-8")
     assert text.startswith("Monat;Position;Plan;Ist\n")
@@ -656,7 +655,7 @@ def test_messy_report_scaffold_builds_the_conflict(tmp_path, shell):
 
 def test_messy_margin_scaffold_blanks_two_costs(tmp_path, shell):
     r = subprocess.run([shell, str(EVALS / "margen-analyse-unordentlich" / "scaffold.sh")], cwd=tmp_path,
-                       env=RUNNER_ENV | {"HOME": str(tmp_path)}, capture_output=True, text=True, timeout=120)
+                       env=runner_env(tmp_path), capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stderr
     code, out = rufe("margen-analyse", "--ws", tmp_path, "--periode", "2026-07..2026-09", "--vergleich", "2026-04..2026-06")
     assert code == 1 and "auftraege_2026-09.csv Zeile 3" in out["fehler"][0] and "Zeile 7" in out["fehler"][0]
