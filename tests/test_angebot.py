@@ -372,3 +372,48 @@ def test_angebot_skill_contract(name):
     assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "")
     assert "pip install" not in body and "nie überschrieben" in body
     assert "Fehlende oder widersprüchliche Daten" in body
+
+
+import angebot_referenz as ref
+
+EVALS = PLUGIN / "evals"
+FAELLE = [f"{s}-{d}" for s in sorted(SKILLS_4F) for d in ("sauber", "unordentlich")]
+BEISPIEL = PLUGIN / "beispiel"
+
+
+@pytest.mark.parametrize("fall", FAELLE)
+def test_case_exists_without_tokens(fall):
+    text = (EVALS / fall / "case.yaml").read_text(encoding="utf-8")
+    assert "@@" not in text, f"{fall}: Token nicht ersetzt – uv run tests/angebot_referenz.py"
+    assert (EVALS / fall / "prompt.md").read_text(encoding="utf-8").strip()
+
+
+def test_graded_patterns_match_the_expected_values():
+    erwartet = json.loads((EVALS / "erwartet" / "angebot.json").read_text(encoding="utf-8"))
+    for key, (fall, nk) in ref.TOKENS.items():
+        muster = [g["pattern"] for g in yaml.safe_load((EVALS / fall / "case.yaml").read_text(encoding="utf-8"))
+                  ["graders"] if g["type"] == "regex"]
+        assert ref.muster(erwartet[key], nk) in muster, (fall, key)
+
+
+def test_reference_agrees_with_the_script_on_the_sample_year(kit_ws):
+    werte = ref.referenz(BEISPIEL)
+    assert werte["konzept_anlagen_ohne_vertrag"] > 0, "G4: Musterfirma braucht Anlagen ohne Vertrag"
+    port = angebot.portfolio(kit_ws, BEISPIEL, "2026-09", "2026-10-06")
+    p = {x["produkt"]: x for x in port["produkte"]}
+    assert port["umsatz_auftraege"]["betrag"] == pytest.approx(werte["portfolio_umsatz_gesamt"], abs=0.01)
+    assert p["Wartung"]["umsatz"]["betrag"] == pytest.approx(werte["portfolio_umsatz_wartung"], abs=0.01)
+    assert p["Ersatzteile"]["umsatz"]["betrag"] == pytest.approx(werte["portfolio_umsatz_ersatzteile"], abs=0.01)
+    k = angebot.konzept(kit_ws, BEISPIEL, "Verfügbarkeitspaket", "2026-09", ref.KONZEPT_STUFEN, [], None, "2026-10-06")
+    assert k["umsatz_gesamt"]["betrag"] == pytest.approx(werte["konzept_umsatz_gesamt"], abs=0.01)
+    assert k["kostensatz"]["betrag"] == werte["konzept_kostensatz"]
+
+
+def test_messy_scaffold_removes_one_month_only(tmp_path):
+    import subprocess, os
+    env = {"PATH": os.environ["PATH"], "HOME": str(tmp_path), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+    r = subprocess.run(["/bin/sh", str(EVALS / "portfolio-review-unordentlich" / "scaffold.sh")], cwd=tmp_path,
+                       env=env, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr
+    namen = {p.name for p in tmp_path.rglob("auftraege_*.csv")}
+    assert "auftraege_2026-03.csv" not in namen and "auftraege_2026-04.csv" in namen

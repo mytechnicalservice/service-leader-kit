@@ -1,0 +1,42 @@
+schema_version: "1.1"
+name: portfolio-review-sauber
+description: "Portfolio-Review über das Musterjahr."
+tags: ["skill:portfolio-review", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "angebot\\.py.*portfolio.*--bis 2026-09"
+  - name: bericht
+    type: file_exists
+    path: "03_Berichte/*_portfolio-review*.docx"
+  - name: umsatz-auftraege
+    type: regex
+    pattern: "2\\.317\\.715|2\\.317\\.716"
+  - name: umsatz-wartung
+    type: regex
+    pattern: "240\\.857"
+  - name: umsatz-ersatzteile
+    type: regex
+    pattern: "1\\.843\\.622"
+  - name: kein-vorgang
+    type: file_exists
+    path: "01_Vorgaenge/offen/V-*.md"
+    exists: false
+  - name: ziel-db2
+    type: regex
+    pattern: "DB II-Marge"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, gives each product one of halten / sanieren / ausbauen / auslaufen prüfen
+      (or unklar) with a reason, says spare-parts margin cannot be computed for lack of cost data, names the target
+      as the DB II margin target from Unternehmen/kpi-ziele.md ("Ziel: DB II-Marge", 32 %), not the DB I margin, and offers cases instead of creating them.
+      FAIL if it states a number not in the script output or extrapolates.

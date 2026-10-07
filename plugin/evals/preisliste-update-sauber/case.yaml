@@ -1,0 +1,45 @@
+schema_version: "1.1"
+name: preisliste-update-sauber
+description: "Jahres-Preisupdate mit Lohn-, Material- und Kostenindex."
+tags: ["skill:preisliste-update", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-geschrieben
+    type: tool_used
+    tool: Bash
+    input_match: "angebot\\.py.*preisliste.*--schreiben"
+  - name: neue-liste
+    type: file_exists
+    path: 04_Angebote/preisliste_2027.xlsx
+  - name: alte-liste-bleibt
+    type: file_exists
+    path: 04_Angebote/preisliste_2026.xlsx
+  - name: memo
+    type: file_exists
+    path: "04_Angebote/*_preisliste-update*.docx"
+  - name: vertrag-basic
+    type: regex
+    pattern: "3\\.010"
+  - name: schulung
+    type: regex
+    pattern: "1\\.300"
+  - name: freigabe-vorgang
+    type: regex
+    pattern: "typ: \"freigabe\"[\\s\\S]*verantwortlich: \"Max Leiter\"[\\s\\S]*entscheidung: null"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: empfehlung-finanzen
+    type: regex
+    pattern: "### \\d{4}-\\d{2}-\\d{2} · empfehlung · finanzen"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, states the change per category (Stundensätze 4 %, Verträge 3,9 %), names the
+      new file 04_Angebote/preisliste_2027.xlsx, says the old list is unchanged and that the new list applies only
+      after the user's approval. FAIL if it claims anything was sent or decided.
