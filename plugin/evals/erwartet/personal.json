@@ -1,0 +1,22 @@
+{
+  "stunden_nord": 1650,
+  "stunden_sued": 1800,
+  "stunden_west": 1140,
+  "jahresbedarf_sued": 7200,
+  "fte_bedarf": { "Nord": 5.5, "Süd": 6.0, "West": 3.8 },
+  "luecke_gesamt": 0.3,
+  "einstellungen": { "Nord": 0, "Süd": 1, "West": 0 },
+  "erloes_jahr1_sued": 131250,
+  "kosten_jahr1_sued": 100000,
+  "db_folgejahr_sued": 65000,
+  "amortisation_monat_sued": 7,
+  "ohne_team_stunden": 60,
+  "matrix_stufe_c": 2,
+  "matrix_stunden_sued_retrofit": 720,
+  "matrix_stunden_west_reparatur": 540,
+  "abgang_umsatz_nicht_abgedeckt_jahr": 360000,
+  "abgang_umsatz_einzelwissen_jahr": 300000,
+  "abgang_anlagen": 3,
+  "aggregat_sued": "2026-10,Süd,5,750,784",
+  "aggregat_ist_summe": 2086
+}

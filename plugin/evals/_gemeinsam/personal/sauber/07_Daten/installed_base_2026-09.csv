@@ -1,0 +1,10 @@
+﻿Kunde,Anlage,Maschinentyp,Baujahr,Vertrag,Vertragsende,_quelle_datei,_quelle_blatt,_quelle_zeile
+Müller GmbH,Anlage 1,MM-400,2016,ja,2027-03-31,installed_base_2026-09.xlsx,Tabelle1,2
+Müller GmbH,Anlage 2,MM-600,2021,nein,,installed_base_2026-09.xlsx,Tabelle1,3
+Hansa Pack AG,Anlage 2,MM-600,2019,ja,2027-06-30,installed_base_2026-09.xlsx,Tabelle1,4
+Nordmetall KG,Anlage 1,MM-400,2014,ja,2026-12-31,installed_base_2026-09.xlsx,Tabelle1,5
+Alpenform AG,Anlage 1,MM-800 Retrofit,2012,ja,2027-09-30,installed_base_2026-09.xlsx,Tabelle1,6
+Alpenform AG,Anlage 2,MM-800 Retrofit,2013,ja,2027-09-30,installed_base_2026-09.xlsx,Tabelle1,7
+Bavaria Druck GmbH,Anlage 1,MM-600,2020,nein,,installed_base_2026-09.xlsx,Tabelle1,8
+Rheinstahl AG,Anlage 1,MM-800 Retrofit,2015,ja,2027-01-31,installed_base_2026-09.xlsx,Tabelle1,9
+Rheinstahl AG,Anlage 2,MM-400,2018,nein,,installed_base_2026-09.xlsx,Tabelle1,10

@@ -1,0 +1,10 @@
+﻿Team,Maschinentyp,Auftragsart,Qualifiziert_Anzahl,In_Schulung_Anzahl,Ausbilder_Anzahl,_quelle_datei,_quelle_blatt,_quelle_zeile
+Nord,MM-400,alle,4,1,1,qualifikation_2026-09.xlsx,Tabelle1,2
+Nord,MM-600,alle,2,0,0,qualifikation_2026-09.xlsx,Tabelle1,3
+Nord,MM-800 Retrofit,alle,0,0,0,qualifikation_2026-09.xlsx,Tabelle1,4
+Süd,MM-800 Retrofit,Retrofit,1,1,0,qualifikation_2026-09.xlsx,Tabelle1,5
+Süd,MM-800 Retrofit,Reparatur,2,0,1,qualifikation_2026-09.xlsx,Tabelle1,6
+Süd,MM-600,alle,3,0,1,qualifikation_2026-09.xlsx,Tabelle1,7
+West,MM-800 Retrofit,Reparatur,1,0,0,qualifikation_2026-09.xlsx,Tabelle1,8
+West,MM-400,alle,3,0,1,qualifikation_2026-09.xlsx,Tabelle1,9
+West,MM-600,alle,2,1,0,qualifikation_2026-09.xlsx,Tabelle1,10

@@ -1,0 +1,4 @@
+﻿Monat,Team,Techniker_Anzahl,Soll_Stunden,Ist_Stunden,_quelle_datei,_quelle_blatt,_quelle_zeile
+2026-09,Nord,6,900,870,kapazitaet_2026-09.xlsx,Tabelle1,2
+2026-09,Süd,5,750,790,kapazitaet_2026-09.xlsx,Tabelle1,3
+2026-09,West,4,600,505,kapazitaet_2026-09.xlsx,Tabelle1,4
