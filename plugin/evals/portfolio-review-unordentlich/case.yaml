@@ -1,0 +1,28 @@
+schema_version: "1.1"
+name: portfolio-review-unordentlich
+description: "Fehlender Monat stoppt den Review."
+tags: ["skill:portfolio-review", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "angebot\\.py.*portfolio"
+  - name: monat-genannt
+    type: regex
+    pattern: "März 2026|2026-03"
+  - name: kein-bericht
+    type: file_exists
+    path: "03_Berichte/*portfolio-review*"
+    exists: false
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says the order data for March 2026 is missing, offers to import it (daten-pruefen)
+      and gives no revenue, margin or growth figures for the period. FAIL if it estimates, averages or fills the month.
