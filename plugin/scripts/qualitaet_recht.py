@@ -502,3 +502,159 @@ def vertragspruefung(ws: Path, datei: str, kunde: str | None = None) -> dict:
                            "Nachverhandlungsvorschläge", "Vom Skript nicht bewertete Klauseln", "Fachexperten",
                            "Hinweis: keine Rechtsberatung"],
             "hinweise": hinweise, "meldungen": meldungen, "rechtshinweis": KEIN_RAT}
+
+
+# ---------- audit-vorbereitung ----------
+
+AUSSERHALB = ["Messmittelüberwachung und Kalibrierung", "Unterweisungsnachweise Arbeitssicherheit",
+              "QM-Handbuch und Prozessbeschreibungen", "Internes Auditprogramm und frühere Auditberichte"]
+
+
+def _glob(ws: Path, *muster: str) -> list[str]:
+    return sorted(p.relative_to(ws).as_posix() for m in muster for p in ws.glob(m))
+
+
+def _faelle(ws: Path) -> tuple[list[dict], list[dict]]:
+    gut, defekt = [], []
+    for o in ("offen", "erledigt"):
+        for p in sorted((vorgang.base(ws) / o).glob("V-*.md")):
+            errs, meta, _ = vorgang.datei_fehler(ws, p)
+            if errs:
+                defekt.append({"datei": vorgang.rel(ws, p), "fehler": errs})
+            else:
+                gut.append(meta | {"_ordner": o})
+    return gut, defekt
+
+
+def _stufe(da: int, soll: int) -> str:
+    return "vorhanden" if soll and da == soll else ("teilweise" if da else "fehlt")
+
+
+def _datei_nachweis(ws: Path, nr: str, titel: str, *muster: str) -> dict:
+    gefunden = _glob(ws, *muster)
+    return {"nr": nr, "nachweis": titel, "status": "vorhanden" if gefunden else "fehlt",
+            "fundstelle": ", ".join(gefunden) or ", ".join(sorted({m.split("/")[0] for m in muster}))}
+
+
+def _nachweise(ws: Path, ordner: Path, defs: dict, faelle: list[dict]) -> list[dict]:
+    rekl = [f for f in faelle if f["typ"] == "reklamation"]
+    entschieden = [f for f in rekl if f["entscheidung"]]
+    fx = teil(defs, "fachexperten")
+    benannt = [r for r in ROLLEN if fx.get(r)]
+    kunden = sorted({b["Kunde"] for b in lade_sicher(ordner, "installed_base", [])
+                     if str(b.get("Vertrag")).casefold() == "ja"})
+    vertraege = [k for k in kunden if (ws / "06_Kunden" / k / "vertrag.md").is_file()]
+    auf = ws / "Unternehmen" / "aufbewahrung.md"
+    bestaetigt = auf.is_file() and re.search(r"^bestaetigt:\s*ja\s*$", auf.read_text(encoding="utf-8"), re.M)
+
+    def n(nr, titel, status, fund):
+        return {"nr": nr, "nachweis": titel, "status": status, "fundstelle": fund}
+
+    return [
+        n("N1", "Reklamationen mit dokumentierter Entscheidung", _stufe(len(entschieden), len(rekl)),
+          f"01_Vorgaenge: {len(entschieden)} von {len(rekl)} Reklamationen entschieden"),
+        _datei_nachweis(ws, "N2", "Wiederholfehler-Bericht an die Konstruktion", "03_Berichte/*wiederholfehler-bericht*"),
+        _datei_nachweis(ws, "N3", "Management-Bericht (Managementbewertung)", "03_Berichte/*management-report*"),
+        n("N4", "Kennzahlen und Ziele festgelegt",
+          "fehlt" if teil(defs, "kpi-ziele").get("standard", True) else "vorhanden", "Unternehmen/kpi-ziele.md"),
+        n("N5", "Freigabegrenzen festgelegt",
+          "fehlt" if teil(defs, "freigabegrenzen").get("standard", True) else "vorhanden",
+          "Unternehmen/freigabegrenzen.md"),
+        n("N6", "Fachexperten benannt", _stufe(len(benannt), len(ROLLEN)),
+          f"Unternehmen/fachexperten.md: {len(benannt)} von {len(ROLLEN)} Rollen"),
+        n("N7", "Verträge der Vertragskunden abgelegt", _stufe(len(vertraege), len(kunden)),
+          f"06_Kunden: {len(vertraege)} von {len(kunden)} Vertragskunden"),
+        n("N8", "Aufbewahrungsfrist bestätigt", "vorhanden" if bestaetigt else "fehlt", "Unternehmen/aufbewahrung.md"),
+        _datei_nachweis(ws, "N9", "Qualifikation (Skill-Matrix, nur Teamebene)", "03_Berichte/*skill-matrix*"),
+        _datei_nachweis(ws, "N10", "Lieferantenbewertung", "04_Angebote/*lieferanten-entscheidung*",
+                        "03_Berichte/*teilegeschaeft-review*"),
+    ]
+
+
+def audit_vorbereitung(ws: Path, heute: dt.date, norm: str = "ISO 9001") -> dict:
+    ordner, hinweise = quelle(ws)
+    hinweise.append(f"Nachweisliste N1–N10: {STANDARD}")
+    meldungen: list[str] = []
+    faelle, defekt = _faelle(ws)
+    meldungen += [f"{d['datei']} ist beschädigt – vor dem Audit in VS Code reparieren." for d in defekt]
+    offen = [f for f in faelle if f["_ordner"] == "offen"]
+    ueber = [f for f in offen if datum(f["faellig"]) and datum(f["faellig"]) < heute]
+    feststellungen = [{"nr": f["nr"], "titel": f["titel"], "typ": f["typ"], "faellig": f["faellig"],
+                       "ueberfaellig": f in ueber} for f in offen if f["typ"] == "reklamation" or f in ueber]
+    try:
+        wf = [b for b in wiederholfehler(ws)["befunde"] if b["stufe"] == "Wiederholfehler"]
+    except QRFehler as exc:
+        wf = []
+        meldungen.append(str(exc))
+    nachweise = _nachweise(ws, ordner, kz.definitionen(ordner), faelle)
+    werte = [kz.wert("Offene Reklamationen", len([f for f in offen if f["typ"] == "reklamation"]),
+                     ["01_Vorgaenge/offen"], einheit="Vorgänge"),
+             kz.wert("Überfällige offene Vorgänge", len(ueber), ["01_Vorgaenge/offen"], einheit="Vorgänge"),
+             kz.wert(f"Nachweise vorhanden (von {len(nachweise)})",
+                     len([x for x in nachweise if x["status"] == "vorhanden"]), ["Nachweisliste N1–N10"],
+                     einheit="Nachweise")]
+    return {"ok": True, "norm": norm, "nachweise": nachweise, "ausserhalb_des_kits": AUSSERHALB,
+            "feststellungen": feststellungen, "wiederholfehler": wf, "defekte_vorgaenge": defekt, "werte": werte,
+            "auffaellige_anweisungen": eingang_anweisungen(ws),
+            "ausgabe_datei": f"03_Berichte/{heute.isoformat()}_audit-vorbereitung.xlsx",
+            "gliederung": ["Blatt Nachweise (N1–N10, Status, Fundstelle)", "Blatt Offene Punkte",
+                           "Blatt Wiederholfehler", "Blatt Außerhalb des Kits"],
+            "hinweise": hinweise, "meldungen": meldungen}
+
+
+# ---------- CLI ----------
+
+def parser() -> JsonParser:
+    ap = JsonParser(prog="qualitaet_recht")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    def add(name: str):
+        sp = sub.add_parser(name)
+        sp.add_argument("--ws", required=True)
+        return sp
+
+    r = add("reklamation")
+    r.add_argument("--nr", required=True)
+    r.add_argument("--ursache", choices=["gleich", "anders", "unklar"], default="unklar")
+    r.add_argument("--ausschluss", choices=sorted(AUSSCHLUESSE), default="keiner")
+    r.add_argument("--bezug-datum", dest="bezug")
+    r.add_argument("--anlage")
+    r.add_argument("--kosten")
+    r.add_argument("--quelle", action="append", default=[])
+    w = add("wiederholfehler")
+    w.add_argument("--bis")
+    w.add_argument("--monate", type=int, default=12)
+    v = add("vertragspruefung")
+    v.add_argument("--datei", required=True)
+    v.add_argument("--kunde")
+    a = add("audit-vorbereitung")
+    a.add_argument("--norm", default="ISO 9001")
+    a.add_argument("--heute", default=dt.date.today().isoformat())
+    return ap
+
+
+def _main(argv: list[str] | None) -> tuple[int, dict]:
+    a = parser().parse_args(argv)
+    ws = Path(a.ws)
+    try:
+        if a.cmd == "reklamation":
+            try:
+                kosten = zahl(a.kosten) if a.kosten not in (None, "") else None
+            except ValueError as exc:
+                raise QRFehler(f"Kosten '{a.kosten}' sind keine Zahl") from exc
+            return 0, reklamation(ws, a.nr, a.ursache, a.ausschluss, a.bezug, a.anlage, kosten, a.quelle)
+        if a.cmd == "wiederholfehler":
+            return 0, wiederholfehler(ws, a.bis, a.monate)
+        if a.cmd == "vertragspruefung":
+            return 0, vertragspruefung(ws, a.datei, a.kunde)
+        return 0, audit_vorbereitung(ws, dt.date.fromisoformat(a.heute), a.norm)
+    except (QRFehler, vorgang.VorgangFehler, kz.KennzahlFehler) as exc:
+        return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)]}
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run(_main, argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

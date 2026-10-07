@@ -287,3 +287,58 @@ def test_contract_without_liability_clause_is_critical(qws):
     out = qr.vertragspruefung(qws, "00_Eingang/kurz.md")
     assert out["abweichungen"][0]["befund"].startswith("keine Haftungsbegrenzung") and out["urteil"] == "ablehnen"
     assert any("Kein Jahresvertragswert" in m for m in out["meldungen"])
+
+
+HEUTE = qr.dt.date(2026, 10, 7)
+
+
+def cli(capsys, *args):
+    code = qr.main(list(args))
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_audit_evidence_list(qws):
+    (qws / "03_Berichte" / "2026-09-30_wiederholfehler-bericht.docx").write_bytes(b"")
+    out = qr.audit_vorbereitung(qws, HEUTE)
+    assert {n["nr"]: n["status"] for n in out["nachweise"]} == {
+        "N1": "fehlt", "N2": "vorhanden", "N3": "fehlt", "N4": "fehlt", "N5": "vorhanden", "N6": "vorhanden",
+        "N7": "fehlt", "N8": "fehlt", "N9": "fehlt", "N10": "fehlt"}
+    assert out["werte"][2]["betrag"] == ERWARTET["audit_nachweise_sauber"]
+    assert [(f["nr"], f["ueberfaellig"]) for f in out["feststellungen"]] == [("V-0001", True)]
+    assert [w["maschinentyp"] for w in out["wiederholfehler"]] == ["MM-600"]
+    assert out["ausgabe_datei"] == "03_Berichte/2026-10-07_audit-vorbereitung.xlsx"
+    assert len(out["ausserhalb_des_kits"]) == 4
+
+
+def test_audit_counts_decisions_and_filed_contracts(qws, capsys):
+    vorgang.main(["entscheide", "--ws", str(qws), "--nr", "V-0001", "--von", "Max Mustermann", "--dokument", "x.docx",
+                  "--entscheidung", "abgelehnt"])
+    capsys.readouterr()
+    (qws / "06_Kunden" / "Hansa Pack AG").mkdir(parents=True)
+    (qws / "06_Kunden" / "Hansa Pack AG" / "vertrag.md").write_text("# Vertrag\n", encoding="utf-8")
+    n = {x["nr"]: x for x in qr.audit_vorbereitung(qws, HEUTE)["nachweise"]}
+    assert n["N1"]["status"] == "vorhanden"
+    assert (n["N7"]["status"], n["N7"]["fundstelle"]) == ("teilweise", "06_Kunden: 1 von 3 Vertragskunden")
+
+
+def test_audit_lists_damaged_cases_and_continues(qws):
+    shutil.copy(EVALS / "_gemeinsam" / "vorgaenge" / "V-0003.md", qws / "01_Vorgaenge" / "offen" / "V-0003.md")
+    out = qr.audit_vorbereitung(qws, HEUTE)
+    assert [d["datei"] for d in out["defekte_vorgaenge"]] == ["01_Vorgaenge/offen/V-0003.md"]
+    assert out["werte"][2]["betrag"] == ERWARTET["audit_nachweise_unordentlich"]
+    assert "01_Vorgaenge/offen/V-0003.md ist beschädigt – vor dem Audit in VS Code reparieren." in out["meldungen"]
+
+
+def test_cli_returns_one_json_object(qws, capsys):
+    code, out = cli(capsys, "reklamation", "--ws", str(qws), "--nr", "V-0001")
+    assert (code, out["ok"], out["urteil"]) == (0, True, "zustimmen mit Auflagen")
+    code, out = cli(capsys, "reklamation", "--ws", str(qws), "--nr", "V-0002")
+    assert code == 1 and "kein Reklamationsvorgang" in out["fehler"][0]
+    code, out = cli(capsys, "reklamation", "--ws", str(qws), "--nr", "V-0001", "--kosten", "viel")
+    assert code == 1 and out["fehler"] == ["Kosten 'viel' sind keine Zahl"]
+    code, out = cli(capsys, "reklamation", "--ws", str(qws), "--nr", "V-0001", "--ursache", "vielleicht")
+    assert code == 1 and out["fehler"][0].startswith("Aufruf fehlerhaft")
+    assert cli(capsys, "wiederholfehler", "--ws", str(qws))[1]["befunde"][0]["anzahl"] == 5
+    assert cli(capsys, "vertragspruefung", "--ws", str(qws), "--datei", HANSA)[1]["urteil"] == "zustimmen mit Auflagen"
+    code, out = cli(capsys, "audit-vorbereitung", "--ws", str(qws), "--heute", "2026-10-07")
+    assert code == 0 and out["norm"] == "ISO 9001"
