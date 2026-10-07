@@ -1,0 +1,66 @@
+schema_version: "1.1"
+name: tagesstart-sauber
+description: "Guten Morgen: fällige Routinen, Eingang, Briefing, Freigaben; nichts abgelegt, nichts entschieden."
+tags: ["skill:tagesstart", sauber, routine]
+runs: 3
+execution:
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: faellig-geprueft
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*stand"
+  - name: eingang-gelistet
+    type: tool_used
+    tool: Bash
+    input_match: "assistenz\\.py.*mail-triage"
+  - name: briefing
+    type: tool_used
+    tool: Bash
+    input_match: "assistenz\\.py.*morgen-briefing"
+  - name: freigaben
+    type: tool_used
+    tool: Bash
+    input_match: "assistenz\\.py.*freigabe-queue"
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*tagesstart"
+  - name: status
+    type: regex
+    pattern: "^tagesstart=\\d{4}-\\d{2}-\\d{2}$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-status }
+  - name: briefing-datei
+    type: file_exists
+    path: "03_Berichte/*_morgen-briefing.md"
+  - name: nichts-abgelegt
+    type: file_exists
+    path: 00_Eingang/2026-09-29_mail-eskalation.eml
+  - name: kein-ablegen
+    type: tool_used
+    tool: Bash
+    input_match: "assistenz\\.py.*ablegen"
+    min: 0
+    max: 0
+  - name: kein-entscheide
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: betrag-freigabe
+    type: regex
+    pattern: "8\\.400"
+    target: last_message
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, starts with what is urgent (the open escalation V-0002 of Hansa Pack AG), lists
+      the decision waiting on V-0004 (Müller GmbH, 8.400 EUR) with the reviewers' recommendations, names the files in
+      the inbox and offers to file them, and names the briefing file. FAIL if it filed, decided or sent anything, or
+      states numbers that are not in the scripts' output.

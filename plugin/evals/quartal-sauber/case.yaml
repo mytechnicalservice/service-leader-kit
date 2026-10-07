@@ -1,0 +1,51 @@
+schema_version: "1.1"
+name: quartal-sauber
+description: "Key-Account-Review Top 5, Portfolio-Review bis 2026-09, drei Gesprächsvorbereitungen."
+tags: ["skill:quartal", sauber, routine]
+runs: 3
+execution:
+  max_turns: 100
+  timeout_seconds: 2400
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: key-accounts
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py.*key-account-review"
+  - name: kein-einzelkunde
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py.*key-account-review.*--kunde"
+    min: 0
+    max: 0
+  - name: portfolio
+    type: tool_used
+    tool: Bash
+    input_match: "angebot\\.py.*portfolio.*2026-09"
+  - name: gespraeche
+    type: tool_used
+    tool: Bash
+    input_match: "assistenz\\.py.*besprechung-vorbereiten"
+    min: 3
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*quartal"
+  - name: status-neu
+    type: regex
+    pattern: "^quartal=2026-Q3$"
+    flags: m
+    match: not_contains
+    target: { source: file, path: Unternehmen/.kit-status }
+  - name: vorbereitung
+    type: file_exists
+    path: "06_Kunden/*/*_besprechung-vorbereitung.md"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, lists five top accounts with their 12-month revenue, the portfolio classes
+      (products to fix or to phase out first) and three prepared talks with their files, the talking points marked as
+      proposals. FAIL if it prepares talks for more or fewer than three customers without being asked, or invents
+      numbers.

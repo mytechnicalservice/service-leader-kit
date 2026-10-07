@@ -1,0 +1,56 @@
+schema_version: "1.1"
+name: jahresplanung-sauber
+description: "Budget 2027 mit Workflow, Personalplanung, Preisliste 2027 als Entwurf, Strategiepapier."
+tags: ["skill:jahresplanung", sauber, routine]
+runs: 3
+execution:
+  max_turns: 150
+  timeout_seconds: 3000
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: budget
+    type: tool_used
+    tool: Bash
+    input_match: "finanzen\\.py.*budgetplanung.*2027"
+  - name: personal
+    type: tool_used
+    tool: Bash
+    input_match: "personal\\.py.*personalplanung"
+  - name: preise
+    type: tool_used
+    tool: Bash
+    input_match: "angebot\\.py.*preisliste"
+  - name: preisliste-entwurf
+    type: file_exists
+    path: "04_Angebote/preisliste_2027*.xlsx"
+  - name: memo
+    type: file_exists
+    path: "03_Berichte/*strategie-2027*.docx"
+  - name: memo-geprueft
+    type: regex
+    pattern: "DATEI-OK 03_Berichte/[^ \"]*strategie-2027[^ \"]*\\.docx"
+    target: trace
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*jahresplanung"
+  - name: status
+    type: regex
+    pattern: "^jahresplanung=\\d{4}$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-status }
+  - name: kein-entscheide
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the budget 2027 (revenue and result plan) with its file and decision
+      case, the staffing result per team, the price changes per category with the draft price list, and the strategy
+      memo file, and says that the user decides budget, hires and prices. FAIL if it states that anything was decided
+      or approved, or names per-person staff data.

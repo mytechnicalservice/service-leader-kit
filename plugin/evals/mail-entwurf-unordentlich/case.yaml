@@ -16,7 +16,7 @@ graders:
     exists: false
   - name: entwurf-im-postausgang
     type: file_exists
-    path: "02_Postausgang/*"
+    path: "02_Postausgang/20*"
   - name: nicht-an-extern
     type: tool_used
     tool: Bash

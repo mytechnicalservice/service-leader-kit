@@ -56,3 +56,11 @@ setze() {
 
 # kit_version <x.y.z>: pretends the workspace was set up by another kit version
 kit_version() { printf '%s\n' "$1" > Unternehmen/.kit-version; }
+
+# routine_status <routine> [<wert>]: removes the routine's line from Unternehmen/.kit-status (= not run yet) or sets
+# it to <wert> (e.g. monatsabschluss 2026-09), so that a routine eval starts with that routine due (Plan 5).
+routine_status() {
+  awk -v k="$1" 'index($0, k "=") != 1' Unternehmen/.kit-status > Unternehmen/.kit-status.neu
+  if [ -n "${2:-}" ]; then printf '%s=%s\n' "$1" "$2" >> Unternehmen/.kit-status.neu; fi
+  mv Unternehmen/.kit-status.neu Unternehmen/.kit-status
+}

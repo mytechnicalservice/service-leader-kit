@@ -133,3 +133,57 @@ def test_plan_3_graders_use_the_generated_numbers():
     text = " ".join(g.get("criteria", "") for g in konflikt)
     for k in ("konflikt_wert_daten", "konflikt_wert_controlling"):
         assert f"{erwartet[k]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") in text
+
+
+ROUTINEN = ("tagesstart", "wochenstart", "monatsabschluss", "quartal", "jahresplanung")
+
+
+def test_routine_cases_record_the_status_line():
+    for r in ROUTINEN:
+        for d in DATENSAETZE:
+            c = lade(EVALS / f"{r}-{d}")
+            assert "routine" in c["tags"], (r, d)
+            assert any(g["type"] == "tool_used" and f"erledigt.*{r}" in g.get("input_match", "")
+                       for g in c["graders"]), (r, d)
+
+
+def test_routine_scaffolds_leave_the_routine_due(tmp_path, shell):
+    for r, rest in (("tagesstart", None), ("wochenstart", None), ("monatsabschluss", "monatsabschluss=2026-09"),
+                    ("quartal", "quartal=2026-Q3")):
+        ziel = tmp_path / r
+        ziel.mkdir()
+        assert scaffold(EVALS / f"{r}-sauber", ziel, shell).returncode == 0
+        status = (ziel / "Unternehmen" / ".kit-status").read_text(encoding="utf-8").splitlines()
+        assert [z for z in status if z.startswith(f"{r}=")] == ([rest] if rest else []), r
+
+
+def test_wochenstart_graders_use_the_generated_numbers():
+    e = json.loads((EVALS / "erwartet" / "beispiel.json").read_text(encoding="utf-8"))
+    muster = {g["name"]: g.get("pattern", "") for g in lade(EVALS / "wochenstart-sauber")["graders"]}
+    umsatz = f"{e['umsatz_gesamt_2026-09']:,.0f}".replace(",", ".")
+    assert umsatz[:6].replace(".", "\\.") in muster["umsatz"]
+    assert f"{e['ersatzteile_lieferquote_2026-09']:.1f}".replace(".", ",") in muster["lieferquote"]
+
+
+def test_learning_loop_case_checks_the_rule_and_its_use():
+    c = lade(EVALS / "workflow-lernschleife")
+    g = {x["name"]: x for x in c["graders"]}
+    assert "workflow" in c["tags"] and g["architekt"]["tool"] == "Agent"
+    assert g["lernpunkt"]["target"] == {"source": "file", "path": "Unternehmen/lernpunkte.md"}
+    assert "0521 123-400" in g["entwurf-mit-regel"]["input_match"]
+
+
+def test_output_globs_cannot_be_met_by_the_folder_readme():
+    import fnmatch
+
+    mit_readme = {p.parent.name for p in (ROOT / "plugin" / "vorlagen" / "arbeitsordner").glob("*/LIESMICH.md")}
+    treffer = []
+    for c in CASES:
+        for g in lade(c)["graders"]:
+            if g["type"] == "file_exists" and g.get("exists", True):
+                ordner, _, muster = g["path"].partition("/")
+                # a literal path (no wildcard) names the README on purpose, e.g. "folder was created"
+                if ordner in mit_readme and "/" not in muster and any(z in muster for z in "*?["):
+                    if fnmatch.fnmatch("LIESMICH.md", muster):
+                        treffer.append((c.name, g["name"], g["path"]))
+    assert treffer == []

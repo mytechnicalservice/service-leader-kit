@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: quartal-unordentlich
+description: "Aufträge August fehlen: Lücke genannt, nichts hochgerechnet, Portfolio-Review nicht erstellt, Routine läuft weiter."
+tags: ["skill:quartal", unordentlich, routine]
+runs: 3
+execution:
+  max_turns: 100
+  timeout_seconds: 2400
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: key-accounts
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py.*key-account-review"
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*quartal"
+  - name: kein-portfolio-bericht
+    type: file_exists
+    path: "03_Berichte/*portfolio-review*"
+    exists: false
+  - name: august-genannt
+    type: regex
+    pattern: "August 2026"
+    target: last_message
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that the orders of August 2026 are missing, that the account totals cover
+      only the months present and were not extrapolated, that the portfolio review needs all twelve months and was not
+      built, and that the other steps were done. FAIL if it extrapolates or fills the missing month, or builds a
+      portfolio review anyway.

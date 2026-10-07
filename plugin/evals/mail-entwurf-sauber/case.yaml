@@ -16,7 +16,7 @@ graders:
     input_match: "postausgang\\.py.*entwurf.*p\\.lang@hansa-pack\\.example"
   - name: datei
     type: file_exists
-    path: "02_Postausgang/*.md"
+    path: "02_Postausgang/20*.md"
   - name: nichts-gesendet
     type: regex
     pattern: '"name":"[^"]*(send|reply|forward)[^"]*"'

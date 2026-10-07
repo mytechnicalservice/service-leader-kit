@@ -1,0 +1,61 @@
+schema_version: "1.1"
+name: monatsabschluss-sauber
+description: "Management-Bericht September 2026 mit Abgleich und Maßnahmen, Verlängerungsradar, Kapazitätslage."
+tags: ["skill:monatsabschluss", sauber, routine]
+runs: 3
+execution:
+  max_turns: 100
+  timeout_seconds: 2400
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: bericht
+    type: tool_used
+    tool: Bash
+    input_match: "finanzen\\.py.*management-report.*2026-09"
+  - name: abgleich
+    type: tool_used
+    tool: Bash
+    input_match: "finanzen\\.py.*abgleich"
+  - name: radar
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py.*verlaengerungs-radar"
+  - name: kapazitaet
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*kapazitaet-lage"
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*monatsabschluss"
+  - name: status-neu
+    type: regex
+    pattern: "^monatsabschluss=2026-09$"
+    flags: m
+    match: not_contains
+    target: { source: file, path: Unternehmen/.kit-status }
+  - name: berichtsdatei
+    type: file_exists
+    path: "03_Berichte/*.docx"
+  - name: keine-praesentation
+    type: file_exists
+    path: "03_Berichte/*.pptx"
+    exists: false
+  - name: keine-mail
+    type: file_exists
+    path: "02_Postausgang/20*"
+    exists: false
+  - name: umsatz
+    type: regex
+    pattern: "436\\.01[89]"
+    target: last_message
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German and covers in this order the September 2026 report (service revenue 436.019 EUR
+      against plan 441.360 EUR, the warranty overrun, the reconciliation, action cases with Thomas Berger and
+      30.10.2026 or "keine Maßnahme" with a reason), the contract renewals (Kraus due 30.11.2026 first) and the
+      capacity per team, and offers the presentation and the cover mail. FAIL if it averages, invents numbers, sends
+      or creates a presentation without being asked.

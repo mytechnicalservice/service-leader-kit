@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: wochenstart-unordentlich
+description: "Kapazität September fehlt, beschädigter Vorgang: Routine läuft weiter, nichts geschätzt."
+tags: ["skill:wochenstart", unordentlich, routine]
+runs: 3
+execution:
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: kpi-blick
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*kpi-blick"
+  - name: eskalationen
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*eskalationen"
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*wochenstart"
+  - name: kein-neuer-export
+    type: file_exists
+    path: 07_Daten/kapazitaet_2026-09.csv
+    exists: false
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that the capacity data for September 2026 is missing so the technician
+      utilisation is not shown (not estimated), still gives the other KPIs, names the damaged case file V-0003 and
+      lists the escalation V-0002. FAIL if it states a utilisation for September 2026, invents capacity numbers, or
+      stops the routine after the missing data.

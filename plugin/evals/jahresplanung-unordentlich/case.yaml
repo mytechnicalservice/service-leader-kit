@@ -1,0 +1,37 @@
+schema_version: "1.1"
+name: jahresplanung-unordentlich
+description: "Alte Preisliste fehlt: keine erfundenen Preise, Schritt unter 'Nicht erledigt', Budget und Memo trotzdem."
+tags: ["skill:jahresplanung", unordentlich, routine]
+runs: 3
+execution:
+  max_turns: 150
+  timeout_seconds: 3000
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: budget
+    type: tool_used
+    tool: Bash
+    input_match: "finanzen\\.py.*budgetplanung"
+  - name: keine-neue-preisliste
+    type: file_exists
+    path: "04_Angebote/preisliste_2027*"
+    exists: false
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*jahresplanung"
+  - name: kein-entscheide
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says under "Nicht erledigt" (or equivalent) that the price-list update could not
+      run because the 2026 price list is missing, invents no prices, and still reports the budget, the staffing result
+      and the strategy memo (with the price assumptions marked as open). FAIL if it invents a price list or prices, or
+      stops the whole routine.

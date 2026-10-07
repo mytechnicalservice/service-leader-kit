@@ -1,0 +1,51 @@
+schema_version: "1.1"
+name: wochenstart-sauber
+description: "KPI-Blick September 2026 mit Zielen, Teamleiter-Runde, Eskalationsstand."
+tags: ["skill:wochenstart", sauber, routine]
+runs: 3
+execution:
+  max_turns: 60
+  timeout_seconds: 1200
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: kpi-blick
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*kpi-blick"
+  - name: teamleiter-runde
+    type: tool_used
+    tool: Bash
+    input_match: "betrieb\\.py.*teamleiter-runde"
+  - name: eskalationen
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*eskalationen"
+  - name: erledigt
+    type: tool_used
+    tool: Bash
+    input_match: "routine\\.py.*erledigt.*wochenstart"
+  - name: status
+    type: regex
+    pattern: "^wochenstart=\\d{4}-\\d{2}-\\d{2}$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-status }
+  - name: agenda
+    type: file_exists
+    path: "03_Berichte/*teamleiter-runde*.docx"
+  - name: umsatz
+    type: regex
+    pattern: "436\\.01[89]"
+    target: last_message
+  - name: lieferquote
+    type: regex
+    pattern: "79,4"
+    target: last_message
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, gives the September 2026 service revenue (436.019 EUR) against the plan
+      (441.360 EUR), the spare-parts availability 79,4 % against the target 90 %, names the team-lead agenda file and
+      lists the open escalation V-0002 (Hansa Pack AG, waiting for the customer). FAIL if it compares the monthly
+      revenue with the yearly revenue target, shows per-person figures, or decides anything.

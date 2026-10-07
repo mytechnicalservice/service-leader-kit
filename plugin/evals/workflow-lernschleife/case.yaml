@@ -1,0 +1,39 @@
+schema_version: "1.1"
+name: workflow-lernschleife
+description: "Lernschleife: Korrektur → System-Architekt trägt Regel in lernpunkte.md ein → der nächste Mail-Entwurf folgt ihr."
+tags: ["skill:mail-entwurf", sauber, workflow]
+runs: 3
+execution:
+  max_turns: 50
+  timeout_seconds: 1200
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: architekt
+    type: tool_used
+    tool: Agent
+    input_match: "system-architekt"
+  - name: lernpunkt
+    type: regex
+    pattern: "^## \\d{4}-\\d{2}-\\d{2} · [^\\n]+\\n+Regel: [^\\n]*0521 123-400"
+    flags: m
+    target: { source: file, path: Unternehmen/lernpunkte.md }
+  - name: entwurf-mit-regel
+    type: tool_used
+    tool: Bash
+    input_match: "postausgang\\.py[\\s\\S]*0521 123-400"
+  - name: entwurf-datei
+    type: file_exists
+    path: "02_Postausgang/20*.md"
+  - name: nichts-gesendet
+    type: regex
+    pattern: '"name":"[^"]*(send|reply|forward)[^"]*"'
+    match: not_contains
+    target: trace
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that the signature rule was saved in Unternehmen/lernpunkte.md (by the
+      system architect), names the draft in 02_Postausgang with the new signature, and says nothing was sent. FAIL if
+      it claims the rule was saved without a lernpunkte.md entry, or sends anything.
