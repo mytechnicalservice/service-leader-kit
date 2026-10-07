@@ -795,6 +795,93 @@ BEFEHLE["eskalation-gespraech"] = (cmd_eskalation_gespraech, {"kunde": {"require
 BEFEHLE["eskalation-notiz"] = (cmd_eskalation_notiz, {"kunde": {"required": True}, "nr": {"required": True}})
 
 
+# --- Teamleiter-Runde ---
+
+VORSCHAU_TAGE = 7
+TL_PREFIX = "Teamleiter-Runde"
+
+
+def cmd_teamleiter_runde(ws: Path, a, defs: dict) -> dict:
+    heute, hinweise = dt.date.fromisoformat(a.heute), []
+    grenze = (heute + dt.timedelta(days=VORSCHAU_TAGE)).isoformat()
+    faelle = offene_vorgaenge(ws, hinweise)
+
+    def lage_text(v: dict) -> str:
+        f = v.get("faellig")
+        if f and f < a.heute:
+            return f"überfällig seit {de_datum(f)}"
+        if f and f <= grenze:
+            return f"fällig {de_datum(f)}"
+        if v["status"] == "wartet":
+            return f"wartet: {v.get('wartet_auf') or '–'}"
+        return f"fällig {de_datum(f)}" if f else "ohne Termin"
+
+    def sortiert(vs: list[dict]) -> list[dict]:
+        return sorted(vs, key=lambda v: (v.get("faellig") or "9999-12-31", v["nr"]))
+
+    def fall_tabelle(vs: list[dict]) -> tuple | None:
+        return (["Nr", "Titel", "Kunde", "Verantwortlich", "Lage"],
+                [[v["nr"], v["titel"], v.get("kunde") or "–", v["verantwortlich"], lage_text(v)]
+                 for v in sortiert(vs)]) if vs else None
+
+    runde = [v for v in faelle if v["titel"].startswith(TL_PREFIX)]
+    esk = [v for v in faelle if v not in runde and v["typ"] in ("eskalation", "reklamation")]
+    sonst = [v for v in faelle if v not in runde and v not in esk and v.get("faellig") and v["faellig"] <= grenze]
+    ueber = sortiert([v for v in faelle if v.get("faellig") and v["faellig"] < a.heute])
+    daten: dict = {"vorgaenge": {
+        "offen": wert("Offene Vorgänge", float(len(faelle)), [v["datei"] for v in faelle] or ["01_Vorgaenge/offen/: keine"],
+                      "Anzahl gültiger Dateien in 01_Vorgaenge/offen/", "Vorgänge"),
+        "ueberfaellig": wert("Überfällige Vorgänge", float(len(ueber)), [v["datei"] for v in ueber]
+                             or ["01_Vorgaenge/offen/: keine überfälligen"],
+                             f"Anzahl offener Vorgänge mit Fälligkeit vor dem {de_datum(a.heute)}", "Vorgänge")}}
+    pflicht = [v["nr"] for v in ueber]
+    kap_abs, kap_tab, standard = [], None, []
+    kap = lade(ws, "kapazitaet", [])
+    if kap:
+        monat = max(str(r["Monat"])[:7] for r in kap)
+        ziel, ziel_standard = kpi_ziel(defs)
+        lage, linien = kapazitaet_monat(kap, monat, ziel)
+        soll = {t["team"]: t["soll"] for t in [*lage["teams"], lage["gesamt"]]}
+        rs = rueckstand(lade(ws, "auftraege", hinweise), linien, soll, heute)
+        rs_je = {t["team"]: t for t in [*rs["teams"], rs["gesamt"]]}
+        zeilen = []
+        for t in [*lage["teams"], lage["gesamt"]]:
+            r = rs_je.get(t["team"])
+            zeilen.append([t["team"], fmt(t["auslastung"]), t["ampel"], zahltext(r["auftraege"]) if r else "0",
+                           zahltext(r["aelter"]) if r else "0", fmt(r["stunden"]) if r else "0 h"])
+        bekannt = {t["team"] for t in lage["teams"]} | {"Gesamt"}
+        zeilen[-1:-1] = [[t["team"], "–", "–", zahltext(t["auftraege"]), zahltext(t["aelter"]), fmt(t["stunden"])]
+                         for t in rs["teams"] if t["team"] not in bekannt]
+        kap_tab = (["Team", f"Auslastung {daten_pruefen.monatsname(monat)}", "Ampel", "Offene Aufträge",
+                    f"davon älter als {ALT_TAGE} Tage", "Rückstand"], zeilen)
+        daten |= {"kapazitaet": lage, "rueckstand": rs}
+        if lage["gesamt"]["auslastung"]:
+            pflicht.append(zahltext(lage["gesamt"]["auslastung"]))
+        if any(linie != t for t, linie in linien.items()):
+            hinweise.append(PERSONENSCHUTZ)
+        standard = standards(ziel_standard)
+    else:
+        kap_abs = ["Keine Kapazitätsdaten in 07_Daten/ – Kapazität bitte in der Runde je Team abfragen."]
+    keine = ["Keine."]
+    o, u = daten["vorgaenge"]["offen"], daten["vorgaenge"]["ueberfaellig"]
+    abschnitte = [
+        abschnitt("Auf einen Blick", [f"{fmt(o)} offen, davon {fmt(u)} überfällig."]),
+        abschnitt("1. Offene Punkte aus früheren Runden", [] if runde else keine, fall_tabelle(runde)),
+        abschnitt("2. Eskalationen und Reklamationen", [] if esk else keine, fall_tabelle(esk)),
+        abschnitt(f"3. Weitere Vorgänge, überfällig oder fällig bis {de_datum(grenze)}", [] if sonst else keine,
+                  fall_tabelle(sonst)),
+        abschnitt("4. Kapazität und Rückstand je Team", kap_abs, kap_tab),
+        abschnitt("5. Themen der Teamleitungen", eingabe="Themen, die der Nutzer nennt; sonst leer für Notizen."),
+        abschnitt("6. Maßnahmen", tabelle=(["Maßnahme", "Verantwortlich", "Fällig"], []),
+                  eingabe="In der Runde ausfüllen; jede Maßnahme mit Person und Termin wird danach ein Vorgang."),
+    ]
+    return ergebnis(ws, f"Teamleiter-Runde {de_datum(a.heute)}", f"03_Berichte/{a.heute}_teamleiter-runde.docx",
+                    abschnitte, daten, pflicht, hinweise, standard)
+
+
+BEFEHLE["teamleiter-runde"] = (cmd_teamleiter_runde, {})
+
+
 # --- CLI ---
 
 def parser() -> JsonParser:

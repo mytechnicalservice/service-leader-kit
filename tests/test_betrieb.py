@@ -270,3 +270,44 @@ def test_minutes_outline_and_follow_up_date(capsys, bws):
     assert out["ziel"] == f"{KUNDENORDNER}/2026-10-02_eskalation-gespraechsnotiz.docx"
     code, out = run(capsys, "eskalation-notiz", "--ws", str(bws), "--kunde", "Hansa Pack AG", "--nr", "V-0099")
     assert code == 1 and "nicht gefunden" in out["fehler"][0]
+
+
+def neuer_fall(capsys, ws, titel, typ, faellig, kunde="Hansa Pack AG"):
+    vorgang.main(["neu", "--ws", str(ws), "--heute", "2026-09-30", "--titel", titel, "--typ", typ, "--kunde", kunde,
+                  "--verantwortlich", "Jana Becker", "--von", "betrieb", "--text", "Test.", "--faellig", faellig])
+    return json.loads(capsys.readouterr().out)["nr"]
+
+
+def abschnitt_von(out, anfang):
+    return next(a for a in out["gliederung"]["abschnitte"] if a["titel"].startswith(anfang))
+
+
+def test_team_lead_agenda_orders_cases_and_shows_capacity(capsys, bws):
+    neuer_fall(capsys, bws, "Eskalation Hansa Pack AG", "eskalation", "2026-10-05")             # V-0001 overdue
+    neuer_fall(capsys, bws, "Reklamation Spindel", "reklamation", "2026-10-09", "Müller GmbH")  # V-0002 soon
+    neuer_fall(capsys, bws, "Teamleiter-Runde 30.09.2026: Einsatzplanung Süd prüfen", "aufgabe", "2026-10-12", "")
+    neuer_fall(capsys, bws, "Angebot Retrofit", "angebot", "2026-12-01", "Weber Kunststofftechnik")  # V-0004 later
+    neuer_fall(capsys, bws, "Werkzeugprüfung", "aufgabe", "2026-10-01", "")                     # V-0005 overdue
+    (bws / "01_Vorgaenge" / "offen" / "V-0009.md").write_text('---\nnr: "V-0009"\ntitel: "Angebot', encoding="utf-8")
+    code, out = run(capsys, "teamleiter-runde", "--ws", str(bws), "--heute", HEUTE)
+    assert code == 0, out
+    nrs = lambda anfang: [z[0] for z in abschnitt_von(out, anfang)["tabelle"]["zeilen"]]
+    assert nrs("1.") == ["V-0003"]
+    assert nrs("2.") == ["V-0001", "V-0002"]
+    assert abschnitt_von(out, "2.")["tabelle"]["zeilen"][0][4] == "überfällig seit 05.10.2026"
+    assert nrs("3.") == ["V-0005"]
+    v = out["daten"]["vorgaenge"]
+    assert (v["offen"]["betrag"], v["ueberfaellig"]["betrag"]) == (5.0, 2.0)
+    kap = abschnitt_von(out, "4.")["tabelle"]["zeilen"]
+    assert [z[0] for z in kap] == ["Nord", "Süd", "West", "Gesamt"] and kap[-1][1] == "92,1 %"
+    assert {"V-0001", "V-0005", "92,1"} <= set(out["pflichtangaben"])
+    assert any("V-0009.md ist beschädigt" in h for h in out["hinweise"])
+    assert out["ziel"] == f"03_Berichte/{HEUTE}_teamleiter-runde.docx"
+    assert "Hotline" not in json.dumps(out, ensure_ascii=False)
+
+
+def test_team_lead_agenda_without_capacity_data(capsys, kit_ws):
+    code, out = run(capsys, "teamleiter-runde", "--ws", str(kit_ws), "--heute", HEUTE)
+    assert code == 0, out
+    assert abschnitt_von(out, "4.")["absaetze"][0].startswith("Keine Kapazitätsdaten")
+    assert out["daten"]["vorgaenge"]["offen"]["betrag"] == 0.0
