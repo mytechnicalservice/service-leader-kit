@@ -411,3 +411,33 @@ def test_delay_skill_hands_reviews_to_other_agents():
     _, body = skill("verzug-entscheidung")
     assert "service-leader-kit:finanzen" in body and "service-leader-kit:qualitaet-recht" in body
     assert "pruefe-datei" in body and "Empfehlung: zustimmen" in body
+
+
+def muster(name):
+    c = yaml.safe_load((EVALS / name / "case.yaml").read_text(encoding="utf-8"))
+    return " ".join(g.get("pattern", "") for g in c["graders"]).replace("\\", "")
+
+
+def test_lane_cases_exist_for_both_datasets():
+    for s in SKILLS_4E:
+        for d in ("sauber", "unordentlich"):
+            c = yaml.safe_load((EVALS / f"{s}-{d}" / "case.yaml").read_text(encoding="utf-8"))
+            assert f"skill:{s}" in c["tags"] and d in c["tags"]
+
+
+def test_graded_numbers_are_what_the_script_computes(tmp_path, defs, rufe):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    ws = fall(tmp_path / "a", "projektportfolio-ampel-sauber")
+    out = rufe("ampel", "--ws", ws, "--stichtag", STICHTAG)[1]
+    m = muster("projektportfolio-ampel-sauber")
+    for w in (out["summen"]["budget"], out["summen"]["prognose"]):
+        assert projekte.kennzahlen.deutsch(w["betrag"]) in m
+    assert projekte.kennzahlen.deutsch(out["projekte"][0]["kosten"]["abweichung"]["betrag"], 1) in m
+    ws = fall(tmp_path / "b", "verzug-entscheidung-sauber")
+    rufe("setze", "--ws", ws, "--projekt", HANSA, "--meilenstein", "Abnahme", "--prognose", "2026-11-05")
+    out = rufe("verzug", "--ws", ws, "--projekt", HANSA, "--stichtag", STICHTAG, "--beschleunigung-eur", "6500",
+               "--beschleunigung-tage", "14")[1]
+    m = muster("verzug-entscheidung-sauber")
+    for z in ("3.600", "17.600", "21.700"):
+        assert z in out["pruefzahlen"] and z in m

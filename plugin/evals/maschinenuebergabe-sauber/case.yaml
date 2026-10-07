@@ -1,0 +1,55 @@
+schema_version: "1.1"
+name: maschinenuebergabe-sauber
+description: "Vollständige Übergabemail des Vertriebs wird zum Projekt mit Checkliste und Servicevertrags-Vorgang."
+tags: ["skill:maschinenuebergabe", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: projekt
+    type: regex
+    pattern: "^budget_eur: 38500$[\\s\\S]*^vertragsstrafe_bezugswert_eur: 312000$[\\s\\S]*^vertragsstrafe_meilenstein: \"Abnahme\"$"
+    flags: m
+    target:
+      {
+        source: file,
+        path: "05_Projekte/Inbetriebnahme KX-400 Brenner/projekt.md",
+      }
+  - name: abnahme-termin
+    type: regex
+    pattern: '"name": "Abnahme", "plan": "2026-12-04"'
+    target:
+      {
+        source: file,
+        path: "05_Projekte/Inbetriebnahme KX-400 Brenner/projekt.md",
+      }
+  - name: checkliste
+    type: regex
+    pattern: "Servicevertrag[\\s\\S]*Ersatz- und Verschleißteilliste|Ersatz- und Verschleißteilliste[\\s\\S]*Servicevertrag"
+    target:
+      {
+        source: file,
+        path: "05_Projekte/Inbetriebnahme KX-400 Brenner/uebergabe.md",
+      }
+  - name: mail-verschoben
+    type: file_exists
+    path: "05_Projekte/Inbetriebnahme KX-400 Brenner/2026-10-01_mail-auftrag-brenner.eml"
+  - name: mail-nicht-mehr-im-eingang
+    type: file_exists
+    path: 00_Eingang/2026-10-01_mail-auftrag-brenner.eml
+    exists: false
+  - name: servicevertrag-vorgang
+    type: regex
+    pattern: "^typ: \"angebot\"$[\\s\\S]*^verantwortlich: \"Sandra Vogt[^\"]*\"$[\\s\\S]*^faellig: \"2026-11-20\"$"
+    flags: m
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the German answer says the project and the checklist were created, the sales mail now lies in the
+      project folder, a case to offer the service contract is due 20.11.2026 with Sandra Vogt, and the warranty
+      starts with the signed acceptance protocol. FAIL if it claims anything was sent.

@@ -1,0 +1,60 @@
+schema_version: "1.1"
+name: projektportfolio-ampel-sauber
+description: "Vier Projekte: eines spät mit Vertragsstrafe, eines abgeschlossen."
+tags: ["skill:projektportfolio-ampel", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "projekte\\.py.*ampel.*--stichtag 2026-09-30"
+  - name: bericht
+    type: file_exists
+    path: 03_Berichte/2026-09-30_projektportfolio-ampel.md
+  - name: hansa-rot
+    type: regex
+    pattern: "\\|\\s*Retrofit Linie 2 Hansa Pack\\s*\\|[^|\\n]*\\|\\s*Rot\\s*\\|"
+    target:
+      { source: file, path: 03_Berichte/2026-09-30_projektportfolio-ampel.md }
+  - name: berger-gelb
+    type: regex
+    pattern: "\\|\\s*Retrofit Presse 3 Berger\\s*\\|[^|\\n]*\\|\\s*Gelb\\s*\\|"
+    target:
+      { source: file, path: 03_Berichte/2026-09-30_projektportfolio-ampel.md }
+  - name: kessler-gruen
+    type: regex
+    pattern: "\\|\\s*Inbetriebnahme Kartonierer Kessler\\s*\\|[^|\\n]*\\|\\s*Grün\\s*\\|"
+    target:
+      { source: file, path: 03_Berichte/2026-09-30_projektportfolio-ampel.md }
+  - name: verzug-und-kosten
+    type: regex
+    pattern: "21 Tage[\\s\\S]*7,6 %"
+    target:
+      { source: file, path: 03_Berichte/2026-09-30_projektportfolio-ampel.md }
+  - name: summen
+    type: regex
+    pattern: "330\\.000[\\s\\S]*345\\.540"
+    target:
+      { source: file, path: 03_Berichte/2026-09-30_projektportfolio-ampel.md }
+  - name: lenz-nicht-bewertet
+    type: regex
+    pattern: "\\|\\s*Inbetriebnahme Etikettierer Lenz\\s*\\|"
+    match: not_contains
+    target:
+      { source: file, path: 03_Berichte/2026-09-30_projektportfolio-ampel.md }
+  - name: kein-vorgang
+    type: file_exists
+    path: 01_Vorgaenge/offen/V-0001.md
+    exists: false
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names Retrofit Linie 2 Hansa Pack as red because acceptance is 21 days late
+      with a contract penalty, gives the counts 1 red / 1 yellow / 1 green, says the thresholds are the kit's
+      standard definition, and offers to prepare a delay decision. FAIL if it states a number not in the script output.
