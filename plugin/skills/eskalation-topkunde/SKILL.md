@@ -1,6 +1,6 @@
 ---
 name: eskalation-topkunde
-description: "Top-customer escalation for the head of service - situation summary (Lagebild) from the customer's mails, case history, order data and contract; recommendation by Qualität & Recht on liability and obligations; call preparation; after the call a Gesprächsnotiz on the escalation case, actions as cases with owners and a summary mail draft. Use when a key customer escalates ('Hansa Pack eskaliert', 'Stillstand beim Kunden', 'Beschwerde an die Geschäftsführung', 'bereite das Gespräch mit … vor', 'ich hatte das Gespräch mit …', 'mach die Gesprächsnotiz'). Not for minutes from meeting notes ('Protokoll', 'mach daraus das Protokoll'): that is besprechung."
+description: "Top-customer escalation for the head of service - situation summary (Lagebild) from the customer's mails, case history, order data and contract; recommendation by Qualität & Recht on liability and obligations; call preparation; after the call a Gesprächsnotiz on the escalation case, actions as cases with owners and a summary mail draft. Use when a key customer escalates ('Hansa Pack eskaliert', 'Stillstand beim Kunden', 'Beschwerde an die Geschäftsführung', 'bereite das Eskalationsgespräch vor', the call preparation after a Lagebild, 'ich hatte das Gespräch mit …', 'mach die Gesprächsnotiz'). Not for minutes from meeting notes ('Protokoll', 'mach daraus das Protokoll') and not for a plain 'bereite das Gespräch/Telefonat mit … vor' without escalation words: that is besprechung."
 ---
 
 # Eskalation Top-Kunde (spec §5, §8 Workflow „Top-Kunden-Eskalation“)
@@ -36,7 +36,7 @@ stop.
 1. Read `Unternehmen/lernpunkte.md` and `Unternehmen/tonalitaet.md` first.
 2. **Numbers only from `betrieb.py`.** Copy every number exactly as the script shows it (`gliederung`). Never add,
    average, round differently or estimate. Missing data: say so. `daten.widersprueche`: show both values with their
-   sources and say they were not averaged.
+   sources, say they were "nicht gemittelt", and never pick one (which applies is a question for Qualität & Recht).
 3. **Documents (D7):** write each file with your Word/docx document skill from `gliederung`: the title, then the
    sections in order, tables as tables. If `briefkopf` is set, build on that letterhead. If `kennzeichnung` is set, it
    is the first line. A section with `eingabe` is filled as that text says, from the sources or the user's words only,

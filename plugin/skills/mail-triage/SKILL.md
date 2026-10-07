@@ -42,7 +42,8 @@ Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`).
      (owner is a person — ask if unknown; exit code 3 → propose `eintrag`, never `--trotzdem` without the user).
 5. Routing: content work goes to the agent in `agent` (betrieb, qualitaet-recht, vertrieb, teile, projekte,
    personal, finanzen); the assistant itself only sorts, files and logs.
-6. Report: what moved where, what stayed and why, which cases were opened or updated.
+6. Report: what moved where, what stayed and why (name exports left in the inbox for the `daten-pruefen` skill
+   and offer it), which cases were opened or updated.
 
 ## Aus einer Routine
 

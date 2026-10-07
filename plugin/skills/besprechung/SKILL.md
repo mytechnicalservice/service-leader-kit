@@ -1,6 +1,6 @@
 ---
 name: besprechung
-description: Meeting preparation and minutes - prepares a customer call or internal meeting from the open cases, the customer folder and the contract, and turns the user's meeting notes into minutes whose actions become cases with a named person and due date. Writes 06_Kunden/<Kunde>/JJJJ-MM-TT_besprechung-vorbereitung.md and JJJJ-MM-TT_protokoll.md (internal meetings in 03_Berichte/). Use for "bereite das Gespräch mit … vor", "Protokoll", "mach daraus das Protokoll", "hier meine Notizen aus dem Termin" - also when the customer is in an escalation (minutes from the user's notes are always this skill; eskalation-topkunde writes the escalation's Gesprächsnotiz).
+description: Meeting preparation and minutes - prepares a customer call or internal meeting from the open cases, the customer folder and the contract, and turns the user's meeting notes into minutes whose actions become cases with a named person and due date. Writes 06_Kunden/<Kunde>/JJJJ-MM-TT_besprechung-vorbereitung.md and JJJJ-MM-TT_protokoll.md (internal meetings in 03_Berichte/). Use for "bereite das Gespräch mit … vor", "bereite das Telefonat mit … vor" - also for a customer with an open escalation case (the preparation lists it and offers eskalation-topkunde), "Protokoll", "mach daraus das Protokoll", "hier meine Notizen aus dem Termin" - also when the customer is in an escalation (minutes from the user's notes are always this skill; eskalation-topkunde writes the escalation's Gesprächsnotiz).
 ---
 
 # Besprechung (spec §5, §6, §8)

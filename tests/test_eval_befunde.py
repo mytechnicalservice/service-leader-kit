@@ -47,7 +47,7 @@ def test_week_plan_skill_shows_end_time_and_all_day_examples():
 def test_staffing_plan_names_the_business_case_lines_and_the_notice():
     _, body = skill("personalplanung")
     assert "Erlös Jahr 1" in body and "Kosten Jahr 1" in body
-    assert "`hinweis` word for word" in body
+    assert "copy `hinweis` unchanged" in body
     # personalplanung-unordentlich: the hour list per technician was refused instead of aggregated per team.
     assert "not a reason to refuse" in body and "team-aggregat" in body
 
@@ -95,3 +95,53 @@ def test_mail_draft_answer_shows_the_signature():
     # mail-entwurf-sauber: the answer showed two lines, so nobody could see whose name is under the mail.
     _, body = skill("mail-entwurf")
     assert "the signature it ends with (name and role)" in body
+
+
+def test_a_plain_call_preparation_routes_to_besprechung_even_for_an_escalation_customer():
+    # besprechung-sauber: "Bereite mein Telefonat morgen mit der Hansa Pack AG vor" went to eskalation-topkunde,
+    # whose description also listed "bereite das Gespräch mit … vor".
+    besprechung, _ = skill("besprechung")
+    eskalation, _ = skill("eskalation-topkunde")
+    assert "bereite das Telefonat mit … vor" in besprechung and "open escalation case" in besprechung
+    assert "'bereite das Gespräch mit … vor'" not in eskalation
+    assert "Eskalationsgespräch" in eskalation and "besprechung" in eskalation
+
+
+def test_staffing_plan_uses_a_staff_list_through_team_aggregat():
+    # personalplanung-unordentlich (0.2.2): the list was still refused ("Einzelne Mitarbeitende werte ich nicht aus").
+    _, body = skill("personalplanung")
+    team = body.index("**Team level only:**")
+    assert "a per-person list the user hands over is used through step 2 (aggregated per team)" in body[team:team + 600]
+    assert "Refusing the list is wrong" in body
+
+
+def test_staffing_plan_copies_the_notice_unchanged_and_shows_annual_hours():
+    # personalplanung-sauber: the hinweis was paraphrased without "BetrVG"; -unordentlich showed FTE but no hours.
+    _, body = skill("personalplanung")
+    assert "copy `hinweis` unchanged" in body and "never shorten or reword it" in body
+    assert "annual demand in hours (`Jahresbedarf Stunden`)" in body
+
+
+def test_staff_talk_decline_carries_the_works_council_notice():
+    # mitarbeitergespraech-unordentlich: the decline came without the works-council notice.
+    import personal
+    _, body = skill("mitarbeitergespraech")
+    # the same words as the script's notice (personal.HINWEIS), so both never drift apart
+    assert personal.HINWEIS.removeprefix("Hinweis: ").split(" Das Kit")[0] in body
+
+
+def test_resignation_says_once_in_general_words_what_is_left_out():
+    # kuendigung-schluesselperson-unordentlich: "Krankheit, Motivation … kommen im Plan nicht vor" repeated the remarks.
+    _, body = skill("kuendigung-schluesselperson")
+    assert "in general words" in body and "without naming what the user said" in body
+
+
+def test_mail_triage_names_the_data_check_for_exports():
+    _, body = skill("mail-triage")
+    assert "exports left in the inbox for the `daten-pruefen` skill" in body
+
+
+def test_escalation_says_not_averaged_and_picks_no_value():
+    # eskalation-topkunde-unordentlich: 24 h (mail) vs 48 h (contract) – "gilt der unterschriebene Vertrag".
+    _, body = skill("eskalation-topkunde")
+    assert '"nicht gemittelt"' in body and "never pick one" in body
