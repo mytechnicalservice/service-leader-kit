@@ -1,0 +1,31 @@
+schema_version: "1.1"
+name: installed-base-potenziale-sauber
+description: "Vertrags- und Retrofitpotenzial je Kunde, getrennt bewertet."
+tags: ["skill:installed-base-potenziale", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? installed-base-potenziale"
+  - name: vertragspotenzial
+    type: regex
+    pattern: "273\\.600"
+  - name: retrofitpotenzial
+    type: regex
+    pattern: "2\\.257\\.000"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*_installed-base-potenziale.xlsx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, gives the annual contract potential and the one-time retrofit potential as
+      two separate figures (not added together), groups by customer, and names the age thresholds used. FAIL if it
+      adds the two potentials into one number or states numbers not in the vertrieb.py output.

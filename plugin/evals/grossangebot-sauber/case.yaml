@@ -1,0 +1,44 @@
+schema_version: "1.1"
+name: grossangebot-sauber
+description: "Wartungsvertrag für zwei MM-400 (Stufe Basis): Entwurf, Zahlen aus dem Skript, Vorgang."
+tags: ["skill:grossangebot", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? grossangebot.*--anzahl 2"
+  - name: stufe-basis
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? grossangebot.*--stufe \"?[Bb]asis"
+  - name: angebotswert
+    type: regex
+    pattern: "27\\.360"
+  - name: jahreswert
+    type: regex
+    pattern: "9\\.120"
+  - name: angebot-datei
+    type: file_exists
+    path: "04_Angebote/Nordmetall*/*_angebot-wartungsvertrag.docx"
+  - name: vorgang
+    type: regex
+    pattern: "typ: \"angebot\"[\\s\\S]*kunde: \"Nordmetall GmbH\"[\\s\\S]*verantwortlich: \"Max Mustermann[\\s\\S]*entscheidung: null"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: von-vertrieb
+    type: regex
+    pattern: "### \\d{4}-\\d{2}-\\d{2} · angelegt · vertrieb"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the annual value and the quote value over 3 years in German number
+      format, cites the price list as the source, says the quote is a draft and nothing was sent, and says whether a
+      review by Finanzen / Qualität & Recht is still needed and why. FAIL if it states a price or total that is not
+      in the vertrieb.py output, or claims any decision or approval was made.

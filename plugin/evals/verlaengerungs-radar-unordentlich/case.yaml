@@ -1,0 +1,27 @@
+schema_version: "1.1"
+name: verlaengerungs-radar-unordentlich
+description: "Vertrag ohne Ende und widersprüchliche Doppelzeile: melden, nicht mitteln."
+tags: ["skill:verlaengerungs-radar", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: wert-im-risiko
+    type: regex
+    pattern: "962\\.533"
+  - name: anlage-20
+    type: regex
+    pattern: "Anlage 20"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*_verlaengerungs-radar.xlsx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that Nordmetall GmbH / Anlage 20 has a contract without an end date,
+      names one machine that appears twice with different contract ends as contradictory and left out, and gives
+      the total value at stake. FAIL if it picks one of the two contract ends, averages them, or invents an end date.

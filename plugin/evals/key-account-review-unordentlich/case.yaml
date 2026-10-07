@@ -1,0 +1,31 @@
+schema_version: "1.1"
+name: key-account-review-unordentlich
+description: "Ein Monat fehlt im Zeitraum: benennen, nicht hochrechnen; Name ohne Rechtsform."
+tags: ["skill:key-account-review", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-kunde
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? key-account-review.*--kunde"
+  - name: nordmetall-umsatz
+    type: regex
+    pattern: "315\\.105"
+  - name: maerz-fehlt
+    type: regex
+    pattern: "März 2026"
+  - name: datei
+    type: file_exists
+    path: "06_Kunden/Nordmetall*/*_key-account-review.docx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that the orders for March 2026 are missing, that the 12-month revenue
+      covers only the months present, and does not extrapolate or estimate the missing month. FAIL if it presents
+      an extrapolated or "corrected" annual figure.

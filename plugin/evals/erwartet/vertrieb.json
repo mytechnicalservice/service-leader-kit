@@ -1,0 +1,37 @@
+{
+  "grossangebot-sauber": {
+    "angebotswert": 27360.0,
+    "jahreswert": 9120.0
+  },
+  "grossangebot-unordentlich": {
+    "angebotswert": 27360.0,
+    "jahreswert": 9120.0
+  },
+  "workflow-grossangebot": {
+    "angebotswert": 27360.0,
+    "jahreswert": 9120.0
+  },
+  "key-account-review-sauber": {
+    "top1_kunde": "Hansa Pack AG",
+    "top1_umsatz": 422437.83
+  },
+  "key-account-review-unordentlich": {
+    "umsatz": 315105.06
+  },
+  "verlaengerungs-radar-sauber": {
+    "wert": 972730.92,
+    "anzahl": 4
+  },
+  "verlaengerungs-radar-unordentlich": {
+    "wert": 962532.92,
+    "anzahl": 4
+  },
+  "installed-base-potenziale-sauber": {
+    "vertrag": 273600.0,
+    "retrofit": 2257000.0
+  },
+  "installed-base-potenziale-unordentlich": {
+    "vertrag": 283200.0,
+    "retrofit": 2257000.0
+  }
+}

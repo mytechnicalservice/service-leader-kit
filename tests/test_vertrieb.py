@@ -403,3 +403,56 @@ def test_grossangebot_skill_asks_for_the_contract_level():
     """K1 (Max, 2026-10-07): on 'Stufe fehlt' the skill shows the levels, asks, and reruns with --stufe."""
     _, body = kopf(ROOT / "plugin" / "skills" / "grossangebot" / "SKILL.md")
     assert "Stufe fehlt" in body and "stufen" in body and '--stufe "<Stufe>"' in body
+
+
+# --- evals --------------------------------------------------------------------------------------------------------
+
+import subprocess  # noqa: E402
+
+import vertrieb_erwartet  # noqa: E402  (tools/ is on sys.path via conftest)
+
+EVALS = ROOT / "plugin" / "evals"
+LANE_FAELLE = sorted(vertrieb_erwartet.FAELLE)
+
+
+def fall(name):
+    return yaml.safe_load((EVALS / name / "case.yaml").read_text(encoding="utf-8"))
+
+
+def test_every_lane_skill_has_clean_messy_and_the_workflow_case():
+    gesehen = {(t[6:], d) for n in LANE_FAELLE for t in fall(n)["tags"] if t.startswith("skill:")
+               for d in fall(n)["tags"] if d in ("sauber", "unordentlich")}
+    assert {(s, d) for s in LANE_SKILLS for d in ("sauber", "unordentlich")} <= gesehen
+    assert "workflow" in fall("workflow-grossangebot")["tags"]
+
+
+def test_eval_patterns_carry_the_expected_values():
+    erwartet = json.loads((EVALS / "erwartet" / "vertrieb.json").read_text(encoding="utf-8"))
+    for name in LANE_FAELLE:
+        assert "«" not in (EVALS / name / "case.yaml").read_text(encoding="utf-8"), f"{name}: Platzhalter übrig"
+    for (name, grader), key in vertrieb_erwartet.GRADER.items():
+        g = next(g for g in fall(name)["graders"] if g["name"] == grader)
+        assert vertrieb_erwartet.muster(erwartet[name][key]) in g["pattern"], (name, grader)
+
+
+def test_expected_values_match_the_scaffolded_workspaces():
+    erwartet = json.loads((EVALS / "erwartet" / "vertrieb.json").read_text(encoding="utf-8"))
+    assert vertrieb_erwartet.berechne() == erwartet
+
+
+def test_zeile_anhaengen_keeps_the_csv_readable(tmp_path, shell):
+    p = tmp_path / "installed_base_2026-09.csv"
+    csv_schreiben(p, H_IB, IB[:1])
+    skript = f'. "{EVALS}/_vertrieb/daten.sh"; zeile_anhaengen "{p}" "Kunde=Weber AG" "Anlage=Anlage 7" "Vertrag=nein"'
+    assert subprocess.run([shell, "-c", skript], capture_output=True, text=True).returncode == 0
+    rows = list(csv.DictReader(io.StringIO(p.read_text(encoding="utf-8-sig"))))
+    assert rows[-1]["Kunde"] == "Weber AG" and rows[-1]["Vertrag"] == "nein" and rows[-1]["Baujahr"] == ""
+
+
+def test_widerspruch_anhaengen_copies_a_contract_row_with_another_end(tmp_path, shell):
+    p = tmp_path / "installed_base_2026-09.csv"
+    csv_schreiben(p, H_IB, IB)
+    skript = f'. "{EVALS}/_vertrieb/daten.sh"; widerspruch_anhaengen "{p}"'
+    assert subprocess.run([shell, "-c", skript], capture_output=True, text=True).returncode == 0
+    rows = list(csv.DictReader(io.StringIO(p.read_text(encoding="utf-8-sig"))))
+    assert (rows[-1]["Kunde"], rows[-1]["Anlage"], rows[-1]["Vertragsende"]) == ("Nordmetall GmbH", "Anlage 1", "2026-12-31")
