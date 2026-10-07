@@ -6,8 +6,9 @@ import yaml
 from conftest import ROOT
 
 PLUGIN = ROOT / "plugin"
-SKILLS = sorted(p.parent.name for p in (PLUGIN / "skills").glob("*/SKILL.md")) if (PLUGIN / "skills").exists() else []
-ERWARTET = ["daten-pruefen", "einrichtung", "gesundheitscheck", "vorgaenge-uebersicht", "vorgang"]
+# Every shipped skill folder; tests/test_katalog.py checks them against plugin/skills/KATALOG.md, so a lane adds a
+# skill by adding its folder (and its catalog row exists already) without editing a list here.
+SKILLS = sorted(p.parent.name for p in (PLUGIN / "skills").glob("*/SKILL.md"))
 
 
 def kopf(p):
@@ -17,11 +18,7 @@ def kopf(p):
     return yaml.safe_load(m.group(1)), m.group(2)
 
 
-def test_the_plan_2c_skills_ship():
-    assert SKILLS == ERWARTET
-
-
-@pytest.mark.parametrize("name", ERWARTET)
+@pytest.mark.parametrize("name", SKILLS)
 def test_skill_contract(name):
     meta, body = kopf(PLUGIN / "skills" / name / "SKILL.md")
     assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
