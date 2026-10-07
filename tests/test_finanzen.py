@@ -362,3 +362,66 @@ def test_budget_numbers_reconcile(kit_ws):
     _, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--heute", HEUTE, *ANNAHMEN)
     code, r = abgleich(kit_ws, out)
     assert code == 0 and r["geprueft"] == 2
+
+
+def test_investment_npv_payback_irr(kit_ws):
+    code, out = rufe("investitionsantrag", "--ws", kit_ws, "--titel", "Diagnose-Messplatz", "--invest", "100.000",
+                     "--rueckfluss", "30.000", "--jahre", 5, "--quelle", "Eingabe im Gespräch", "--heute", HEUTE)
+    assert code == 0, out
+    assert out["kapitalwert"]["betrag"] == 19781.3 and "(1 + i)^t" in out["kapitalwert"]["formel"]
+    assert out["amortisation"]["anzeige"] == "3,3 Jahre"
+    assert out["interner_zinsfuss"]["betrag"] == 15.24
+    assert out["sensitivitaet"]["betrag"] == -4174.96  # all cash flows −20 %
+    assert out["zins"]["quelle"] == [finanzen.STANDARD_HINWEIS]
+    assert out["dokument"] == "04_Angebote/2026-10-06_investitionsantrag-diagnose-messplatz.docx"
+    assert "nicht festgelegt" in out["entscheidung"]
+
+
+def test_investment_german_inputs_and_user_rate(kit_ws):
+    _, out = rufe("investitionsantrag", "--ws", kit_ws, "--titel", "Prüfstand", "--invest", "1,2 Mio.",
+                  "--rueckfluss", "280.000 €", "--jahre", 5, "--restwert", "120.000", "--zins", "6,5 %",
+                  "--quelle", "Angebot Lieferant")
+    assert out["kapitalwert"]["betrag"] == 51175.94 and out["zins"]["quelle"] == ["Angebot Lieferant"]
+
+
+def test_investment_flow_count_must_match(kit_ws):
+    code, out = rufe("investitionsantrag", "--ws", kit_ws, "--titel", "X", "--invest", "1000", "--rueckfluss", "500",
+                     "--rueckfluss", "600", "--jahre", 3, "--quelle", "Eingabe")
+    assert code == 1 and "--jahre 3" in out["fehler"][0]
+
+
+AUG = [["SA-11", "Müller GmbH", "Anlage 1", "Wartung", "2026-08-03", "2026-08-04", "abgeschlossen", 10, 1000, 500, "Nord"],
+       ["SA-12", "Hansa Pack AG", "Anlage 2", "Reparatur", "2026-08-10", "2026-08-11", "abgeschlossen", 10, 1500, 900, "Süd"]]
+SEP = [["SA-21", "Müller GmbH", "Anlage 1", "Wartung", "2026-09-03", "2026-09-04", "abgeschlossen", 20, 2200, 1000, "Nord"],
+       ["SA-22", "Hansa Pack AG", "Anlage 2", "Reparatur", "2026-09-10", "2026-09-11", "abgeschlossen", 5, 700, 500, "Süd"]]
+
+
+def test_margin_drivers_add_up(kit_ws):
+    schreibe_csv(kit_ws, "auftraege", "2026-08", AUG)
+    schreibe_csv(kit_ws, "auftraege", "2026-09", SEP)
+    code, out = rufe("margen-analyse", "--ws", kit_ws, "--periode", "2026-09", "--vergleich", "2026-08", "--heute", HEUTE)
+    assert code == 0, out
+    e = {k: v["betrag"] for k, v in out["effekte"].items()}
+    assert e == {"volumen": 275, "mix": -75, "preis": 150, "kosten": -50, "nicht_zerlegbar": 0, "veraenderung": 300}
+    assert out["db"]["vergleich"]["betrag"] == 1100 and out["db"]["periode"]["betrag"] == 1400
+    assert out["treiber"][0] == "Volumeneffekt"
+    assert out["effekte"]["preis"]["quelle"][0].startswith("07_Daten/auftraege_2026-09.csv")
+
+
+def test_margin_analysis_stops_on_missing_cost(kit_ws):
+    schreibe_csv(kit_ws, "auftraege", "2026-08", AUG)
+    rows = [r[:] for r in SEP]
+    rows[0][9] = ""
+    schreibe_csv(kit_ws, "auftraege", "2026-09", rows)
+    code, out = rufe("margen-analyse", "--ws", kit_ws, "--periode", "2026-09", "--vergleich", "2026-08")
+    assert code == 1 and "07_Daten/auftraege_2026-09.csv Zeile 1" in out["fehler"][0]
+
+
+def test_investment_names_the_company_decision_right(kit_ws):
+    (kit_ws / "Unternehmen" / "ergebnisrechnung.md").write_text(
+        "---\nentscheidungsrechte:\n"
+        '  - {"thema": "investition", "allein_bis_eur": 15000, "sonst": "Geschäftsführung"}\n'
+        "---\n\n# Ergebnisrechnung Service\n", encoding="utf-8")
+    _, out = rufe("investitionsantrag", "--ws", kit_ws, "--titel", "X", "--invest", "100.000", "--rueckfluss", "30.000",
+                  "--jahre", 5, "--quelle", "Eingabe")
+    assert out["entscheidung"] == "Entscheidung durch Geschäftsführung (über 15.000 EUR)"

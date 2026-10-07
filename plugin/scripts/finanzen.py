@@ -701,6 +701,180 @@ def cmd_budgetplanung(a, ws: Path) -> tuple[int, dict]:
                "dokument": dokument, "zahlen": zahlen}
 
 
+# ---------- investitionsantrag ----------
+
+INVEST_KAPITEL = [
+    ("Anlass und Ziel", "aus dem Gespräch; keine Zahlen erfinden"),
+    ("Investition und Annahmen", "investition, rueckfluesse, restwert, zins – je mit Quelle"),
+    ("Wirtschaftlichkeit", "kapitalwert (mit Formel), amortisation, interner_zinsfuss"),
+    ("Risiko", "sensitivitaet: Kapitalwert bei −20 % Rückfluss"),
+    ("Entscheidung", "entscheidung (Entscheidungsrecht) – Finanzen entscheidet nicht"),
+]
+
+
+def recht(defs: dict, thema: str) -> dict | None:
+    """The company's decision right for a topic; None while the block is still the kit's placeholder
+    (kennzahlen.definitionen fills 'entscheidungsrechte' with a standard that names no own limit)."""
+    erg = defs["ergebnisrechnung"]
+    if "entscheidungsrechte" in (erg.get("standard_felder") or []):
+        return None
+    er = erg.get("entscheidungsrechte") or []
+    if isinstance(er, dict):
+        er = [dict(v, thema=k) for k, v in er.items() if isinstance(v, dict)]
+    return next((e for e in er if isinstance(e, dict) and str(e.get("thema", "")).casefold() == thema), None)
+
+
+def entscheider(defs: dict, thema: str, b: float) -> str:
+    e = recht(defs, thema)
+    if not e:
+        return (f"Entscheidungsrecht für '{thema}' nicht festgelegt (Unternehmen/ergebnisrechnung.md) – "
+                "bitte vor der Entscheidung klären")
+    grenze = e.get("allein_bis_eur")
+    wer = e.get("sonst") or "nicht benannt"
+    if grenze in (None, ""):
+        return f"Entscheidung durch {wer}"
+    g = float(zahl(grenze))
+    return (f"Leitung Kundendienst entscheidet allein (bis {de(g)} EUR)" if b <= g
+            else f"Entscheidung durch {wer} (über {de(g)} EUR)")
+
+
+def slug(text: str) -> str:
+    t = str(text).casefold()
+    for alt, neu in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        t = t.replace(alt, neu)
+    return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:40] or "antrag"
+
+
+def kapitalwert(invest: float, flows: list[float], i: float, rest: float) -> float:
+    return -invest + sum(cf / (1 + i) ** t for t, cf in enumerate(flows, 1)) + rest / (1 + i) ** len(flows)
+
+
+def izf(zahlungen: list[float]) -> float | None:
+    def kw(r: float) -> float:
+        return sum(z / (1 + r) ** t for t, z in enumerate(zahlungen))
+    lo, hi = -0.99, 10.0
+    if kw(lo) * kw(hi) > 0:
+        return None
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        lo, hi = (lo, mid) if kw(lo) * kw(mid) <= 0 else (mid, hi)
+    return round((lo + hi) / 2 * 100, 2)
+
+
+def amortisation(invest: float, flows: list[float]) -> float | None:
+    kum = 0.0
+    for t, cf in enumerate(flows, 1):
+        if cf > 0 and kum + cf >= invest:
+            return t - 1 + (invest - kum) / cf
+        kum += cf
+    return None
+
+
+def cmd_investitionsantrag(a, ws: Path) -> tuple[int, dict]:
+    defs = definitionen(ws)
+    invest = eingabe(a.invest)
+    flows = [eingabe(x) for x in a.rueckfluss]
+    if a.jahre:
+        if len(flows) == 1:
+            flows *= a.jahre
+        elif len(flows) != a.jahre:
+            raise FinanzFehler(f"{len(flows)} Rückflüsse angegeben, aber --jahre {a.jahre}")
+    if invest <= 0:
+        raise FinanzFehler("Die Investition muss größer als 0 sein")
+    rest = eingabe(a.restwert) if a.restwert else 0.0
+    if a.zins:
+        zins, zq = prozent(a.zins), a.quelle
+    else:
+        zins, std = zusatzwert(ws, "kalkulationszins_prozent")
+        zq = STANDARD_HINWEIS if std else "Unternehmen/ergebnisrechnung.md"
+    i, n, q = zins / 100, len(flows), [a.quelle]
+    formel = f"KW = −I + Σ CF_t / (1 + i)^t + Restwert / (1 + i)^n mit i = {de(zins, 1)} %, n = {n}"
+    am, zf = amortisation(invest, flows), izf([-invest, *flows[:-1], flows[-1] + rest])
+    out = {"investition": w("Investition", invest, q),
+           "rueckfluesse": [w(f"Rückfluss Jahr {t}", cf, q) for t, cf in enumerate(flows, 1)],
+           "restwert": w("Restwert", rest, q), "zins": w("Kalkulationszins", zins, [zq], None, "%", 1),
+           "kapitalwert": w("Kapitalwert", kapitalwert(invest, flows, i, rest), q + [zq], formel),
+           "amortisation": w("Statische Amortisation", am, q, "Jahre bis Σ CF_t ≥ I, linear im Jahr", "Jahre", 1)
+           if am is not None else None,
+           "interner_zinsfuss": w("Interner Zinsfuß", zf, q, "i, bei dem KW = 0 (Intervallhalbierung)", "%", 1)
+           if zf is not None else None,
+           "sensitivitaet": w("Kapitalwert bei −20 % Rückfluss", kapitalwert(invest, [cf * 0.8 for cf in flows], i, rest),
+                              q + [zq], formel + ", alle CF_t × 0,8")}
+    kern = [x for x in (out["investition"], out["kapitalwert"], out["amortisation"], out["interner_zinsfuss"],
+                        out["sensitivitaet"]) if x]
+    dokument, _ = freier_name(ws, "04_Angebote", f"{a.heute}_investitionsantrag-{slug(a.titel)}", ".docx")
+    return 0, {"ok": True, "titel": a.titel, **out, "entscheidung": entscheider(defs, "investition", invest),
+               "kernzahlen": kern, "definitionen": verwendet(defs, ("ergebnisrechnung",), []),
+               "gliederung": [{"kapitel": k, "inhalt": t} for k, t in INVEST_KAPITEL], "dokument": dokument}
+
+
+# ---------- margen-analyse ----------
+
+def aggregat(rows: list[dict], segment: str) -> dict:
+    out: dict = {}
+    for r in rows:
+        s = out.setdefault(str(r.get(segment) or "ohne Angabe"), {"h": 0.0, "u": 0.0, "k": 0.0})
+        s["h"] += betrag(r["Stunden"]) or 0
+        s["u"] += betrag(r["Umsatz_EUR"]) or 0
+        s["k"] += betrag(r["Kosten_EUR"]) or 0
+    return out
+
+
+def cmd_margen_analyse(a, ws: Path) -> tuple[int, dict]:
+    p1, p0 = bereich(a.periode), bereich(a.vergleich)
+    if set(p1) & set(p0):
+        raise FinanzFehler("Zeitraum und Vergleichszeitraum überschneiden sich")
+    _, beispiel = datenquelle(ws)
+    r1, r0 = zeilen(ws, "auftraege", p1), zeilen(ws, "auftraege", p0)
+    ohne = [f"{r['_datei']} Zeile {r['_zeile']}" for r in r0 + r1 if betrag(r.get("Kosten_EUR")) is None]
+    if ohne:
+        raise FinanzFehler("Kosten fehlen – ohne Kosten keine Marge, das Kit schätzt sie nicht: "
+                           + ", ".join(ohne[:20]) + (f" und {len(ohne) - 20} weitere" if len(ohne) > 20 else ""))
+    g1, g0 = aggregat(r1, a.segment), aggregat(r0, a.segment)
+    z = [s for s in g1 if s in g0 and g1[s]["h"] > 0 and g0[s]["h"] > 0]
+    nz = [s for s in dict.fromkeys([*g0, *g1]) if s not in z]
+
+    def db(g: dict) -> float:
+        return g["u"] - g["k"]
+
+    h0, h1 = sum(g0[s]["h"] for s in z), sum(g1[s]["h"] for s in z)
+    avg0 = sum(db(g0[s]) for s in z) / h0 if h0 else 0.0
+    roh = {"volumen": (h1 - h0) * avg0,
+           "mix": sum(g1[s]["h"] * db(g0[s]) / g0[s]["h"] for s in z) - h1 * avg0,
+           "preis": sum(g1[s]["h"] * (g1[s]["u"] / g1[s]["h"] - g0[s]["u"] / g0[s]["h"]) for s in z),
+           "kosten": -sum(g1[s]["h"] * (g1[s]["k"] / g1[s]["h"] - g0[s]["k"] / g0[s]["h"]) for s in z),
+           "nicht_zerlegbar": sum(db(g1[s]) for s in nz if s in g1) - sum(db(g0[s]) for s in nz if s in g0)}
+    db1, db0 = sum(db(g) for g in g1.values()), sum(db(g) for g in g0.values())
+    if abs(sum(roh.values()) - (db1 - db0)) > 0.01:
+        raise FinanzFehler("Interner Rechenfehler: Effekte ergeben nicht die DB-Veränderung")
+    posten: list[dict] = []
+    u1, k1 = summe(r1, "Umsatz_EUR", "Umsatz Zeitraum", False, posten), summe(r1, "Kosten_EUR", "Kosten Zeitraum", False, posten)
+    u0, k0 = summe(r0, "Umsatz_EUR", "Umsatz Vergleich", False, posten), summe(r0, "Kosten_EUR", "Kosten Vergleich", False, posten)
+    q = zeilenquelle(r1) + zeilenquelle(r0)
+    formeln = {"volumen": "(H₁ − H₀) × DB/h₀(Ø)", "mix": "Σ H₁ᵢ × DB/h₀ᵢ − H₁ × DB/h₀(Ø)",
+               "preis": "Σ H₁ᵢ × (Erlös/h₁ᵢ − Erlös/h₀ᵢ)", "kosten": "−Σ H₁ᵢ × (Kosten/h₁ᵢ − Kosten/h₀ᵢ)",
+               "nicht_zerlegbar": "ΔDB der Segmente nur in einem Zeitraum oder ohne Stunden"}
+    namen = {"volumen": "Volumeneffekt", "mix": "Mixeffekt", "preis": "Preiseffekt", "kosten": "Kosteneffekt",
+             "nicht_zerlegbar": "Nicht zerlegbar"}
+    effekte = {k: w(namen[k], v, q, formeln[k] + f"; Segment = {a.segment}, Menge = Stunden") for k, v in roh.items()}
+    effekte["veraenderung"] = w("Veränderung DB", db1 - db0, q, "DB Zeitraum − DB Vergleich")
+    dbs = {"periode": w("DB Zeitraum", db1, quellen(u1, k1), "Umsatz − Kosten"),
+           "vergleich": w("DB Vergleich", db0, quellen(u0, k0), "Umsatz − Kosten")}
+    marge = {k: w(f"Marge {k}", dbs[k]["betrag"] / u["betrag"] * 100, quellen(dbs[k]), "DB / Umsatz × 100", "%", 1)
+             for k, u in (("periode", u1), ("vergleich", u0)) if u["betrag"]}
+    segmente = [{"segment": s, **{f"{f}_{p}": round(g[s][f], 2) if s in g else None
+                                  for p, g in (("vergleich", g0), ("periode", g1)) for f in ("h", "u", "k")}}
+                for s in dict.fromkeys([*g0, *g1])]
+    kern = [dbs["vergleich"], dbs["periode"], *effekte.values(), *marge.values()]
+    dokument, zahlen = freier_name(ws, "03_Berichte", f"{a.heute}_margen-analyse", ".docx")
+    ablegen(ws, zahlen, "margen-analyse", a.heute, dokument, posten, kern)
+    return 0, {"ok": True, "periode": p1, "vergleich": p0, "segment": a.segment, "effekte": effekte, "db": dbs,
+               "marge": marge, "segmente": segmente,
+               "treiber": [namen[k] for k in sorted(roh, key=lambda k: -abs(roh[k])) if abs(roh[k]) >= 0.005],
+               "kernzahlen": kern, "beispiel": beispiel, "hinweise": [BEISPIEL_HINWEIS] if beispiel else [],
+               "dokument": dokument, "zahlen": zahlen}
+
+
 # ---------- files ----------
 
 def freier_name(ws: Path, ordner: str, stamm: str, endung: str) -> tuple[str, str]:
@@ -776,11 +950,23 @@ def parser() -> JsonParser:
     sp.add_argument("--jahr", type=int, required=True)
     sp.add_argument("--basis-bis", dest="basis_bis")
     sp.add_argument("--annahme", action="append", default=[])
+    sp = add("investitionsantrag")
+    for flag in ("--titel", "--invest", "--quelle"):
+        sp.add_argument(flag, required=True)
+    sp.add_argument("--rueckfluss", action="append", required=True)
+    sp.add_argument("--jahre", type=int)
+    sp.add_argument("--restwert")
+    sp.add_argument("--zins")
+    sp = add("margen-analyse")
+    sp.add_argument("--periode", required=True)
+    sp.add_argument("--vergleich", required=True)
+    sp.add_argument("--segment", choices=["Auftragsart", "Team", "Kunde"], default="Auftragsart")
     return ap
 
 
 COMMANDS = {"management-report": cmd_management_report, "abgleich": cmd_abgleich,
-            "budgetplanung": cmd_budgetplanung}
+            "budgetplanung": cmd_budgetplanung,
+            "investitionsantrag": cmd_investitionsantrag, "margen-analyse": cmd_margen_analyse}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:
