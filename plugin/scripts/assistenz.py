@@ -720,5 +720,118 @@ def cmd_wochenplanung(a, ws: Path) -> tuple[int, dict]:
                                    f"{len(q_woche)} Entscheidung(en), {len(nachfassen)} zum Nachfassen"]}
 
 
+# ---------- meetings (domain defaults 14–16) ----------
+
+def kundenordner(ws: Path, kunde: str) -> Path:
+    name = ordnername(kunde)
+    kd = ws / "06_Kunden"
+    if kd.is_dir():
+        for p in sorted(kd.iterdir()):
+            if p.is_dir() and not p.is_symlink() and schluessel(p.name) == schluessel(name):
+                return p
+    return kd / name
+
+
+@befehl("besprechung-vorbereiten", ("--kunde", {}), ("--thema", {}), ("--termin", {}),
+        ("--punkt", {"action": "append", "default": []}))
+def cmd_besprechung_vorbereiten(a, ws: Path) -> tuple[int, dict]:
+    heute = datum(a.heute)
+    if not (a.kunde or a.thema):
+        raise AssistenzFehler("Bitte --kunde oder --thema angeben")
+    faelle, defekt = vorgaenge(ws)
+    if a.kunde:
+        ordner = kundenordner(ws, a.kunde)
+        relevant = [f for f in faelle if schluessel(f.get("kunde") or "") == schluessel(a.kunde)]
+    else:
+        ordner = ws / "03_Berichte"
+        stichworte = re.findall(r"\w{4,}", a.thema.casefold())
+        relevant = [f for f in faelle if any(w in f["titel"].casefold() for w in stichworte)]
+    relevant.sort(key=nach_faelligkeit)
+    summe = betrag_summe(relevant, "Offene Beträge in den Vorgängen")
+    unterlagen: list[str] = []
+    if a.kunde and ordner.is_dir():
+        dateien = [p for p in ordner.iterdir() if p.is_file() and p.name.lower() != "liesmich.md"
+                   and not p.name.startswith((".", "~$"))]
+        dateien.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        unterlagen = [rel(ws, p) for p in dateien[:10]]
+    vertrag = rel(ws, ordner / "vertrag.md") if (ordner / "vertrag.md").is_file() else None
+    titel = f"Besprechung {kurz(a.kunde or a.thema, 60)}" + (f" am {kurz(a.termin, 40)}" if a.termin else "")
+    md = kopf(f"Vorbereitung: {titel}", heute, ist_beispiel(ws, relevant))
+    md += ["## Offene Vorgänge", ""] + liste([zeile(f) for f in relevant], "Keine offenen Vorgänge.") + [""]
+    if relevant:
+        md += [f"Offene Beträge zusammen: {deutsch(summe['betrag'])} €."] + quelle_fuss(summe) + [""]
+    md += ["## Letzter Stand je Vorgang", ""]
+    for f in relevant:
+        if f["_ereignisse"]:
+            e = f["_ereignisse"][-1]
+            md.append(f"- {f['nr']} ({de_datum(e['datum'])}, {e['art']}, {e['von']}): {kurz(e['text'], 200)}")
+        emp = letzte_empfehlung(f)
+        if emp:
+            md.append(f"  Empfehlung {emp['urteil']} ({emp['von']}) – noch nicht entschieden")
+    md += ["", "## Vertrag", "", f"- {vertrag}" if vertrag else "- Kein vertrag.md im Kundenordner.", ""]
+    md += ["## Unterlagen im Kundenordner (neueste zuerst)", ""] + liste(unterlagen, "Keine.") + [""]
+    md += ["## Gesprächspunkte (Vorschlag der Assistenz)", ""] + liste([kurz(x, 200) for x in a.punkt], "Keine.")
+    if defekt:
+        md += ["", "## Hinweise", ""] + defekt_zeilen(defekt)
+    p = neue_datei(ordner, f"{heute.isoformat()}_besprechung-vorbereitung", "\n".join(md) + "\n")
+    return 0, {"ok": True, "datei": rel(ws, p), "vorgaenge": [f["nr"] for f in relevant], "vertrag": vertrag,
+               "unterlagen": unterlagen, "summe": summe, "defekt": defekt}
+
+
+def massnahme(roh: str, kunde: str, titel: str, tag: str) -> dict:
+    teile = [t.strip() for t in roh.split("|")] + ["", ""]
+    was, wer, bis = kurz(teile[0], 120), teile[1], teile[2]
+    fehlt = [] if was else ["Was ist zu tun?"]
+    if not wer:
+        fehlt.append("Verantwortlich fehlt – bitte eine Person nennen")
+    else:
+        try:
+            pruefe_mensch(wer, "verantwortlich")
+        except VorgangFehler:
+            fehlt.append(f"'{wer}' ist ein Agent – verantwortlich ist immer eine Person")
+    if not bis:
+        fehlt.append("Fälligkeit fehlt")
+    else:
+        try:
+            dt.date.fromisoformat(bis)
+        except ValueError:
+            fehlt.append(f"Fälligkeit '{bis}' ist kein Datum (JJJJ-MM-TT)")
+    return {"was": was, "verantwortlich": wer or None, "faellig": bis or None, "bereit": not fehlt, "fehlt": fehlt,
+            "vorgang_neu": {"titel": was, "typ": "aufgabe", "kunde": kunde, "verantwortlich": wer or None,
+                            "faellig": bis or None, "von": "assistenz",
+                            "text": f"Maßnahme aus der Besprechung „{titel}“ vom {de_datum(tag)}."}}
+
+
+@befehl("besprechung-protokoll", ("--titel", {"required": True}), ("--datum", {"required": True}),
+        ("--kunde", {}), ("--teilnehmer", {"action": "append", "default": []}),
+        ("--punkt", {"action": "append", "default": []}), ("--beschluss", {"action": "append", "default": []}),
+        ("--massnahme", {"action": "append", "default": []}), ("--naechster-termin", {"dest": "naechster_termin"}))
+def cmd_besprechung_protokoll(a, ws: Path) -> tuple[int, dict]:
+    heute = datum(a.heute)
+    tag = datum(a.datum, "--datum").isoformat()
+    ordner = kundenordner(ws, a.kunde) if a.kunde else ws / "03_Berichte"
+    kunde = ordner.name if a.kunde else "intern"
+    titel = kurz(a.titel, 100)
+    ms = [massnahme(m, kunde, titel, tag) for m in a.massnahme]
+    md = kopf(f"Protokoll: {titel}", heute, False)
+    md += [f"- Datum: {de_datum(tag)}", f"- Kunde: {kunde}",
+           "- Teilnehmer: " + (", ".join(kurz(t, 60) for t in a.teilnehmer) or "nicht angegeben"),
+           "- Quelle: Notizen des Nutzers im Chat", ""]
+    md += ["## Besprochene Punkte", ""] + liste([kurz(x, 300) for x in a.punkt], "Keine angegeben.") + [""]
+    md += ["## Beschlüsse", ""] + liste([kurz(x, 300) for x in a.beschluss], "Keine.") + [""]
+    md += ["## Maßnahmen", "", "| Nr | Maßnahme | Verantwortlich | Fällig | Status |", "| --- | --- | --- | --- | --- |"]
+    for i, m in enumerate(ms, 1):
+        status = "wird Vorgang" if m["bereit"] else "offen: " + "; ".join(m["fehlt"])
+        faellig = de_datum(m["faellig"]) if m["bereit"] else (m["faellig"] or "–")
+        md.append(f"| {i} | {m['was'].replace('|', '/')} | {(m['verantwortlich'] or '–').replace('|', '/')} | "
+                  f"{faellig} | {status} |")
+    md += ["", f"Nächster Termin: {kurz(a.naechster_termin, 80) if a.naechster_termin else 'offen'}"]
+    p = neue_datei(ordner, f"{heute.isoformat()}_protokoll", "\n".join(md) + "\n")
+    for m in ms:
+        m["vorgang_neu"]["text"] += f" Quelle: {rel(ws, p)}"
+    return 0, {"ok": True, "datei": rel(ws, p), "massnahmen": ms,
+               "fehlend": [i for i, m in enumerate(ms, 1) if not m["bereit"]]}
+
+
 if __name__ == "__main__":
     sys.exit(main())
