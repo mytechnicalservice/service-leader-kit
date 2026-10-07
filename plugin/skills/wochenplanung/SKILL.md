@@ -20,8 +20,10 @@ Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`); the pl
 ## Steps
 
 1. Appointments for Monday–Friday: from a linked calendar connector (read only; add `--kalender verbunden`) or from
-   what the user types ("Mittwoch 10:00 Teamleiterrunde" → `--termin "2026-10-07 10:00 Teamleiterrunde"`). Convert
-   weekday names to the dates of this week. A line you cannot place: leave it out and say so.
+   what the user types ("Mittwoch 10:00 Teamleiterrunde" → `--termin "2026-10-07 10:00 Teamleiterrunde"`; with an
+   end time "Mittwoch 10:00–11:00 Teamleiterrunde" → `--termin "2026-10-07 10:00–11:00 Teamleiterrunde"`; all day
+   "Freitag ganztägig Messe Stuttgart" → `--termin "2026-10-09 Messe Stuttgart"`, no time and no "ganztägig" in the
+   title – the script writes "ganztägig" itself). Convert weekday names to the dates of this week. A line you cannot place: leave it out and say so.
 2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" wochenplanung --ws "<workspace>" --heute JJJJ-MM-TT`
    plus one `--termin "…"` per appointment.
 3. Answer in German: the three priorities with one sentence why each, then per day only what matters, then

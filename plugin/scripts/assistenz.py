@@ -566,7 +566,10 @@ def cmd_mail_speichern(a, ws: Path) -> tuple[int, dict]:
 
 # ---------- calendar text, briefing, week plan (domain defaults 1–5, 11–13) ----------
 
-TERMIN_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2})(?:\s*[-–]\s*(\d{1,2}:\d{2}))?)?\s+(\S.*)$")
+# "JJJJ-MM-TT [HH:MM[–HH:MM]] Titel"; the end may follow "-", "–" or "bis"; without a time (or with "ganztägig"/
+# "ganztags" in front of the title) the appointment is all day.
+TERMIN_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2})(?:\s*(?:[-–]|bis)\s*(\d{1,2}:\d{2}))?)?"
+                       r"(?:\s+(?:ganztägig|ganztags)\b)?\s+(\S.*)$", re.I)
 TERMIN_ARGS = (("--termin", {"action": "append", "default": []}),
                ("--kalender", {"choices": ["verbunden", "keiner"], "default": "keiner"}))
 
