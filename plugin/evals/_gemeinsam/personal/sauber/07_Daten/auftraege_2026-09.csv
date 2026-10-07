@@ -1,0 +1,10 @@
+﻿Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-260901,Müller GmbH,Anlage 1,Wartung,2026-09-10,2026-09-10,abgeschlossen,250,31250,20000,Nord,auftraege_2026-09.xlsx,Tabelle1,2
+SA-260902,Hansa Pack AG,Anlage 2,Reparatur,2026-09-11,2026-09-11,abgeschlossen,200,25000,16000,Nord,auftraege_2026-09.xlsx,Tabelle1,3
+SA-260903,Nordmetall KG,Anlage 1,Wartung,2026-09-12,2026-09-12,abgeschlossen,100,12500,8000,Nord,auftraege_2026-09.xlsx,Tabelle1,4
+SA-260904,Alpenform AG,Anlage 1,Retrofit,2026-09-13,2026-09-13,abgeschlossen,240,30000,19200,Süd,auftraege_2026-09.xlsx,Tabelle1,5
+SA-260905,Alpenform AG,Anlage 2,Reparatur,2026-09-14,2026-09-14,abgeschlossen,200,25000,16000,Süd,auftraege_2026-09.xlsx,Tabelle1,6
+SA-260906,Bavaria Druck GmbH,Anlage 1,Wartung,2026-09-15,2026-09-15,abgeschlossen,160,20000,12800,Süd,auftraege_2026-09.xlsx,Tabelle1,7
+SA-260907,Rheinstahl AG,Anlage 1,Reparatur,2026-09-16,2026-09-16,abgeschlossen,180,22500,14400,West,auftraege_2026-09.xlsx,Tabelle1,8
+SA-260908,Rheinstahl AG,Anlage 2,Wartung,2026-09-17,2026-09-17,abgeschlossen,120,15000,9600,West,auftraege_2026-09.xlsx,Tabelle1,9
+SA-260909,Müller GmbH,Anlage 2,Inbetriebnahme,2026-09-18,2026-09-18,abgeschlossen,80,10000,6400,West,auftraege_2026-09.xlsx,Tabelle1,10

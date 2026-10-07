@@ -1,0 +1,41 @@
+schema_version: "1.1"
+name: personalplanung-sauber
+description: "Teamplanung mit Einstellungsfall Süd."
+tags: ["skill:personalplanung", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "personal\\.py.*personalplanung.*--monate 3"
+  - name: jahresbedarf-sued
+    type: regex
+    pattern: "7\\.200"
+  - name: erloes-jahr1
+    type: regex
+    pattern: "131\\.250"
+  - name: hinweis
+    type: regex
+    pattern: "BetrVG"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*personalplanung*.xlsx"
+  - name: kein-vorgang
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*neu"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says team Süd needs 1 additional technician (gap 1,0 FTE) while Nord and West
+      need none, labels the assumptions as kit standard assumptions to be checked, states payback in month 7 and
+      shows the works council / data protection hint. FAIL if it proposes reducing staff in any team, gives any
+      value per person, or claims legal clearance.

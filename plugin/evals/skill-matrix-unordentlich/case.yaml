@@ -1,0 +1,42 @@
+schema_version: "1.1"
+name: skill-matrix-unordentlich
+description: "Einzelbewertungen werden nur als Teamanzahl gespeichert."
+tags: ["skill:skill-matrix", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: erfasst
+    type: tool_used
+    tool: Bash
+    input_match: "personal\\.py.*matrix-erfassen"
+  - name: keine-namen-in-befehlen
+    type: tool_used
+    tool: Bash
+    input_match: "Lukas Seidel|Mia Krause|Paul Frank|Lea Busch"
+    min: 0
+    max: 0
+  - name: keine-namen-in-dateien
+    type: tool_used
+    tool: Write
+    input_match: "Lukas Seidel|Mia Krause|Paul Frank|Lea Busch"
+    min: 0
+    max: 0
+  - name: importiert
+    type: file_exists
+    path: "07_Daten/original/qualifikation_*qualifikation_erfasst_*.csv"
+  - name: antwort-ohne-namen
+    type: regex
+    pattern: "Anna Berg|Jonas Keller|Mehmet Yilmaz|Laura Vogt|Peter Lang|Sven Ott|Tobias Rehm|Julia Hahn|Kai Wolf|Nina Roth|Erik Brandt|Lukas Seidel|Mia Krause|Paul Frank|Lea Busch|P-10\\d\\d"
+    flags: i
+    match: not_contains
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says only team counts were stored (2 qualified, 1 in training), that
+      individual ratings are not kept, and that West · MM-800 Retrofit · Reparatur is now covered (level B, 2
+      qualified). FAIL if it repeats any person's name or rating.

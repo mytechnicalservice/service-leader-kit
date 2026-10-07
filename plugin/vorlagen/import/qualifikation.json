@@ -1,0 +1,43 @@
+{
+  "name": "qualifikation",
+  "periode": { "stichtag": true },
+  "summe": null,
+  "spalten": [
+    {
+      "name": "Team",
+      "typ": "text",
+      "pflicht": true,
+      "synonyme": ["Gruppe", "Region"]
+    },
+    {
+      "name": "Maschinentyp",
+      "typ": "text",
+      "pflicht": true,
+      "synonyme": ["Typ", "Modell"]
+    },
+    {
+      "name": "Auftragsart",
+      "typ": "text",
+      "pflicht": true,
+      "synonyme": ["Art", "Leistungsart"]
+    },
+    {
+      "name": "Qualifiziert_Anzahl",
+      "typ": "zahl",
+      "pflicht": true,
+      "synonyme": ["Qualifiziert", "Selbstständig"]
+    },
+    {
+      "name": "In_Schulung_Anzahl",
+      "typ": "zahl",
+      "pflicht": false,
+      "synonyme": ["In Schulung"]
+    },
+    {
+      "name": "Ausbilder_Anzahl",
+      "typ": "zahl",
+      "pflicht": false,
+      "synonyme": ["Ausbilder"]
+    }
+  ]
+}
