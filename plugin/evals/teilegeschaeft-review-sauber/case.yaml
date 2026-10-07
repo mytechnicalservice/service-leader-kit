@@ -1,0 +1,40 @@
+schema_version: "1.1"
+name: teilegeschaeft-review-sauber
+description: "Review des Ersatzteilgeschäfts auf dem Beispieljahr."
+tags: ["skill:teilegeschaeft-review", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "teile\\.py.*teilegeschaeft-review"
+  - name: bericht
+    type: file_exists
+    path: 03_Berichte/*_teilegeschaeft-review.docx
+  - name: umsatz
+    type: regex
+    pattern: "1\\.843\\.622"
+  - name: lieferbereitschaft
+    type: regex
+    pattern: "86,7 ?%"
+  - name: top-teil
+    type: regex
+    pattern: "ET-13034"
+  - name: zahlen-im-dokument
+    type: regex
+    pattern: "1\\.843\\.622"
+    target: trace
+  - name: inhalt
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, gives the 12-month parts revenue, the trend, the availability rate with its
+      target (and says whether the target is the kit standard), the top part and top customer, states that the
+      margin can only be computed with a cost price (or gives it with its coverage), names the report path in
+      03_Berichte, and cites data sources (file names). FAIL if it states a number that is not in the script output,
+      or if it opens a case without asking for a responsible person.
