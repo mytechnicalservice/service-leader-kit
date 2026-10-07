@@ -570,6 +570,137 @@ def cmd_abgleich(a, ws: Path) -> tuple[int, dict]:
         else "Abgleich mit Abweichungen – so nicht weitergeben."}
 
 
+# ---------- budgetplanung ----------
+
+BUDGET_KAPITEL = [
+    ("Auf einen Blick", "kernzahlen: Budget gegen Basis (Umsatz, DB I, DB II, Ergebnis), Zielvorschläge Umsatz und "
+                        "DB II in %"),
+    ("Basis", "basis_monate, positionen[].basis – Fortschreibung der letzten 12 Monate"),
+    ("Annahmen", "annahmen: je Zeile Ziel, Änderung, Begründung, Quelle (Personal, Angebot, Nutzer)"),
+    ("Budget je Position und Monat", "positionen[].budget und .monate (Blatt 'Monate' in Excel)"),
+    ("Grundlagen für die Annahmen", "vertragsbasis, teams (nur Teamebene) – ohne automatische Wirkung"),
+    ("Verwendete Definitionen", "definitionen – Standarddefinitionen des Kits ausdrücklich kennzeichnen"),
+]
+
+
+def annahme(text: str, positionen: list[str]) -> dict:
+    teile = [t.strip() for t in str(text).split("|")]
+    if len(teile) != 4 or not all(teile):
+        raise FinanzFehler(f"Annahme '{text}': Form 'Position oder Art|+3 %|Begründung|Quelle' erwartet")
+    ziel, aenderung, grund, quelle = teile
+    m = re.fullmatch(r"([+-])\s*(.+?)\s*(%?)", aenderung)
+    if not m:
+        raise FinanzFehler(f"Annahme '{text}': Änderung mit Vorzeichen angeben, z. B. +3 % oder +78.000 EUR")
+    wert_ = (prozent if m.group(3) else eingabe)(m.group(2)) * (-1 if m.group(1) == "-" else 1)
+    betroffen = ([p for p in positionen if klasse(p) == ziel.casefold()] if ziel.casefold() in NAMEN
+                 else [p for p in positionen if p.casefold() == ziel.casefold()])
+    if not betroffen:
+        raise FinanzFehler(f"Annahme '{text}': '{ziel}' ist weder Position noch Art. Positionen: "
+                           f"{', '.join(positionen)}; Arten: {', '.join(NAMEN)}")
+    return {"ziel": ziel, "art": "prozent" if m.group(3) else "betrag", "wert": wert_, "positionen": betroffen,
+            "begruendung": grund, "quelle": quelle, "text": text}
+
+
+def vertragsbasis(ws: Path, jahr: int) -> dict | None:
+    monate = vorhandene_monate(ws, "installed_base")
+    if not monate:
+        return None
+    rows = zeilen(ws, "installed_base", [monate[-1]])
+    vertrag = [r for r in rows if str(r.get("Vertrag")).strip().casefold() == "ja"]
+    ende = [r for r in vertrag if str(r.get("Vertragsende") or "")[:4] == str(jahr)]
+    q = zeilenquelle(rows)
+    return {"anlagen": w("Anlagen im Bestand", len(rows), q, None, "Stück"),
+            "vertraege": w("Anlagen mit Wartungsvertrag", len(vertrag), q, None, "Stück"),
+            "auslaufend": w(f"Verträge mit Ende {jahr}", len(ende), zeilenquelle(ende) or q, None, "Stück"),
+            "hinweis": "Verlängerungen sind nicht automatisch eingerechnet – Annahme mit Vertrieb klären."}
+
+
+def teams(ws: Path) -> list[dict]:
+    monate = vorhandene_monate(ws, "kapazitaet")
+    if not monate:
+        return []
+    rows = zeilen(ws, "kapazitaet", [monate[-1]])
+    return [w(f"Techniker Team {t}", sum(betrag(r["Techniker_Anzahl"]) or 0 for r in rows if str(r["Team"]) == t),
+              zeilenquelle([r for r in rows if str(r["Team"]) == t]), None, "Köpfe")
+            for t in dict.fromkeys(str(r["Team"]) for r in rows)]
+
+
+def cmd_budgetplanung(a, ws: Path) -> tuple[int, dict]:
+    defs = definitionen(ws)
+    _, beispiel = datenquelle(ws)
+    vorhanden = vorhandene_monate(ws, "ergebnis")
+    if not vorhanden:
+        raise FinanzFehler("Keine Ergebnisrechnung in 07_Daten – bitte zuerst die Exporte mit daten-pruefen übernehmen")
+    bis = periode(a.basis_bis) if a.basis_bis else vorhanden[-1]
+    basis_monate = monate_bis(bis, 12)
+    fehlend = [m for m in basis_monate if m not in vorhanden]
+    if fehlend:
+        raise FinanzFehler(f"Für die Basis (12 Monate bis {dp.monatsname(bis)}) fehlen Monate: "
+                           + ", ".join(map(dp.monatsname, fehlend))
+                           + ". Das Kit schätzt keine fehlenden Monate – bitte den Export mit daten-pruefen übernehmen.")
+    posten: list[dict] = []
+    rows = zeilen(ws, "ergebnis", basis_monate)
+    namen = list(dict.fromkeys(str(r["Position"]).strip() for r in rows))
+    annahmen = [annahme(t, namen) for t in a.annahme]
+    kosten_vz = -1.0 if any((betrag(r["Ist_EUR"]) or 0) < 0 for r in rows
+                            if klasse(str(r["Position"])) != "umsatz") else 1.0
+    basis = {p: summe([r for r in rows if str(r["Position"]).strip() == p], "Ist_EUR", f"{p} Basis", False, posten)
+             for p in namen}
+    tabelle = []
+    for p in namen:
+        k, b = klasse(p), basis[p]["betrag"]
+        je_monat = {mm: 0.0 for mm in range(1, 13)}
+        for r in rows:
+            if str(r["Position"]).strip() == p:
+                je_monat[int(periode(str(r["Monat"])[:7])[5:])] += betrag(r["Ist_EUR"]) or 0
+        anteil = {mm: (je_monat[mm] / b if b else 1 / 12) for mm in je_monat}
+        vz = 1.0 if k == "umsatz" else (-1.0 if b < 0 else (1.0 if b > 0 else kosten_vz))
+        saison, gleich, angewandt = 0.0, 0.0, []
+        for an in annahmen:
+            if p not in an["positionen"]:
+                continue
+            if an["art"] == "prozent":
+                saison += b * an["wert"] / 100
+            else:
+                summe_basis = sum(abs(basis[x]["betrag"]) for x in an["positionen"])
+                gleich += vz * an["wert"] * (abs(b) / summe_basis if summe_basis else 1 / len(an["positionen"]))
+            angewandt.append(an["text"])
+        monate = {f"{a.jahr}-{mm:02d}": round(je_monat[mm] + saison * anteil[mm] + gleich / 12, 2) for mm in je_monat}
+        budget = w(f"{p} Budget {a.jahr}", b + saison + gleich,
+                   basis[p]["quelle"] + [f"Annahme: {t}" for t in angewandt],
+                   "Basis + Σ Annahmen" if angewandt else "Basis (Fortschreibung der letzten 12 Monate)")
+        tabelle.append({"position": p, "klasse": k, "basis": basis[p], "budget": budget, "annahmen": angewandt,
+                        "monate": monate})
+
+    def klassen_von(feld: str, label: str) -> dict:
+        out = {}
+        for k in ("umsatz", *KOSTEN):
+            ps = [t[feld] for t in tabelle if t["klasse"] == k]
+            s = sum(x["betrag"] for x in ps)
+            out[k] = w(f"{NAMEN[k]} {label}", s if k == "umsatz" else abs(s),
+                       quellen(*ps) or ["keine Position dieser Art"], "Summe der Positionen" if len(ps) > 1 else None)
+        return out
+
+    kl_basis, kl_budget = klassen_von("basis", "Basis"), klassen_von("budget", f"Budget {a.jahr}")
+    ab_basis, ab_budget = abschluss(kl_basis, defs, "Basis"), abschluss(kl_budget, defs, f"Budget {a.jahr}")
+    kern = [kl_budget["umsatz"], kl_basis["umsatz"], ab_budget["ergebnis"], ab_basis["ergebnis"]]
+    kern += [x for x in (ab_budget["db1"], ab_budget["db2"]) if x]
+    # K1: the proposed kpi-ziele targets are Umsatz and DB II % (not DB I %).
+    if ab_budget["db2"] and kl_budget["umsatz"]["betrag"]:
+        kern.append(w(f"Zielvorschlag DB II in % {a.jahr}", ab_budget["db2"]["betrag"] / kl_budget["umsatz"]["betrag"] * 100,
+                      quellen(ab_budget["db2"], kl_budget["umsatz"]), "DB II Budget / Umsatz Budget × 100", "%", 1))
+    dokument, zahlen = freier_name(ws, "03_Berichte", f"{a.heute}_budgetplanung-{a.jahr}", ".xlsx")
+    ablegen(ws, zahlen, "budgetplanung", a.heute, dokument, posten, kern)
+    return 0, {"ok": True, "jahr": a.jahr, "basis_monate": basis_monate, "positionen": tabelle, "klassen": kl_budget,
+               "basis_klassen": kl_basis, "basis_abschluss": ab_basis, "budget_abschluss": ab_budget,
+               "kernzahlen": kern, "annahmen": annahmen, "vertragsbasis": vertragsbasis(ws, a.jahr), "teams": teams(ws),
+               "zielvorschlag": ["Umsatz", "DB II in %"],
+               "beispiel": beispiel, "hinweise": [BEISPIEL_HINWEIS] if beispiel else [],
+               "definitionen": verwendet(defs, ("ergebnisrechnung",), []),
+               "gliederung": [{"kapitel": k, "inhalt": i} for k, i in BUDGET_KAPITEL],
+               "dokument": dokument, "zahlen": zahlen}
+
+
 # ---------- files ----------
 
 def freier_name(ws: Path, ordner: str, stamm: str, endung: str) -> tuple[str, str]:
@@ -641,10 +772,15 @@ def parser() -> JsonParser:
     sp = add("abgleich")
     sp.add_argument("--zahlen", required=True)
     sp.add_argument("--dokument")
+    sp = add("budgetplanung")
+    sp.add_argument("--jahr", type=int, required=True)
+    sp.add_argument("--basis-bis", dest="basis_bis")
+    sp.add_argument("--annahme", action="append", default=[])
     return ap
 
 
-COMMANDS = {"management-report": cmd_management_report, "abgleich": cmd_abgleich}
+COMMANDS = {"management-report": cmd_management_report, "abgleich": cmd_abgleich,
+            "budgetplanung": cmd_budgetplanung}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:

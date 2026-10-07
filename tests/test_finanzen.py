@@ -292,3 +292,73 @@ def test_reconciliation_checks_the_document(fin_ws):
     doc.save(fin_ws / out["dokument"])
     code, r = abgleich(fin_ws, out, "--dokument", out["dokument"])
     assert code == 1 and any("Umsatz Monat Ist" in x and "steht nicht im Dokument" in x for x in r["abweichungen"])
+
+
+def budget_ws(ws, ohne=()):
+    for m in finanzen.monate_bis("2026-09", 12):
+        if m in ohne:
+            continue
+        service = 21000 if m == "2025-12" else 10000
+        schreibe_csv(ws, "ergebnis", m, [[m, "Umsatz Service", "", service], [m, "Personalkosten", "", -5000]])
+    schreibe_csv(ws, "installed_base", "2026-09", [["Müller GmbH", "Anlage 1", "MM-400", 2019, "ja", "2027-03-01"],
+                                                   ["Hansa Pack AG", "Anlage 2", "MM-600", 2021, "ja", "2028-01-01"],
+                                                   ["Nordmetall GmbH", "Anlage 1", "MM-400", 2015, "nein", ""]])
+    return ws
+
+
+ANNAHMEN = ["--annahme", "umsatz|+3 %|Preiserhöhung 2027|angebot",
+            "--annahme", "Personalkosten|+78.000 EUR|1 Techniker Team Süd|personal"]
+
+
+def test_budget_from_run_rate_and_assumptions(kit_ws):
+    budget_ws(kit_ws)
+    code, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--heute", HEUTE, *ANNAHMEN)
+    assert code == 0, out
+    pos = {p["position"]: p for p in out["positionen"]}
+    assert pos["Umsatz Service"]["basis"]["betrag"] == 131000
+    assert pos["Umsatz Service"]["budget"]["betrag"] == 134930
+    assert pos["Umsatz Service"]["monate"]["2027-12"] == 21630 and pos["Umsatz Service"]["monate"]["2027-01"] == 10300
+    assert pos["Personalkosten"]["budget"]["betrag"] == -138000
+    assert pos["Personalkosten"]["monate"]["2027-06"] == -11500
+    assert out["budget_abschluss"]["ergebnis"]["betrag"] == -3070
+    assert out["basis_monate"][0] == "2025-10" and out["basis_monate"][-1] == "2026-09"
+    assert out["vertragsbasis"]["auslaufend"]["betrag"] == 1
+    assert out["dokument"] == "03_Berichte/2026-10-06_budgetplanung-2027.xlsx"
+    assert any("Annahme: umsatz|+3 %" in q for q in pos["Umsatz Service"]["budget"]["quelle"])
+
+
+def test_budget_proposes_revenue_and_db2_targets(kit_ws):
+    """Max's correction K1: the budget proposes Umsatz and DB II % as kpi-ziele targets, not DB I %."""
+    budget_ws(kit_ws)
+    _, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--heute", HEUTE, *ANNAHMEN)
+    namen = [k["name"] for k in out["kernzahlen"]]
+    # DB II = Umsatz 134.930 − Personal 138.000 = −3.070 (no material/third-party positions)
+    assert kern(out, "Zielvorschlag DB II in % 2027")["anzeige"] == f"{kz.deutsch(-3070 / 134930 * 100, 1)} %"
+    assert kern(out, "Umsatz Budget 2027")["betrag"] == 134930
+    assert not any(n.startswith("Zielvorschlag DB I ") for n in namen), namen
+    assert "DB II" in out["gliederung"][0]["inhalt"]
+
+
+def test_budget_without_assumptions_is_the_base(kit_ws):
+    budget_ws(kit_ws)
+    _, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--heute", HEUTE)
+    assert out["klassen"]["umsatz"]["betrag"] == 131000 and out["budget_abschluss"]["ergebnis"]["betrag"] == 71000
+
+
+def test_budget_names_missing_months(kit_ws):
+    budget_ws(kit_ws, ohne=("2026-03",))
+    code, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027)
+    assert code == 1 and "März 2026" in out["fehler"][0] and "schätzt keine" in out["fehler"][0]
+
+
+def test_budget_rejects_unknown_assumption_target(kit_ws):
+    budget_ws(kit_ws)
+    code, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--annahme", "Marketing|+5 %|neu|angebot")
+    assert code == 1 and "Umsatz Service" in out["fehler"][0]
+
+
+def test_budget_numbers_reconcile(kit_ws):
+    budget_ws(kit_ws)
+    _, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--heute", HEUTE, *ANNAHMEN)
+    code, r = abgleich(kit_ws, out)
+    assert code == 0 and r["geprueft"] == 2
