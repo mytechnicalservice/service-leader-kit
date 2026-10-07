@@ -265,6 +265,148 @@ def preisliste(ws, q, jahr, lohn, material, allgemein, markt, datei, schreiben, 
             "entscheidung_preise": entscheidungsrecht(ws, "preise"), "gliederung": PREIS_GLIEDERUNG}
 
 
+# ---------- portfolio ----------
+
+PORTFOLIO_GLIEDERUNG = ["Ergebnis auf einen Blick (Klassen je Produkt)", "Umsatz, Marge, Wachstum je Produkt",
+                        "Ziel: DB II-Marge (Herkunft) und verwendete Definitionen", "Vertragsdeckung der Installed Base",
+                        "Empfehlung je Produkt: halten / sanieren / ausbauen / auslaufen prüfen",
+                        "Vermarktung: Zielgruppe und Botschaft für Produkte 'ausbauen'",
+                        "Vorgeschlagene Vorgänge (nur nach Bestätigung)", "Datenlücken und Hinweise", "Quellen"]
+
+
+def im_zeitraum(zeilen: list[dict], spalte: str, perioden: set[str]) -> list[dict]:
+    return [z for z in zeilen if str(z.get(spalte) or "")[:7] in perioden]
+
+
+def hat_werte(zeilen: list[dict], spalte: str) -> bool:
+    return bool(zeilen) and all(z.get(spalte) is not None and str(z.get(spalte)).strip() for z in zeilen)
+
+
+def keine_zeilen(name: str) -> list[str]:
+    return [f"keine Datenzeilen für '{name}' im Zeitraum"]
+
+
+def summe_von(zeilen: list[dict], spalte: str, name: str) -> dict:
+    """kennzahlen.summe plus `anzeige`; an empty period is 0 with a "no rows" source instead of an error
+    (kennzahlen.wert refuses an empty source list)."""
+    if not zeilen:
+        return w(name, 0, keine_zeilen(name), None)
+    s = summe(zeilen, spalte, name)
+    return s | {"anzeige": deutsch(s["betrag"], 0)}
+
+
+def prozent_wert(name: str, zaehler: float, nenner: float, quelle: list[str], formel: str) -> dict | None:
+    return w(name, round(zaehler / nenner * 100, 1), quelle, formel, "%", 1) if nenner else None
+
+
+def teile_umsatz(zeilen: list[dict], name: str) -> dict:
+    betrag = round(sum(zahl(z["Menge"]) * zahl(z["Stueckpreis_EUR"]) for z in zeilen), 2)
+    return w(name, betrag, quelle_von(zeilen) or keine_zeilen(name), "Σ Menge × Stueckpreis_EUR")
+
+
+def klasse(marge, wachstum, anteil, ziel) -> tuple[str, str]:
+    if marge is None:
+        return "unklar", "Kosten fehlen – Marge nicht berechenbar"
+    if marge < 0:
+        if anteil >= ANTEIL_GROSS:
+            return "sanieren", "negative Marge bei großem Umsatzanteil"
+        return "auslaufen prüfen", "negative Marge"
+    if marge < ziel:
+        if anteil < ANTEIL_KLEIN and (wachstum is None or wachstum <= 0):
+            return "auslaufen prüfen", "Marge unter Ziel (DB II-Marge), kleiner Anteil, kein Wachstum"
+        return "sanieren", "Marge unter Ziel (DB II-Marge)"
+    if wachstum is not None and wachstum >= WACHSTUM_AUSBAU:
+        return "ausbauen", "Marge über Ziel (DB II-Marge) und Wachstum ab 5 %"
+    return "halten", "Marge über Ziel (DB II-Marge)"
+
+
+def produkt(name, herkunft, u, kosten, u1, u2) -> dict:
+    db = w(f"DB {name}", round(u["betrag"] - kosten["betrag"], 2), u["quelle"] + kosten["quelle"],
+           "Umsatz − Kosten") if kosten else None
+    return {"produkt": name, "herkunft": herkunft, "umsatz": u, "kosten": kosten, "db": db,
+            "marge": prozent_wert(f"Marge {name}", db["betrag"], u["betrag"], u["quelle"], "DB ÷ Umsatz") if db else None,
+            "umsatz_h1": u1, "umsatz_h2": u2,
+            "wachstum": prozent_wert(f"Wachstum {name}", u2["betrag"] - u1["betrag"], u1["betrag"],
+                                     u1["quelle"] + u2["quelle"], "(Umsatz 2. Halbjahr − 1. Halbjahr) ÷ 1. Halbjahr")}
+
+
+def vertraege(basis: Path, stichtag: dt.date) -> tuple[list[dict], list[str]]:
+    gefunden, hinweise = [], []
+    for p in sorted((basis / "06_Kunden").glob("*/vertrag.md")):
+        m = re.match(r"\A---\r?\n(.*?)\r?\n---", p.read_text(encoding="utf-8-sig"), re.S)
+        kopf = {}
+        for zeile in m.group(1).splitlines() if m else []:
+            k, _, v = zeile.partition(":")
+            kopf[k.strip()] = v.strip().strip('"')
+        rel = p.relative_to(basis).as_posix()
+        try:
+            gebuehr, beginn = zahl(kopf["jahresgebuehr_eur"]), dt.date.fromisoformat(kopf["beginn"])
+            ende = None if kopf.get("ende") in (None, "", "null") else dt.date.fromisoformat(kopf["ende"])
+        except (KeyError, ValueError):
+            hinweise.append(f"{rel}: Kopf unvollständig (jahresgebuehr_eur, beginn, ende) – nicht gezählt")
+            continue
+        if beginn <= stichtag and (ende is None or ende >= stichtag):
+            gefunden.append({"datei": rel, "gebuehr": gebuehr})
+    return gefunden, hinweise
+
+
+def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
+    alle = monate(bis, 12)
+    h1, h2 = set(alle[:6]), set(alle[6:])
+    auf, teile = lade(basis, "auftraege", alle), lade(basis, "ersatzteile", alle)
+    ziel, ziel_quelle = zielmarge(ws)
+    produkte, hinweise = [], []
+    for art in sorted({str(z.get("Auftragsart") or "").strip() for z in auf} - {""}):
+        zz = [z for z in auf if str(z.get("Auftragsart") or "").strip() == art]
+        kosten = summe_von(zz, "Kosten_EUR", f"Kosten {art}") if hat_werte(zz, "Kosten_EUR") else None
+        produkte.append(produkt(art, "Aufträge", summe_von(zz, "Umsatz_EUR", f"Umsatz {art}"), kosten,
+                                summe_von(im_zeitraum(zz, "Eingang", h1), "Umsatz_EUR", f"Umsatz {art} 1. Halbjahr"),
+                                summe_von(im_zeitraum(zz, "Eingang", h2), "Umsatz_EUR", f"Umsatz {art} 2. Halbjahr")))
+    if teile:
+        produkte.append(produkt("Ersatzteile", "Ersatzteile", teile_umsatz(teile, "Umsatz Ersatzteile"), None,
+                                teile_umsatz(im_zeitraum(teile, "Datum", h1), "Umsatz Ersatzteile 1. Halbjahr"),
+                                teile_umsatz(im_zeitraum(teile, "Datum", h2), "Umsatz Ersatzteile 2. Halbjahr")))
+    gesamt = round(sum(p["umsatz"]["betrag"] for p in produkte), 2)
+    quellen = [q for p in produkte for q in p["umsatz"]["quelle"]]
+    for p in produkte:
+        p["anteil"] = prozent_wert(f"Anteil {p['produkt']}", p["umsatz"]["betrag"], gesamt, quellen,
+                                   "Umsatz Produkt ÷ Umsatz Portfolio (Aufträge + Ersatzteile)")
+        m, g = (p[k]["betrag"] if p[k] else None for k in ("marge", "wachstum"))
+        p["klasse"], p["begruendung"] = klasse(m, g, p["anteil"]["betrag"] if p["anteil"] else 0.0, ziel)
+    j, mo = (int(x) for x in bis.split("-"))
+    stichtag = dt.date(j + mo // 12, mo % 12 + 1, 1) - dt.timedelta(days=1)
+    vt, vt_hinweise = vertraege(basis, stichtag)
+    hinweise += vt_hinweise
+    if vt:
+        u = w("Jahreswert laufende Wartungsverträge", round(sum(v["gebuehr"] for v in vt), 2),
+              [v["datei"] for v in vt], f"Σ jahresgebuehr_eur der am {stichtag.isoformat()} laufenden Verträge")
+        produkte.append({"produkt": "Wartungsverträge", "herkunft": "Verträge", "umsatz": u, "kosten": None,
+                         "db": None, "marge": None, "umsatz_h1": None, "umsatz_h2": None, "wachstum": None,
+                         "anteil": None, "klasse": "unklar",
+                         "begruendung": "Jahreswert, keine Periodenumsätze und keine getrennten Kosten – nicht klassifiziert"})
+    else:
+        hinweise.append("Keine laufenden Wartungsverträge gefunden (06_Kunden/<Kunde>/vertrag.md) – "
+                        "Wartungsverträge fehlen im Portfolio")
+    try:
+        ib = lade(basis, "installed_base", [bis])
+        mit = [z for z in ib if str(z.get("Vertrag")).strip() == "ja"]
+        quote = prozent_wert("Vertragsdeckung Installed Base", len(mit), len(ib), quelle_von(ib),
+                             "Anlagen mit Vertrag ÷ alle Anlagen")
+    except KennzahlFehler as exc:
+        quote = None
+        hinweise.append(f"Vertragsdeckung nicht berechenbar: {exc}")
+    return {"zeitraum": f"{alle[0]} bis {alle[-1]}", "produkte": produkte,
+            "umsatz_auftraege": summe_von(auf, "Umsatz_EUR", "Umsatz Aufträge gesamt"),
+            "umsatz_portfolio": w("Umsatz Portfolio (Aufträge + Ersatzteile)", gesamt, quellen, "Σ Umsatz je Produkt"),
+            "zielmarge": {"prozent": ziel, "quelle": ziel_quelle, "kennzahl": ZIEL_KPI,
+                          "anzeige": f"Ziel: {ZIEL_KPI} {deutsch(ziel, 1)} %"},
+            "vertragsquote": quote,
+            "margendefinition": "Marge je Produkt = (Umsatz − Kosten_EUR) ÷ Umsatz auf Auftragsebene, nicht DB I/II "
+                                "aus ergebnisrechnung.md; verglichen mit dem Ziel der DB II-Marge (kpi-ziele.md)",
+            "hinweise": hinweise, "ziel": freier_name(ws, "03_Berichte", f"{heute}_portfolio-review", ".docx"),
+            "gliederung": PORTFOLIO_GLIEDERUNG}
+
+
 # ---------- CLI ----------
 
 def parser() -> JsonParser:
@@ -284,6 +426,8 @@ def parser() -> JsonParser:
     p.add_argument("--markt", action="append", default=[])
     p.add_argument("--datei")
     p.add_argument("--schreiben", action="store_true")
+    r = add("portfolio")
+    r.add_argument("--bis", required=True)
     return ap
 
 
@@ -294,6 +438,8 @@ def fehler(text: str) -> dict:
 def ausfuehren(a, ws: Path, q: dict) -> dict:
     if a.cmd == "preisliste":
         return preisliste(ws, q, a.jahr, a.lohn, a.material, a.allgemein, a.markt, a.datei, a.schreiben, a.heute)
+    if a.cmd == "portfolio":
+        return portfolio(ws, q["ordner"], a.bis, a.heute)
     raise AngebotFehler(f"Unbekannter Befehl {a.cmd}")
 
 

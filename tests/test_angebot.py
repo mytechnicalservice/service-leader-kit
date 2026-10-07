@@ -176,3 +176,122 @@ def test_db2_name_matching(name, treffer):
 def test_plain_margin_kpi_falls_back_to_the_standard(kit_ws):
     schreibe_kpi_ziele(kit_ws, [{"name": "Marge", "ziel": 50}, {"name": "DB I-Marge", "ziel": 70}])
     assert angebot.zielmarge(kit_ws) == (angebot.ZIELMARGE_STANDARD, angebot.STANDARD_HINWEIS)
+
+
+import csv
+
+MONATE = ["2025-10", "2025-11", "2025-12"] + [f"2026-{m:02d}" for m in range(1, 10)]
+QUELLE = ["_quelle_datei", "_quelle_blatt", "_quelle_zeile"]
+
+
+def schreibe_csv(ordner, vorlage, monat, zeilen):
+    tpl = json.loads((PLUGIN / "vorlagen" / "import" / f"{vorlage}.json").read_text(encoding="utf-8"))
+    spalten = [s["name"] for s in tpl["spalten"]] + QUELLE
+    p = ordner / "07_Daten" / f"{vorlage}_{monat}.csv"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", encoding="utf-8-sig", newline="") as fh:
+        wr = csv.DictWriter(fh, fieldnames=spalten, lineterminator="\n")
+        wr.writeheader()
+        for i, z in enumerate(zeilen, start=2):
+            wr.writerow({s: "" for s in spalten} | z | {"_quelle_datei": f"{vorlage}_{monat}.xlsx",
+                                                       "_quelle_blatt": "Tabelle1", "_quelle_zeile": i})
+
+
+def auftrag(nr, art, monat, umsatz, kosten, stunden):
+    return {"Auftragsnr": nr, "Kunde": "Müller GmbH", "Auftragsart": art, "Eingang": f"{monat}-10",
+            "Stunden": stunden, "Umsatz_EUR": umsatz, "Kosten_EUR": kosten, "Team": "Nord"}
+
+
+def jahr_daten(ordner):
+    """Wartung flat (halten), Reparatur below target (sanieren), Schulung tiny and gone (auslaufen prüfen),
+    Retrofit doubling (ausbauen), Ersatzteile without costs (unklar)."""
+    for i, m in enumerate(MONATE):
+        h2 = i >= 6
+        z = [auftrag(f"W{i}", "Wartung", m, 1000, 500, 8), auftrag(f"R{i}", "Reparatur", m, 600 if h2 else 500, 450, 4)]
+        if m == "2025-10":
+            z.append(auftrag("S1", "Schulung", m, 300, 280, 4))
+        if m in ("2026-01", "2026-04", "2026-07"):
+            z.append(auftrag(f"X{i}", "Retrofit", m, 2000, 1000, 20))
+        schreibe_csv(ordner, "auftraege", m, z)
+        schreibe_csv(ordner, "ersatzteile", m, [{"Datum": f"{m}-05", "Kunde": "Müller GmbH", "Teilenr": "ET-1",
+                                                  "Menge": 2, "Stueckpreis_EUR": 100}])
+        schreibe_csv(ordner, "kapazitaet", m, [
+            {"Monat": m, "Team": "Nord", "Techniker_Anzahl": 4, "Soll_Stunden": 600, "Ist_Stunden": 550},
+            {"Monat": m, "Team": "Süd", "Techniker_Anzahl": 2, "Soll_Stunden": 300, "Ist_Stunden": 300}])
+    schreibe_csv(ordner, "installed_base", "2026-09", [
+        {"Kunde": "Müller GmbH", "Anlage": f"Anlage {n}", "Maschinentyp": t, "Vertrag": v}
+        for n, (t, v) in enumerate([("MM-400", "nein"), ("MM-400", "nein"), ("MM-600", "nein"),
+                                    ("MM-400", "ja"), ("MM-800 Retrofit", "ja")], start=1)])
+
+
+@pytest.fixture
+def jahr_ws(kit_ws):
+    jahr_daten(kit_ws)
+    return kit_ws
+
+
+def test_portfolio_classifies_every_product(jahr_ws):
+    code, out = cli("portfolio", "--ws", jahr_ws, "--bis", "2026-09", "--heute", "2026-10-06")
+    assert code == 0, out
+    p = {x["produkt"]: x for x in out["produkte"]}
+    assert {k: v["klasse"] for k, v in p.items()} == {
+        "Wartung": "halten", "Reparatur": "sanieren", "Schulung": "auslaufen prüfen", "Retrofit": "ausbauen",
+        "Ersatzteile": "unklar"}
+    assert p["Wartung"]["umsatz"]["betrag"] == 12000 and p["Wartung"]["marge"]["betrag"] == 50.0
+    assert p["Reparatur"]["wachstum"]["betrag"] == 20.0 and p["Retrofit"]["wachstum"]["betrag"] == 100.0
+    assert p["Ersatzteile"]["umsatz"]["betrag"] == 2400 and p["Ersatzteile"]["marge"] is None
+    assert out["umsatz_auftraege"]["betrag"] == 24900 and out["umsatz_portfolio"]["betrag"] == 27300
+    assert p["Reparatur"]["anteil"]["betrag"] == 24.2  # 6.600 ÷ 27.300
+    assert all(x["umsatz"]["quelle"] for x in out["produkte"])
+    # Blank kpi-ziele.md: 35 % or a margin target from Plan 3's kit standard – either way labelled as standard.
+    # The fixture's classes hold for any target between 18,3 % and 50 %.
+    assert out["zielmarge"]["quelle"] == angebot.STANDARD_HINWEIS
+    assert out["vertragsquote"]["betrag"] == 40.0
+    assert out["ziel"] == "03_Berichte/2026-10-06_portfolio-review.docx"
+    assert any("Wartungsverträge" in h for h in out["hinweise"])  # no vertrag.md in this workspace
+
+
+def test_portfolio_counts_running_contracts_without_classifying(jahr_ws):
+    d = jahr_ws / "06_Kunden" / "Müller GmbH"
+    d.mkdir(parents=True)
+    (d / "vertrag.md").write_text('---\nkunde: "Müller GmbH"\nstufe: Plus\njahresgebuehr_eur: 4800\n'
+                                  'beginn: 2025-01-01\nende: null\nanlagen: ["Anlage 4"]\n---\n# Vertrag\n', encoding="utf-8")
+    out = cli("portfolio", "--ws", jahr_ws, "--bis", "2026-09")[1]
+    v = [x for x in out["produkte"] if x["produkt"] == "Wartungsverträge"][0]
+    assert v["umsatz"]["betrag"] == 4800 and v["klasse"] == "unklar" and v["anteil"] is None
+    assert out["umsatz_portfolio"]["betrag"] == 27300  # contracts are a run-rate, not period revenue
+
+
+def test_missing_month_stops_the_review(jahr_ws):
+    (jahr_ws / "07_Daten" / "auftraege_2026-03.csv").unlink()
+    code, out = cli("portfolio", "--ws", jahr_ws, "--bis", "2026-09")
+    assert code == 1 and not out["ok"]
+    assert "März 2026" in out["fehler"][0] or "2026-03" in out["fehler"][0]
+    assert "produkte" not in out
+
+
+def test_sample_mode_reads_beispiel_and_labels(kit_ws):
+    k = kit_ws / "Unternehmen" / ".kit-config"
+    k.write_text(k.read_text(encoding="utf-8").replace("beispieldaten=nein", "beispieldaten=ja"), encoding="utf-8")
+    jahr_daten(kit_ws / "Beispiel")
+    code, out = cli("portfolio", "--ws", kit_ws, "--bis", "2026-09")
+    assert code == 0, out
+    assert out["hinweis_beispiel"] == "Beispieldaten – Muster Maschinenbau GmbH"
+    assert out["umsatz_auftraege"]["betrag"] == 24900
+
+
+@pytest.mark.parametrize("marge,wachstum,anteil,erwartet", [
+    (None, 3.0, 20.0, "unklar"), (-5.0, 0.0, 12.0, "sanieren"), (-5.0, 0.0, 3.0, "auslaufen prüfen"),
+    (20.0, None, 4.0, "auslaufen prüfen"), (20.0, 1.0, 4.0, "sanieren"), (40.0, 5.0, 1.0, "ausbauen"),
+    (40.0, 4.9, 30.0, "halten"), (35.0, None, 30.0, "halten")])
+def test_klasse_thresholds(marge, wachstum, anteil, erwartet):
+    assert angebot.klasse(marge, wachstum, anteil, 35.0)[0] == erwartet
+
+
+def test_portfolio_classes_use_the_db2_target(jahr_ws):
+    """K1: with DB I 70 % and DB II 45 %, Wartung (50 %) is above target and Reparatur (18,2 %) below."""
+    schreibe_kpi_ziele(jahr_ws, [{"name": "DB I-Marge", "ziel": 70}, {"name": "DB II-Marge", "ziel": 45}])
+    out = cli("portfolio", "--ws", jahr_ws, "--bis", "2026-09")[1]
+    assert out["zielmarge"]["prozent"] == 45.0 and out["zielmarge"]["kennzahl"] == "DB II-Marge"
+    p = {x["produkt"]: x["klasse"] for x in out["produkte"]}
+    assert p["Wartung"] == "halten" and p["Reparatur"] == "sanieren"
