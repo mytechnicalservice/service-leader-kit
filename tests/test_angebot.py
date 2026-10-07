@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -161,20 +162,30 @@ def schreibe_kpi_ziele(kit_ws, kennzahlen):
     (kit_ws / "Unternehmen" / "kpi-ziele.md").write_text(f"---\nkennzahlen:\n{zeilen}\n---\n# KPIs\n", encoding="utf-8")
 
 
-def test_target_margin_is_the_db2_kpi_not_db1(kit_ws):
-    """K1 (Max, 2026-10-07): target margin = the DB II target, never DB I or the first 'Marge'."""
-    schreibe_kpi_ziele(kit_ws, [{"name": "DB I-Marge", "ziel": 70}, {"name": "DB II-Marge", "ziel": 30}])
-    assert angebot.zielmarge(kit_ws) == (30.0, "Unternehmen/kpi-ziele.md: DB II-Marge")
+def test_zielmarge_is_the_db1_target(kit_ws):
+    """D19 (Max, 2026-10-07): target margin = the DB I target, never DB II or the first 'Marge'."""
+    schreibe_kpi_ziele(kit_ws, [{"name": "DB II-Marge", "ziel": 30}, {"name": "DB I-Marge", "ziel": 40}])
+    assert angebot.zielmarge(kit_ws) == (40.0, "Unternehmen/kpi-ziele.md: DB I-Marge")
 
 
-@pytest.mark.parametrize("name,treffer", [("DB II-Marge", True), ("DB2-Marge", True), ("Deckungsbeitrag II", True),
-                                          ("DB I-Marge", False), ("Marge", False), ("DB I Ist-Marge", False)])
-def test_db2_name_matching(name, treffer):
-    assert angebot.ist_db2(name) is treffer
+def test_zielmarge_kit_standard_is_labelled(kit_ws):
+    """Labelling rule: the kit-standard 35 % is never reported as the company's own target."""
+    assert angebot.zielmarge(kit_ws) == (35.0, angebot.STANDARD_HINWEIS)
+    (kit_ws / "Unternehmen" / "kpi-ziele.md").write_text("---\nabweichung_massnahme_eur: 8000\n---\n", encoding="utf-8")
+    assert angebot.zielmarge(kit_ws) == (35.0, angebot.STANDARD_HINWEIS)
+    shutil.copy(ROOT / "plugin" / "beispiel" / "Unternehmen" / "kpi-ziele.md", kit_ws / "Unternehmen" / "kpi-ziele.md")
+    assert angebot.zielmarge(kit_ws) == (35.0, "Unternehmen/kpi-ziele.md: DB I-Marge")
+
+
+@pytest.mark.parametrize("name,treffer", [("DB I-Marge", True), ("DB1-Marge", True), ("Deckungsbeitrag I", True),
+                                          ("DB II-Marge", False), ("DB2-Marge", False), ("Marge", False),
+                                          ("DB III-Marge", False)])
+def test_db1_name_matching(name, treffer):
+    assert angebot.ist_db1(name) is treffer
 
 
 def test_plain_margin_kpi_falls_back_to_the_standard(kit_ws):
-    schreibe_kpi_ziele(kit_ws, [{"name": "Marge", "ziel": 50}, {"name": "DB I-Marge", "ziel": 70}])
+    schreibe_kpi_ziele(kit_ws, [{"name": "Marge", "ziel": 50}, {"name": "DB II-Marge", "ziel": 70}])
     assert angebot.zielmarge(kit_ws) == (angebot.ZIELMARGE_STANDARD, angebot.STANDARD_HINWEIS)
 
 
@@ -288,11 +299,11 @@ def test_klasse_thresholds(marge, wachstum, anteil, erwartet):
     assert angebot.klasse(marge, wachstum, anteil, 35.0)[0] == erwartet
 
 
-def test_portfolio_classes_use_the_db2_target(jahr_ws):
-    """K1: with DB I 70 % and DB II 45 %, Wartung (50 %) is above target and Reparatur (18,2 %) below."""
-    schreibe_kpi_ziele(jahr_ws, [{"name": "DB I-Marge", "ziel": 70}, {"name": "DB II-Marge", "ziel": 45}])
+def test_portfolio_classes_use_the_db1_target(jahr_ws):
+    """D19: with DB II 70 % and DB I 45 %, Wartung (50 %) is above target and Reparatur (18,2 %) below."""
+    schreibe_kpi_ziele(jahr_ws, [{"name": "DB II-Marge", "ziel": 70}, {"name": "DB I-Marge", "ziel": 45}])
     out = cli("portfolio", "--ws", jahr_ws, "--bis", "2026-09")[1]
-    assert out["zielmarge"]["prozent"] == 45.0 and out["zielmarge"]["kennzahl"] == "DB II-Marge"
+    assert out["zielmarge"]["prozent"] == 45.0 and out["zielmarge"]["kennzahl"] == "DB I-Marge"
     p = {x["produkt"]: x["klasse"] for x in out["produkte"]}
     assert p["Wartung"] == "halten" and p["Reparatur"] == "sanieren"
 
@@ -346,13 +357,13 @@ def test_konzept_user_cost_rate_wins(jahr_ws):
     assert out["kostensatz"]["betrag"] == 80 and out["kostensatz"]["quelle"] == ["Angabe des Nutzers"]
 
 
-def test_konzept_minimum_price_uses_the_db2_target(jahr_ws):
-    """K1: minimum price = hours × cost rate ÷ (1 − DB II target), labelled 'Ziel: DB II-Marge'."""
-    schreibe_kpi_ziele(jahr_ws, [{"name": "DB I-Marge", "ziel": 70}, {"name": "DB II-Marge", "ziel": 30}])
+def test_konzept_minimum_price_uses_the_db1_target(jahr_ws):
+    """D19: minimum price = hours × cost rate ÷ (1 − DB I target), labelled 'Ziel: DB I-Marge'."""
+    schreibe_kpi_ziele(jahr_ws, [{"name": "DB II-Marge", "ziel": 70}, {"name": "DB I-Marge", "ziel": 30}])
     out = cli("konzept", "--ws", jahr_ws, "--name", "X", "--bis", "2026-09", "--stufe", "Basic;1900;6;30")[1]
-    assert out["zielmarge"]["prozent"] == 30.0 and out["zielmarge"]["anzeige"] == "Ziel: DB II-Marge 30,0 %"
+    assert out["zielmarge"]["prozent"] == 30.0 and out["zielmarge"]["anzeige"] == "Ziel: DB I-Marge 30,0 %"
     assert out["stufen"][0]["mindestpreis"]["betrag"] == pytest.approx(round(6 * 70.58 / 0.7, 2))
-    assert "DB II-Marge" in out["stufen"][0]["mindestpreis"]["formel"]
+    assert "DB I-Marge" in out["stufen"][0]["mindestpreis"]["formel"] and "DB II" not in out["stufen"][0]["mindestpreis"]["formel"]
 
 
 import yaml

@@ -38,7 +38,7 @@ folder in VS Code (Datei → Ordner öffnen) and stop.
 4. `ok` false: explain `fehler` in plain German and ask for the missing or wrong input. Write no document.
 5. `ok` true: show per level the expected contracts, revenue, contribution margin and minimum price, the total
    revenue, the capacity need (`fte_bedarf`, `freie_stunden` per team) and every `warnungen` line. Use the `anzeige`
-   values exactly. The minimum price is based on the DB II target: name it as `zielmarge.anzeige` ("Ziel: DB II-Marge
+   values exactly. The minimum price is based on the DB I target: name it as `zielmarge.anzeige` ("Ziel: DB I-Marge
    …") with its `quelle`; when that is the standard definition, say so.
 6. Write the concept with Claude's document skill (Word) to exactly the path in `ziel`:
    - Follow `gliederung`, with the letterhead from `Unternehmen/vorlagen/` if there is one.

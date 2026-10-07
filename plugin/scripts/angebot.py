@@ -30,9 +30,9 @@ GEWICHTE = {"Stundensatz": ("0.80", "0", "0.20"), "Pauschale": ("0.40", "0", "0.
             "Ersatzteil": ("0", "1", "0"), "Sonstiges": ("0", "0", "1")}  # default 12: Lohn, Material, allgemein
 ELASTIZITAET = Decimal("8")
 GRENZEN = (Decimal("-20"), Decimal("30"))
-ZIELMARGE_STANDARD = 35.0  # used when kpi-ziele.md sets no DB II target (K1)
-ZIEL_KPI = "DB II-Marge"
-DB2 = re.compile(r"\b(db|deckungsbeitrag)\s*(ii|2)\b")
+ZIELMARGE_STANDARD = 35.0  # D19: used when kpi-ziele.md sets no DB I target
+ZIEL_KPI = "DB I-Marge"
+DB1 = re.compile(r"\b(db|deckungsbeitrag)\s*(i|1)\b")
 WACHSTUM_AUSBAU, ANTEIL_KLEIN, ANTEIL_GROSS = 5.0, 5.0, 10.0
 ANWEISUNG = re.compile(r"@|ignorier|\bKI\b|schick|sende|anweisung", re.I)
 PREIS_GLIEDERUNG = ["Ergebnis auf einen Blick (Änderung je Kategorie)", "Annahmen (Lohn, Material, allgemeine Kosten, "
@@ -82,18 +82,20 @@ def abschnitt(name: str, defs: dict) -> dict:
     return defs.get(name) or defs.get(name.replace("-", "_")) or {"standard": True}
 
 
-def ist_db2(name) -> bool:
-    """K1 (Max, 2026-10-07): the target margin is the DB II KPI – 'DB II-Marge', 'DB2', 'Deckungsbeitrag II' …;
-    a plain 'Marge' or a DB I KPI does not count."""
-    return bool(DB2.search(re.sub(r"[^0-9a-zäöüß]+", " ", str(name).casefold())))
+def ist_db1(name) -> bool:
+    """D19 (Max, 2026-10-07): the target margin is the DB I KPI – 'DB I-Marge', 'DB1', 'Deckungsbeitrag I' …;
+    a plain 'Marge' or a DB II KPI does not count."""
+    return bool(DB1.search(re.sub(r"[^0-9a-zäöüß]+", " ", str(name).casefold())))
 
 
 def zielmarge(ws: Path) -> tuple[float, str]:
-    """Target margin = the `ziel` of the first kpi-ziele KPI that is the DB II margin, else ZIELMARGE_STANDARD."""
+    """Target margin = the `ziel` of the first kpi-ziele KPI that is the DB I margin, else ZIELMARGE_STANDARD.
+    Plan 3's standard KPI list carries 35 % itself: labelled as kit standard while `kennzahlen` is not set."""
     kpi = abschnitt("kpi-ziele", definitionen(ws))
+    std = kpi.get("standard") or "kennzahlen" in (kpi.get("standard_felder") or [])
     for k in kpi.get("kennzahlen") or []:
-        if ist_db2(k.get("name", "")) and k.get("ziel") is not None:
-            return zahl(k["ziel"]), STANDARD_HINWEIS if kpi.get("standard") else f"Unternehmen/kpi-ziele.md: {k['name']}"
+        if ist_db1(k.get("name", "")) and k.get("ziel") is not None:
+            return zahl(k["ziel"]), STANDARD_HINWEIS if std else f"Unternehmen/kpi-ziele.md: {k['name']}"
     return ZIELMARGE_STANDARD, STANDARD_HINWEIS
 
 
@@ -268,7 +270,7 @@ def preisliste(ws, q, jahr, lohn, material, allgemein, markt, datei, schreiben, 
 # ---------- portfolio ----------
 
 PORTFOLIO_GLIEDERUNG = ["Ergebnis auf einen Blick (Klassen je Produkt)", "Umsatz, Marge, Wachstum je Produkt",
-                        "Ziel: DB II-Marge (Herkunft) und verwendete Definitionen", "Vertragsdeckung der Installed Base",
+                        "Ziel: DB I-Marge (Herkunft) und verwendete Definitionen", "Vertragsdeckung der Installed Base",
                         "Empfehlung je Produkt: halten / sanieren / ausbauen / auslaufen prüfen",
                         "Vermarktung: Zielgruppe und Botschaft für Produkte 'ausbauen'",
                         "Vorgeschlagene Vorgänge (nur nach Bestätigung)", "Datenlücken und Hinweise", "Quellen"]
@@ -313,11 +315,11 @@ def klasse(marge, wachstum, anteil, ziel) -> tuple[str, str]:
         return "auslaufen prüfen", "negative Marge"
     if marge < ziel:
         if anteil < ANTEIL_KLEIN and (wachstum is None or wachstum <= 0):
-            return "auslaufen prüfen", "Marge unter Ziel (DB II-Marge), kleiner Anteil, kein Wachstum"
-        return "sanieren", "Marge unter Ziel (DB II-Marge)"
+            return "auslaufen prüfen", "Marge unter Ziel (DB I-Marge), kleiner Anteil, kein Wachstum"
+        return "sanieren", "Marge unter Ziel (DB I-Marge)"
     if wachstum is not None and wachstum >= WACHSTUM_AUSBAU:
-        return "ausbauen", "Marge über Ziel (DB II-Marge) und Wachstum ab 5 %"
-    return "halten", "Marge über Ziel (DB II-Marge)"
+        return "ausbauen", "Marge über Ziel (DB I-Marge) und Wachstum ab 5 %"
+    return "halten", "Marge über Ziel (DB I-Marge)"
 
 
 def produkt(name, herkunft, u, kosten, u1, u2) -> dict:
@@ -402,7 +404,7 @@ def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
                           "anzeige": f"Ziel: {ZIEL_KPI} {deutsch(ziel, 1)} %"},
             "vertragsquote": quote,
             "margendefinition": "Marge je Produkt = (Umsatz − Kosten_EUR) ÷ Umsatz auf Auftragsebene, nicht DB I/II "
-                                "aus ergebnisrechnung.md; verglichen mit dem Ziel der DB II-Marge (kpi-ziele.md)",
+                                "aus ergebnisrechnung.md; verglichen mit dem Ziel der DB I-Marge (kpi-ziele.md)",
             "hinweise": hinweise, "ziel": freier_name(ws, "03_Berichte", f"{heute}_portfolio-review", ".docx"),
             "gliederung": PORTFOLIO_GLIEDERUNG}
 
@@ -410,7 +412,7 @@ def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
 # ---------- konzept ----------
 
 KONZEPT_GLIEDERUNG = ["Kundenproblem und Nutzen", "Zielgruppe und Potenzial (Installed Base)",
-                      "Leistungsumfang je Stufe (Basic / Plus / Premium)", "Preislogik (Preis, Mindestpreis bei Ziel: DB II-Marge, "
+                      "Leistungsumfang je Stufe (Basic / Plus / Premium)", "Preislogik (Preis, Mindestpreis bei Ziel: DB I-Marge, "
                       "Bezug zu preislogik.md)", "Liefer-Kapazität (nur Teamebene)", "Business Case je Stufe",
                       "Vermarktung (Zielgruppe, Botschaft, Kanal)", "Risiken und offene Punkte",
                       "Übergabe an Finanzen und nächste Schritte", "Quellen und Definitionen"]

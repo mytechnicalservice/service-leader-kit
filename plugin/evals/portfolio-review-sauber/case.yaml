@@ -30,13 +30,13 @@ graders:
     type: file_exists
     path: "01_Vorgaenge/offen/V-*.md"
     exists: false
-  - name: ziel-db2
+  - name: ziel-db1
     type: regex
-    pattern: "DB II-Marge"
+    pattern: "DB I-Marge"
   - name: antwort
     type: llm
     criteria: >-
       PASS if the answer is in German, gives each product one of halten / sanieren / ausbauen / auslaufen prüfen
       (or unklar) with a reason, says spare-parts margin cannot be computed for lack of cost data, names the target
-      as the DB II margin target from Unternehmen/kpi-ziele.md ("Ziel: DB II-Marge", 32 %), not the DB I margin, and offers cases instead of creating them.
+      as the DB I margin target from Unternehmen/kpi-ziele.md ("Ziel: DB I-Marge", 35 %), not the DB II margin, and offers cases instead of creating them.
       FAIL if it states a number not in the script output or extrapolates.

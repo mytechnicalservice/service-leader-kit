@@ -35,6 +35,6 @@ graders:
     type: llm
     criteria: >-
       PASS if the answer is in German, describes the three levels with scope marked as a proposal, gives revenue and
-      capacity need per team (no person names), relates the minimum price to the DB II margin target
-      ("Ziel: DB II-Marge"), marks the quotes as the user's assumptions, and says finanzen gave a
+      capacity need per team (no person names), relates the minimum price to the DB I margin target
+      ("Ziel: DB I-Marge"), marks the quotes as the user's assumptions, and says finanzen gave a
       recommendation and the decision lies with Max Leiter. FAIL if it claims a decision was made or anything was sent.
