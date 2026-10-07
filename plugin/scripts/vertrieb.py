@@ -1,0 +1,326 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["openpyxl==3.1.5"]
+# ///
+"""Vertrieb: Großangebot, Key-Account-Review, Verlängerungs-Radar, Installed-Base-Potenziale (spec §5, §8).
+Every number leaves this script as a kennzahlen.wert with source and formula; the skills only present them."""
+from __future__ import annotations
+
+import datetime as dt
+import re
+from pathlib import Path
+
+from openpyxl import load_workbook
+
+from daten_pruefen import monatsname
+from kennzahlen import KennzahlFehler, datenquelle, definitionen, deutsch, lade, summe, wert
+from slk_common import JsonParser, run, zahl
+from vorgang import VorgangFehler, all_cases
+
+BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
+STANDARD = "Standardannahme des Kits – in der Einrichtung noch nicht festgelegt"
+
+# Kit standards (Plan 4d, domain defaults 1–22). Every output names the ones it used.
+HORIZONT_MONATE = 6
+DRINGEND_MONATE = 3
+VORLAUF_TAGE = 60
+TOP_N = 5
+RETROFIT_ALTER = {"MM-400": 12, "MM-600": 12, "MM-800": 15}
+RETROFIT_ALTER_SONST = 12
+LAUFZEIT_JAHRE = 3
+BESUCHE_JE_JAHR = 2
+STUNDEN_JE_BESUCH = 8
+RABATT_STAFFEL = ((5, 8.0), (2, 5.0), (1, 0.0))  # (ab Anlagen, Prozent); the first match wins
+GUELTIG_TAGE = 30
+BEZEICHNUNG = {"auftraege": "Aufträge", "ersatzteile": "Ersatzteilverkäufe"}
+FRONT = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+LEER = {"", "null", "~"}
+
+
+class VertriebFehler(Exception):
+    pass
+
+
+# --- small helpers ------------------------------------------------------------------------------------------------
+
+def text(v) -> str:
+    return "" if v is None else str(v).strip()
+
+
+def gleich(a, b) -> bool:
+    return text(a).casefold() == text(b).casefold()
+
+
+def betrag(v) -> float:
+    return 0.0 if text(v).casefold() in LEER else zahl(v)
+
+
+def datum(v) -> dt.date | None:
+    return None if text(v).casefold() in LEER else dt.date.fromisoformat(text(v)[:10])
+
+
+def pruefe_datum(s: str, feld: str) -> dt.date:
+    try:
+        return dt.date.fromisoformat(s)
+    except ValueError as exc:
+        raise VertriebFehler(f"{feld} '{s}' ist kein Datum (JJJJ-MM-TT)") from exc
+
+
+def rel(ws: Path, p: Path) -> str:
+    try:
+        return p.relative_to(ws).as_posix()
+    except ValueError:
+        return p.resolve().relative_to(ws.resolve()).as_posix()
+
+
+def monatsende(monat: str) -> dt.date:
+    j, m = map(int, monat.split("-"))
+    return dt.date(j + m // 12, m % 12 + 1, 1) - dt.timedelta(days=1)
+
+
+def plus_monate(d: dt.date, n: int) -> dt.date:
+    m0 = d.month - 1 + n
+    j, m = d.year + m0 // 12, m0 % 12 + 1
+    return dt.date(j, m, min(d.day, monatsende(f"{j:04d}-{m:02d}").day))
+
+
+def monate_bis(ende: str, anzahl: int) -> list[str]:
+    j, m = map(int, ende.split("-"))
+    out = []
+    for _ in range(anzahl):
+        out.append(f"{j:04d}-{m:02d}")
+        j, m = (j, m - 1) if m > 1 else (j - 1, 12)
+    return out[::-1]
+
+
+def ordnername(kunde: str) -> str:
+    return re.sub(r'[\\/:*?"<>|]', "", kunde).strip()
+
+
+def datenordner(ws: Path) -> Path:
+    return Path(datenquelle(ws)["ordner"])
+
+
+def neuester_monat(ws: Path, vorlage: str) -> str:
+    monate = []
+    for p in (datenordner(ws) / "07_Daten").glob(f"{vorlage}_*.csv"):
+        m = re.fullmatch(rf"{vorlage}_(\d{{4}}-\d{{2}})", p.stem)
+        if m:
+            monate.append(m.group(1))
+    if not monate:
+        raise VertriebFehler(f"Keine Daten '{vorlage}' in 07_Daten/ – bitte den Export zuerst mit daten-pruefen "
+                             "übernehmen.")
+    return max(monate)
+
+
+def ort(z: dict) -> str:
+    return f"{z['_datei']} Zeile {z['_zeile']}"
+
+
+def quelle(zeilen: list[dict]) -> list[str]:
+    nach: dict[str, list[int]] = {}
+    for z in zeilen:
+        nach.setdefault(z["_datei"], []).append(int(z["_zeile"]))
+    return [f"{d} Zeile {n[0]}" if len(n) == 1 else f"{d} Zeilen {min(n)}–{max(n)}" for d, n in sorted(nach.items())]
+
+
+def summe_oder_null(zeilen: list[dict], spalte: str, name: str, leer: str) -> dict:
+    return summe(zeilen, spalte, name) if zeilen else wert(name, 0.0, [leer])
+
+
+def addiere(name: str, teile: list[dict], formel: str) -> dict:
+    return wert(name, round(sum(t["betrag"] for t in teile), 2), sorted({q for t in teile for q in t["quelle"]}),
+                formel=formel)
+
+
+def lade_zeitraum(ws: Path, vorlage: str, monate: list[str]) -> tuple[list[dict], list[str]]:
+    """Rows of each month; a missing month is named, never filled in (domain default 13)."""
+    zeilen, meldungen = [], []
+    for m in monate:
+        try:
+            zeilen += lade(ws, vorlage, [m])
+        except KennzahlFehler:
+            meldungen.append(f"{BEZEICHNUNG[vorlage]} {monatsname(m)} fehlen in 07_Daten/ – Summen ohne diesen "
+                             "Monat, nicht hochgerechnet.")
+    return zeilen, meldungen
+
+
+def zeitraum(ws: Path) -> list[str]:
+    return monate_bis(neuester_monat(ws, "auftraege"), 12)
+
+
+def ergebnis(ws: Path, felder: dict, zeilen: list[str]) -> dict:
+    beispiel = bool(datenquelle(ws)["beispiel"])
+    return {"ok": True, "beispiel": beispiel, **felder,
+            "zusammenfassung": ([BEISPIEL_HINWEIS] if beispiel else []) + zeilen}
+
+
+def heute_von(heute: str | None) -> dt.date:
+    return pruefe_datum(heute, "--heute") if heute else dt.date.today()
+
+
+# --- company files ------------------------------------------------------------------------------------------------
+
+def vertragsdaten(ws: Path, kunde: str) -> dict:
+    """Flat front matter of 06_Kunden/<Kunde>/vertrag.md (scalars only), plus `_datei`; {} if there is none."""
+    p = datenordner(ws) / "06_Kunden" / ordnername(kunde) / "vertrag.md"
+    if not p.is_file():
+        return {}
+    m = FRONT.match(p.read_text(encoding="utf-8-sig").replace("\r\n", "\n"))
+    out = {"_datei": rel(ws, p)}
+    for zeile in m.group(1).splitlines() if m else []:
+        k, sep, v = zeile.partition(":")
+        if sep and k.strip() and not zeile[0].isspace() and not zeile.startswith(("-", "#")):
+            out[k.strip()] = v.split(" #")[0].strip().strip("\"'")
+    return out
+
+
+# --- installed base -----------------------------------------------------------------------------------------------
+
+VERGLEICH = ("Maschinentyp", "Baujahr", "Vertrag", "Vertragsende")
+
+
+def installed_base(ws: Path) -> tuple[list[dict], dict]:
+    """Machines of the newest export; identical duplicates count once, contradicting duplicates are left out."""
+    monat = neuester_monat(ws, "installed_base")
+    erste: dict[tuple[str, str], dict] = {}
+    widerspruch, meldungen = set(), []
+    for z in lade(ws, "installed_base", [monat]):
+        key = (text(z.get("Kunde")), text(z.get("Anlage")))
+        if key not in erste:
+            erste[key] = z
+            continue
+        alt = erste[key]
+        stelle = f"{z['_datei']} (Zeilen {alt['_zeile']} und {z['_zeile']})"
+        if all(text(alt.get(s)) == text(z.get(s)) for s in VERGLEICH):
+            meldungen.append(f"{key[0]} / {key[1]} steht doppelt in {stelle} – einmal gezählt.")
+        else:
+            widerspruch.add(key)
+            meldungen.append(f"Widerspruch: {key[0]} / {key[1]} steht mit unterschiedlichen Angaben in {stelle} – "
+                             "nicht bewertet, bitte im Export klären.")
+    anlagen = [z for k, z in erste.items() if k not in widerspruch]
+    return anlagen, {"monat": monat, "stichtag": monatsende(monat), "meldungen": meldungen}
+
+
+# --- verlaengerungs-radar -----------------------------------------------------------------------------------------
+
+def vertragswert(ws: Path, kunde: str, ende: dt.date, meldungen: list[str]) -> tuple[dict | None, bool]:
+    v = vertragsdaten(ws, kunde)
+    stelle = v.get("_datei", f"06_Kunden/{ordnername(kunde)}/vertrag.md")
+    widerspruch = False
+    try:
+        ende_md = datum(v.get("vertragsende"))
+    except ValueError:
+        ende_md = None
+        meldungen.append(f"{kunde}: Vertragsende in {stelle} ist kein Datum – nicht abgeglichen.")
+    if ende_md and ende_md != ende:
+        widerspruch = True
+        meldungen.append(f"Widerspruch Vertragsende {kunde}: Installed Base {ende:%d.%m.%Y}, {stelle} "
+                         f"{ende_md:%d.%m.%Y} – bitte klären; die Liste nutzt die Installed Base.")
+    try:
+        jw = betrag(v.get("jahreswert_eur"))
+    except ValueError:
+        jw = 0.0
+    if jw:
+        return wert(f"Vertragsjahreswert {kunde}", jw, [stelle]), widerspruch
+    meldungen.append(f"{kunde}: Vertragsjahreswert fehlt ({stelle}, Feld jahreswert_eur) – Wert im Risiko ohne "
+                     "Vertragswert.")
+    return None, widerspruch
+
+
+def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | None = None,
+                         heute: str | None = None) -> dict:
+    annahmen = []
+    if monate is None:
+        monate = HORIZONT_MONATE
+        annahmen.append(f"Horizont {monate} Monate, dringend bis {DRINGEND_MONATE} Monate ({STANDARD})")
+    if not 1 <= monate <= 36:
+        raise VertriebFehler("--monate muss zwischen 1 und 36 liegen")
+    tag_heute = heute_von(heute)
+    anlagen, ib = installed_base(ws)
+    tag = pruefe_datum(stichtag, "--stichtag") if stichtag else ib["stichtag"]
+    grenze, dringend_bis = plus_monate(tag, monate), plus_monate(tag, DRINGEND_MONATE)
+    auf, luecken = lade_zeitraum(ws, "auftraege", zeitraum(ws))
+    meldungen = ib["meldungen"] + luecken
+    gruppen: dict[tuple[str, dt.date], list[dict]] = {}
+    ohne_ende = []
+    for a in anlagen:
+        if not gleich(a.get("Vertrag"), "ja"):
+            continue
+        try:
+            ende = datum(a.get("Vertragsende"))
+        except ValueError:
+            ende = None
+        if ende is None:
+            ohne_ende.append(f"{text(a['Kunde'])} / {text(a['Anlage'])}: Vertrag ja, aber kein Vertragsende "
+                             f"({ort(a)})")
+        elif ende <= grenze:
+            gruppen.setdefault((text(a["Kunde"]), ende), []).append(a)
+    vertraege = []
+    for (kunde, ende), liste in sorted(gruppen.items(), key=lambda x: (x[0][1], x[0][0])):
+        namen = sorted({text(a["Anlage"]) for a in liste})
+        zeilen = [z for z in auf if text(z.get("Kunde")) == kunde and text(z.get("Anlage")) in namen]
+        umsatz = summe_oder_null(zeilen, "Umsatz_EUR", f"Serviceumsatz 12 Monate {kunde} ({', '.join(namen)})",
+                                 "Aufträge der letzten 12 Monate: keine Zeilen auf diesen Anlagen")
+        jw, widerspruch = vertragswert(ws, kunde, ende, meldungen)
+        teile = [jw, umsatz] if jw else [umsatz]
+        formel = ("Vertragsjahreswert + Serviceumsatz der Vertragsanlagen (12 Monate)" if jw
+                  else "Serviceumsatz der Vertragsanlagen (12 Monate); Vertragsjahreswert fehlt")
+        vertraege.append({
+            "kunde": kunde, "vertragsende": ende.isoformat(), "anlagen": namen, "teile": teile,
+            "status": "abgelaufen" if ende < tag else "dringend" if ende <= dringend_bis else "planen",
+            "wert_im_risiko": addiere(f"Wert im Risiko {kunde}", teile, formel), "widerspruch": widerspruch,
+            "faellig_vorschlag": max(ende - dt.timedelta(days=VORLAUF_TAGE),
+                                     tag_heute + dt.timedelta(days=7)).isoformat()})
+    gesamt = addiere("Wert im Risiko gesamt", [v["wert_im_risiko"] for v in vertraege], "Σ Wert im Risiko je Vertrag")
+    zeilen_text = [f"Stichtag {tag:%d.%m.%Y}, Horizont {monate} Monate (bis {grenze:%d.%m.%Y}): {len(vertraege)} "
+                   f"Verträge, Wert im Risiko {deutsch(gesamt['betrag'])} EUR."]
+    zeilen_text += [f"{v['kunde']}: Vertragsende {datum(v['vertragsende']):%d.%m.%Y} ({v['status']}), "
+                    f"{len(v['anlagen'])} Anlage(n), Wert im Risiko {deutsch(v['wert_im_risiko']['betrag'])} EUR"
+                    for v in vertraege]
+    return ergebnis(ws, {
+        "stichtag": tag.isoformat(), "horizont_monate": monate, "vertraege": vertraege, "ohne_vertragsende": ohne_ende,
+        "summe": gesamt, "annahmen": annahmen, "meldungen": meldungen,
+        "ziel": f"03_Berichte/{tag_heute.isoformat()}_verlaengerungs-radar.xlsx"}, zeilen_text)
+
+
+# --- CLI ----------------------------------------------------------------------------------------------------------
+
+def parser() -> JsonParser:
+    ap = JsonParser(prog="vertrieb")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    def add(name: str):
+        sp = sub.add_parser(name)
+        sp.add_argument("--ws", required=True)
+        sp.add_argument("--heute")
+        return sp
+
+    r = add("verlaengerungs-radar")
+    r.add_argument("--monate", type=int)
+    r.add_argument("--stichtag")
+    return ap
+
+
+BEFEHLE = {
+    "verlaengerungs-radar": lambda a, ws: verlaengerungs_radar(ws, a.monate, a.stichtag, a.heute),
+}
+
+
+def _main(argv: list[str] | None) -> tuple[int, dict]:
+    a = parser().parse_args(argv)
+    ws = Path(a.ws)
+    try:
+        if not (ws / "Unternehmen").is_dir():
+            raise VertriebFehler(f"{ws} ist kein Kit-Arbeitsordner (Unternehmen/ fehlt).")
+        return 0, BEFEHLE[a.cmd](a, ws)
+    except (VertriebFehler, KennzahlFehler) as exc:
+        return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)]}
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run(_main, argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
