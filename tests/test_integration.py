@@ -17,10 +17,10 @@ def gelandet(modul: str):
 
 
 def test_finanzen_reads_the_sample_margin_target_and_band():
-    # Max 2026-10-07, Plan 5 K1 / 4b K1: the margin target is DB II ("DB II-Marge" 32 % in kpi-ziele.md).
+    # D19 (Max 2026-10-07): the margin target is the DB I target ("DB I-Marge" 35 % in the sample kpi-ziele.md).
     finanzen = gelandet("finanzen")
-    ziel, standard = finanzen.db2_ziel(kennzahlen.definitionen(BEISPIEL))
-    assert (ziel, standard) == (32.0, False)
+    ziel, standard = finanzen.db1_ziel(kennzahlen.definitionen(BEISPIEL))
+    assert (ziel, standard) == (35.0, False)
     spanne, standard = finanzen.zusatzwert(BEISPIEL, "margen_auflagen_spanne_pp")
     assert (spanne, standard) == (5.0, False)
 

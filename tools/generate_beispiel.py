@@ -242,14 +242,14 @@ def kennzahlen_monat(m: str, d: dict) -> dict:
     erg = {r[1]: r[3] for r in d["ergebnis"][m]}
     planw = {r[1]: r[2] for r in d["ergebnis"][m]}
     umsatz = r2(sum(v for k, v in erg.items() if k.startswith("Umsatz ")))
-    db1 = r2(umsatz + erg["Material"] + erg["Fremdleistung"])
-    db2 = r2(db1 + erg["Personalkosten"])
+    db1 = r2(umsatz + erg["Material"] + erg["Fremdleistung"] + erg["Personalkosten"])  # D19
+    db2 = r2(db1 + erg["Gewährleistung"])
     plan_umsatz = r2(sum(v for k, v in planw.items() if k.startswith("Umsatz ")))
-    plan_db2 = plan_umsatz + planw["Material"] + planw["Fremdleistung"] + planw["Personalkosten"]
+    plan_db2 = plan_umsatz + planw["Material"] + planw["Fremdleistung"] + planw["Personalkosten"] + planw["Gewährleistung"]
     teile, auf, kap = d["ersatzteile"][m], d["auftraege"][m], d["kapazitaet"][m]
     out = {"umsatz_gesamt": umsatz, "plan_umsatz_gesamt": plan_umsatz, "db1": db1, "db2": db2,
-           "ergebnis": r2(db2 + erg["Gewährleistung"] + erg["Gemeinkostenumlage"]),
-           "plan_ergebnis": r2(plan_db2 + planw["Gewährleistung"] + planw["Gemeinkostenumlage"]),
+           "ergebnis": r2(db2 + erg["Gemeinkostenumlage"]),
+           "plan_ergebnis": r2(plan_db2 + planw["Gemeinkostenumlage"]),
            "umsatz_ersatzteile": erg["Umsatz Ersatzteile"], "umsatz_service": erg["Umsatz Service"],
            "umsatz_vertraege": erg["Umsatz Verträge"], "umsatz_schulung": erg["Umsatz Schulung"],
            "auftraege_retrofit_umsatz": r2(sum(r[8] for r in auf if r[3] == "Retrofit")),

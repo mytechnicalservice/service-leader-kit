@@ -71,6 +71,28 @@ def test_numbers_are_internally_consistent(gen):
         assert z["Plan_EUR"] == plan[z["Position"]][kopf.index("2026-09")]
 
 
+def test_margins_follow_d19(gen):
+    """D19: DB I = Umsatz − Material − Fremdleistung − Personalkosten, DB II = DB I − Gewährleistung,
+    Ergebnis = DB II − Gemeinkostenumlage – recomputed from the shipped CSVs, not from the generator."""
+    exp, root = gen
+    ws = root / "beispiel"
+    for m in MONATE:
+        erg = {z["Position"]: z["Ist_EUR"] for z in kz.lade(ws, "ergebnis", [m])}
+        umsatz = sum(v for k, v in erg.items() if k.startswith("Umsatz "))
+        db1 = umsatz + erg["Material"] + erg["Fremdleistung"] + erg["Personalkosten"]
+        assert exp[f"db1_{m}"] == pytest.approx(db1, abs=0.01), m
+        assert exp[f"db2_{m}"] == pytest.approx(db1 + erg["Gewährleistung"], abs=0.01), m
+        assert exp[f"ergebnis_{m}"] == pytest.approx(exp[f"db2_{m}"] + erg["Gemeinkostenumlage"], abs=0.01), m
+    assert (exp["db1_jahr"], exp["db2_jahr"]) == (1789388.9, 1694088.9)
+    assert (exp["db1_2026-09"], exp["db2_2026-09"]) == (167721.51, 148821.51)
+    unter = [m for m in MONATE if exp[f"db1_{m}"] / exp[f"umsatz_gesamt_{m}"] < 0.35]
+    assert unter == ["2025-11", "2025-12", "2026-08"]
+    d = kz.definitionen(ws)
+    ziele = {k["name"]: k["ziel"] for k in d["kpi-ziele"]["kennzahlen"]}
+    assert (ziele["DB I-Marge"], ziele["DB II-Marge"]) == (35, 32)
+    assert d["ergebnisrechnung"]["db2"] == "DB I - Gewährleistung"
+
+
 def test_company_files_layout_and_documents(gen):
     _, root = gen
     u = root / "beispiel" / "Unternehmen"

@@ -6,7 +6,7 @@ abweichung_massnahme_eur: 10000
 projektampel: {"termin_gelb_ab_tage": 1, "termin_rot_ab_tage": 15, "kosten_gelb_ab_prozent": 5, "kosten_rot_ab_prozent": 10}
 kennzahlen:
   - {"name": "Serviceumsatz", "formel": "Summe der Umsatzpositionen (Ist_EUR)", "quelle": "ergebnis", "ziel": 5017860, "einheit": "EUR/Jahr", "richtung": "hoch"}
-  - {"name": "DB I-Marge", "formel": "DB I / Serviceumsatz × 100", "quelle": "ergebnis", "ziel": 68, "einheit": "%", "richtung": "hoch"}
+  - {"name": "DB I-Marge", "formel": "DB I / Serviceumsatz × 100", "quelle": "ergebnis", "ziel": 35, "einheit": "%", "richtung": "hoch"}
   - {"name": "DB II-Marge", "formel": "DB II / Serviceumsatz × 100", "quelle": "ergebnis", "ziel": 32, "einheit": "%", "richtung": "hoch"}
   - {"name": "Lieferfähigkeit Ersatzteile", "formel": "Positionen mit Lieferbar = ja / alle Positionen × 100", "quelle": "ersatzteile", "ziel": 90, "einheit": "%", "richtung": "hoch"}
   - {"name": "Verrechenbarkeit", "formel": "Auftragsstunden / Ist_Stunden × 100", "quelle": "auftraege+kapazitaet", "ziel": 72, "einheit": "%", "richtung": "hoch"}

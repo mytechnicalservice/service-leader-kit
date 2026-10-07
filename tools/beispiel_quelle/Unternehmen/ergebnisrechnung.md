@@ -1,9 +1,9 @@
 ---
 umsatzarten: ["ersatzteile", "aussendienst", "vertraege", "retrofit", "schulung"]
 gewaehrleistung_traeger: service
-db1: Umsatz - Material - Fremdleistung
-db2: DB I - Personalkosten
-ergebnis: DB II - Gewährleistung - Gemeinkostenumlage
+db1: Umsatz - Material - Fremdleistung - Personalkosten
+db2: DB I - Gewährleistung
+ergebnis: DB II - Gemeinkostenumlage
 gemeinkosten_umlage: "Pauschal 36.500 EUR je Monat für Verwaltung, IT und Gebäude (Vorgabe Controlling)"
 verrechnungspreise: "Inbetriebnahme für den Vertrieb 95 EUR je Stunde; interne Reparaturen zu Kosten"
 positionen: {"Umsatz Ersatzteile": "ersatzteile", "Umsatz Service": "aussendienst", "Umsatz Verträge": "vertraege", "Umsatz Schulung": "schulung", "Material": "material", "Fremdleistung": "fremdleistung", "Personalkosten": "personal", "Gewährleistung": "gewaehrleistung", "Gemeinkostenumlage": "gemeinkosten"}
