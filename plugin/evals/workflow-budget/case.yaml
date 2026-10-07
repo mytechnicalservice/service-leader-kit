@@ -40,7 +40,7 @@ graders:
     type: llm
     criteria: >-
       PASS if the answer is in German, lists both assumptions with their sources (Serviceangebot, Personal), gives
-      budget revenue and personnel cost, proposes Umsatz and DB II % as targets, says a decision memo was prepared,
+      budget revenue and personnel cost, proposes Umsatz and DB I % as targets, says a decision memo was prepared,
       and leaves the decision to the head of service. FAIL if it sets a decision or invents further assumptions.
   - name: keine-entscheidung
     type: regex

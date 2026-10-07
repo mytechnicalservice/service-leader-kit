@@ -89,10 +89,10 @@ def test_report_numbers_come_from_the_data(fin_ws):
     assert code == 0, out
     assert kern(out, "Umsatz Monat Ist")["betrag"] == 114000
     assert kern(out, "Umsatz Monat Plan")["betrag"] == 120000
-    assert kern(out, "DB I Monat Ist")["betrag"] == 78000
+    assert kern(out, "DB I Monat Ist")["betrag"] == 37000  # D19: 114.000 − 36.000 − 41.000
     assert kern(out, "Ergebnis Monat Ist")["betrag"] == 28000
     assert kern(out, "Ergebnis Monat Plan")["betrag"] == 48000
-    assert kern(out, "DB I in % vom Umsatz Monat")["anzeige"] == f"{kz.deutsch(78000 / 114000 * 100, 1)} %"
+    assert kern(out, "DB I in % vom Umsatz Monat")["anzeige"] == f"{kz.deutsch(37000 / 114000 * 100, 1)} %"
     assert kern(out, "Auftragseingang Monat")["betrag"] == 3800
     assert kern(out, "Auslastung Monat")["anzeige"] == f"{kz.deutsch(390 / 450 * 100, 1)} %"
     assert kern(out, "Umsatz Monat Ist")["quelle"][0].startswith("07_Daten/ergebnis_2026-09.csv")
@@ -100,30 +100,52 @@ def test_report_numbers_come_from_the_data(fin_ws):
     assert [t["name"] for t in out["auslastung_teams"]] == ["Auslastung Team Nord", "Auslastung Team Süd"]
 
 
-def test_page_one_margin_target_is_db2_not_db1(fin_ws):
-    """Max's correction K1: the margin target is a DB II target; DB I % is shown without a target."""
+def test_page_one_margin_target_is_db1(fin_ws):
+    """D19: the margin target is the DB I target (DB I after service personnel); DB II % is shown without one."""
     _, out = rufe("management-report", "--ws", fin_ws, "--monat", "2026-09", "--heute", HEUTE)
     namen = [k["name"] for k in out["kernzahlen"]]
-    # DB II = DB I 78.000 − Personalkosten 41.000 = 37.000
-    assert kern(out, "DB II in % vom Umsatz Monat")["anzeige"] == f"{kz.deutsch(37000 / 114000 * 100, 1)} %"
-    assert kern(out, "Ziel DB II in %")["betrag"] == 35.0
-    assert kern(out, "Ziel DB II in %")["quelle"] == [finanzen.STANDARD_HINWEIS]
-    assert "DB I in % vom Umsatz Monat" in namen
-    assert not any(re.match(r"Ziel DB I(?!I)", n) for n in namen), namen  # no target line on DB I
+    assert kern(out, "DB I in % vom Umsatz Monat")["anzeige"] == "32,5 %"  # 37.000 / 114.000
+    assert kern(out, "Ziel DB I in %")["betrag"] == 35.0
+    assert kern(out, "Ziel DB I in %")["quelle"] == [finanzen.STANDARD_HINWEIS]
+    # DB II = DB I 37.000 − Gewährleistung 9.000 = 28.000
+    assert kern(out, "DB II in % vom Umsatz Monat")["anzeige"] == f"{kz.deutsch(28000 / 114000 * 100, 1)} %"
+    assert not any(n.startswith("Ziel DB II") for n in namen), namen  # no target line on DB II
 
 
-def test_margin_target_reads_the_db2_kpi_and_ignores_db1(kit_ws):
+def test_margin_target_reads_the_db1_kpi_and_ignores_db2(kit_ws):
     (kit_ws / "Unternehmen" / "kpi-ziele.md").write_text(
         "---\nkennzahlen:\n"
-        '  - {"name": "DB I-Marge", "formel": "DB I / Umsatz", "quelle": "ergebnis", "ziel": 68, "einheit": "%"}\n'
+        '  - {"name": "DB II-Marge", "formel": "DB II / Umsatz", "quelle": "ergebnis", "ziel": 32, "einheit": "%"}\n'
+        '  - {"name": "DB I-Marge", "formel": "DB I / Umsatz", "quelle": "ergebnis", "ziel": 40, "einheit": "%"}\n'
+        "---\n\n# KPIs und Ziele\n", encoding="utf-8")
+    assert finanzen.db1_ziel(finanzen.definitionen(kit_ws)) == (40.0, False)
+    (kit_ws / "Unternehmen" / "kpi-ziele.md").write_text(
+        "---\nkennzahlen:\n"
         '  - {"name": "DB II-Marge", "formel": "DB II / Umsatz", "quelle": "ergebnis", "ziel": 32, "einheit": "%"}\n'
         "---\n\n# KPIs und Ziele\n", encoding="utf-8")
-    assert finanzen.db2_ziel(finanzen.definitionen(kit_ws)) == (32.0, False)
-    (kit_ws / "Unternehmen" / "kpi-ziele.md").write_text(
-        "---\nkennzahlen:\n"
-        '  - {"name": "DB I-Marge", "formel": "DB I / Umsatz", "quelle": "ergebnis", "ziel": 68, "einheit": "%"}\n'
-        "---\n\n# KPIs und Ziele\n", encoding="utf-8")
-    assert finanzen.db2_ziel(finanzen.definitionen(kit_ws)) == (finanzen.DB2_ZIEL_STANDARD, True)
+    assert finanzen.db1_ziel(finanzen.definitionen(kit_ws)) == (finanzen.DB1_ZIEL_STANDARD, True)
+
+
+def test_db1_target_is_the_kit_standard_until_kpis_are_set(kit_ws):
+    """Labelling rule (D19): the kit's 35 % is never reported as the company's own target."""
+    assert finanzen.db1_ziel(finanzen.definitionen(kit_ws)) == (35.0, True)
+    (kit_ws / "Unternehmen" / "kpi-ziele.md").write_text("---\nabweichung_massnahme_eur: 8000\n---\n", encoding="utf-8")
+    assert finanzen.db1_ziel(finanzen.definitionen(kit_ws)) == (35.0, True)  # thresholds set, KPI list still standard
+    shutil.copy(ROOT / "plugin" / "beispiel" / "Unternehmen" / "kpi-ziele.md", kit_ws / "Unternehmen" / "kpi-ziele.md")
+    assert finanzen.db1_ziel(finanzen.definitionen(kit_ws)) == (35.0, False)
+
+
+def test_warranty_borne_elsewhere_is_not_deducted_in_db2(fin_ws):
+    """D19 edge: with gewaehrleistung_traeger produkt or qualitaet, warranty is not service's cost – DB II = DB I."""
+    for traeger in ("produkt", "qualitaet"):
+        (fin_ws / "Unternehmen" / "ergebnisrechnung.md").write_text(
+            f"---\ngewaehrleistung_traeger: {traeger}\n---\n# Ergebnisrechnung\n", encoding="utf-8")
+        _, out = rufe("management-report", "--ws", fin_ws, "--monat", "2026-09", "--heute", HEUTE)
+        zeilen = {z["zeile"]: z for z in out["guv"]["monat"]}
+        assert zeilen["DB I"]["ist"]["betrag"] == zeilen["DB II"]["ist"]["betrag"] == 37000, traeger
+        assert zeilen["DB II"]["plan"]["betrag"] == 50000  # 120.000 − 30.000 − 40.000, no warranty deducted
+        assert traeger in zeilen["DB II"]["ist"]["formel"]
+        assert kern(out, "Ergebnis Monat Ist")["betrag"] == 37000
 
 
 def test_variances_follow_the_thresholds(fin_ws):
@@ -331,16 +353,16 @@ def test_budget_from_run_rate_and_assumptions(kit_ws):
     assert any("Annahme: umsatz|+3 %" in q for q in pos["Umsatz Service"]["budget"]["quelle"])
 
 
-def test_budget_proposes_revenue_and_db2_targets(kit_ws):
-    """Max's correction K1: the budget proposes Umsatz and DB II % as kpi-ziele targets, not DB I %."""
+def test_budget_proposes_revenue_and_db1_targets(kit_ws):
+    """D19: the budget proposes Umsatz and DB I % as kpi-ziele targets, not DB II %."""
     budget_ws(kit_ws)
     _, out = rufe("budgetplanung", "--ws", kit_ws, "--jahr", 2027, "--heute", HEUTE, *ANNAHMEN)
     namen = [k["name"] for k in out["kernzahlen"]]
-    # DB II = Umsatz 134.930 − Personal 138.000 = −3.070 (no material/third-party positions)
-    assert kern(out, "Zielvorschlag DB II in % 2027")["anzeige"] == f"{kz.deutsch(-3070 / 134930 * 100, 1)} %"
+    # DB I = Umsatz 134.930 − Personal 138.000 = −3.070 (no material/third-party positions)
+    assert kern(out, "Zielvorschlag DB I in % 2027")["anzeige"] == f"{kz.deutsch(-3070 / 134930 * 100, 1)} %"
     assert kern(out, "Umsatz Budget 2027")["betrag"] == 134930
-    assert not any(n.startswith("Zielvorschlag DB I ") for n in namen), namen
-    assert "DB II" in out["gliederung"][0]["inhalt"]
+    assert not any(n.startswith("Zielvorschlag DB II") for n in namen), namen
+    assert out["zielvorschlag"] == ["Umsatz", "DB I in %"] and "DB I in %" in out["gliederung"][0]["inhalt"]
 
 
 def test_budget_without_assumptions_is_the_base(kit_ws):
@@ -474,12 +496,12 @@ def test_own_case_is_refused(kit_ws):
     assert code == 1 and "§8 Regel 3" in out["fehler"][0]
 
 
-def test_margin_check_is_a_db2_check(kit_ws):
-    """Max's correction K1: the deal margin is DB II (all direct costs incl. technician hours at full cost)."""
+def test_margin_check_is_a_db1_check(kit_ws):
+    """D19: the deal margin is DB I (all direct costs incl. technician hours at full cost) against 35 %."""
     _, out = margenpruefung(kit_ws, angebotsfall(kit_ws), "30.000")
-    assert [out["werte"][k]["name"] for k in ("db", "db_prozent", "ziel")] == ["DB II", "DB II in %", "Ziel DB II in %"]
-    assert "DB II" in out["empfehlung"] and not re.search(r"DB I(?!I)", out["empfehlung"])
-    assert out["werte"]["ziel"]["betrag"] == 35.0
+    assert [out["werte"][k]["name"] for k in ("db", "db_prozent", "ziel")] == ["DB I", "DB I in %", "Ziel DB I in %"]
+    assert "Ziel DB I" in out["empfehlung"] and "DB II" not in out["empfehlung"]
+    assert out["werte"]["ziel"]["betrag"] == 35.0 and out["werte"]["ziel"]["quelle"] == [finanzen.STANDARD_HINWEIS]
 
 
 def test_margin_check_prices_hours_at_the_full_cost_rate(kit_ws):
@@ -544,12 +566,12 @@ def test_workflow_chains_are_in_the_skills():
         assert teil in bp, teil
 
 
-def test_skills_carry_the_db2_target():
-    """Max's correction K1 in the skill texts: DB II is the target margin everywhere."""
+def test_skills_carry_the_db1_target():
+    """D19 in the skill texts: DB I (after service personnel) is the target margin everywhere."""
     mr, bp, mp = (skill(n)[1] for n in ("management-report", "budgetplanung", "margen-pruefung"))
-    assert "DB II in % vom Umsatz" in mr and "ohne Ziel" in mr
-    assert "Umsatz, DB II %" in bp and "DB I %" not in bp
-    for teil in ("DB II", "--material", "--fremdleistung", "--stunden", "Vollkostensatz"):
+    assert "DB I in % vom Umsatz" in mr and "Ziel DB I in %" in mr and "Ziel DB II" not in mr
+    assert "Umsatz, DB I %" in bp and "DB II %" not in bp
+    for teil in ("DB I", "--material", "--fremdleistung", "--stunden", "Vollkostensatz", "Standarddefinition"):
         assert teil in mp, teil
 
 
@@ -593,11 +615,11 @@ def test_graders_carry_the_independent_totals():
         assert grader(fall, "massnahmen-als-vorgang")["min"] == e["mr_massnahmen"]
 
 
-def test_margin_check_evals_use_the_db2_names():
-    """Max's correction K1 in the evals: graders and criteria speak of DB II, never of a DB I target."""
+def test_margin_check_evals_use_the_db1_names():
+    """D19 in the evals: graders and criteria speak of the DB I target, never of a DB II target."""
     for fall in ("margen-pruefung-sauber", "margen-pruefung-unordentlich", "management-report-sauber"):
         text = (EVALS / fall / "case.yaml").read_text(encoding="utf-8")
-        assert "DB II" in text and not re.search(r"(Ziel DB I(?!I)|DB I %)", text), fall
+        assert "DB I" in text and not re.search(r"(Ziel DB II|DB II %|DB II target|DB II margin)", text), fall
 
 
 def test_sample_year_supports_the_finance_evals():
@@ -647,19 +669,19 @@ def test_source_comparison_names_service_revenue_against_orders(fin_ws):
     assert v["Serviceumsatz"]["differenz"]["betrag"] == 85200
 
 
-@pytest.mark.parametrize("name", ["DB II-Marge", "DB2-Marge", "Deckungsbeitrag II", "DB II in %", "DBII-Marge"])
-def test_db2_target_names_that_match(name):
+@pytest.mark.parametrize("name", ["DB I-Marge", "DB1-Marge", "Deckungsbeitrag I", "DB I in %", "DBI-Marge"])
+def test_db1_target_names_that_match(name):
+    defs = {"kpi-ziele": {"kennzahlen": [{"name": name, "ziel": 40, "einheit": "%"}]}}
+    assert finanzen.db1_ziel(defs) == (40.0, False)
+
+
+@pytest.mark.parametrize("name", ["DB II in %", "Deckungsbeitrag II in %", "DB II-Marge", "DB2-Marge", "DB III-Marge"])
+def test_db2_kpis_are_never_the_margin_target(name):
     defs = {"kpi-ziele": {"kennzahlen": [{"name": name, "ziel": 32, "einheit": "%"}]}}
-    assert finanzen.db2_ziel(defs) == (32.0, False)
+    assert finanzen.db1_ziel(defs) == (finanzen.DB1_ZIEL_STANDARD, True)
 
 
-@pytest.mark.parametrize("name", ["DB I in %", "Deckungsbeitrag I in %", "DB I Ist", "DB I-Marge", "DB III-Marge"])
-def test_db1_kpis_are_never_the_margin_target(name):
-    defs = {"kpi-ziele": {"kennzahlen": [{"name": name, "ziel": 68, "einheit": "%"}]}}
-    assert finanzen.db2_ziel(defs) == (finanzen.DB2_ZIEL_STANDARD, True)
-
-
-def test_db2_target_skips_a_db1_kpi_listed_first():
-    defs = {"kpi-ziele": {"kennzahlen": [{"name": "DB I in %", "ziel": 68, "einheit": "%"},
-                                         {"name": "DB II in %", "ziel": 32, "einheit": "%"}]}}
-    assert finanzen.db2_ziel(defs) == (32.0, False)
+def test_db1_target_skips_a_db2_kpi_listed_first():
+    defs = {"kpi-ziele": {"kennzahlen": [{"name": "DB II in %", "ziel": 32, "einheit": "%"},
+                                         {"name": "DB I in %", "ziel": 40, "einheit": "%"}]}}
+    assert finanzen.db1_ziel(defs) == (40.0, False)

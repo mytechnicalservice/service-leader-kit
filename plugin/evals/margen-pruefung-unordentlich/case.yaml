@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: margen-pruefung-unordentlich
-description: "Deutsche Formate, negative DB-II-Marge: ablehnen."
+description: "Deutsche Formate, negative DB-I-Marge: ablehnen."
 tags: ["skill:margen-pruefung", unordentlich]
 runs: 3
 execution:
@@ -28,7 +28,7 @@ graders:
   - name: antwort
     type: llm
     criteria: >-
-      PASS if the answer is in German, says the deal has a negative DB II (−1.125 EUR) after the 12,5 % discount,
+      PASS if the answer is in German, says the deal has a negative DB I (−1.125 EUR) after the 12,5 % discount,
       recommends "ablehnen" with the net minimum price, and leaves the decision to the user.
   - name: keine-entscheidung
     type: regex

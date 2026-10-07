@@ -35,17 +35,17 @@ ZUSATZ = {
     "kalkulationszins_prozent": ("ergebnisrechnung.md", 8.0),
     "margen_auflagen_spanne_pp": ("freigabegrenzen.md", 10.0),
 }
-# Max's correction K1 (2026-10-07): the 35 % margin target is a DB II target, never DB I.
-DB2_ZIEL_STANDARD = 35.0
+# D19 (Max, 2026-10-07): the 35 % margin target is the DB I target (DB I after service personnel), never DB II.
+DB1_ZIEL_STANDARD = 35.0
 KLASSEN = (("umsatz", ("umsatz", "erlös", "erloes")), ("material", ("material", "wareneinsatz")),
            ("fremdleistung", ("fremdleistung", "subunternehm")), ("personal", ("personal", "lohn", "gehalt")),
            ("gewaehrleistung", ("gewährleistung", "gewaehrleistung", "garantie")))
 KOSTEN = ("material", "fremdleistung", "personal", "gewaehrleistung", "sonstige")
 NAMEN = {"umsatz": "Umsatz", "material": "Material", "fremdleistung": "Fremdleistung",
          "personal": "Personalkosten Service", "gewaehrleistung": "Gewährleistung", "sonstige": "Sonstige Kosten"}
-STANDARD_DB = {"db1": "Umsatz - Material - Fremdleistung", "db2": "DB I - Personalkosten Service"}
+STANDARD_DB = {"db1": "Umsatz - Material - Fremdleistung - Personalkosten Service", "db2": "DB I - Gewährleistung"}
 KAPITEL = [
-    ("Auf einen Blick", "kernzahlen (DB II in % mit Ziel, DB I in % ohne Ziel) und die drei größten Abweichungen "
+    ("Auf einen Blick", "kernzahlen (DB I in % mit Ziel, DB II in % ohne Ziel) und die drei größten Abweichungen "
                         "(Seite 1)"),
     ("Ergebnisrechnung", "guv.monat und guv.kumuliert: je Zeile Ist, Plan, Abweichung"),
     ("Abweichungen und Maßnahmen", "abweichungen: je Zeile Ist, Plan, Differenz, Ursache (vom Nutzer, sonst "
@@ -225,17 +225,20 @@ def verwendet(defs: dict, bereiche: tuple[str, ...], standardwerte: list[str]) -
     return out
 
 
-def db2_ziel(defs: dict) -> tuple[float, bool]:
-    """Target DB II % from kpi-ziele (a KPI named like 'DB II-Marge' with unit %), else the kit standard (K1).
-    A DB I KPI is never used as the margin target."""
-    for k in defs["kpi-ziele"].get("kennzahlen") or []:
+def db1_ziel(defs: dict) -> tuple[float, bool]:
+    """Target DB I % from kpi-ziele (a KPI named like 'DB I-Marge' with unit %), else the kit standard (D19: 35 %).
+    A DB II KPI is never used as the margin target. Plan 3's standard KPI list carries the 35 % itself; it counts as
+    kit standard (labelled) while `kennzahlen` is still in `standard_felder`."""
+    kpi = defs["kpi-ziele"]
+    std = "kennzahlen" in (kpi.get("standard_felder") or [])
+    for k in kpi.get("kennzahlen") or []:
         if not isinstance(k, dict):
             continue
         name = re.sub(r"[^a-z0-9%]+", " ", str(k.get("name", "")).casefold())  # keep word boundaries
-        if (re.search(r"\b(db|deckungsbeitrag)\s*(ii|2)\b", name) and str(k.get("einheit", "")).strip() == "%"
+        if (re.search(r"\b(db|deckungsbeitrag)\s*(i|1)\b", name) and str(k.get("einheit", "")).strip() == "%"
                 and k.get("ziel") not in (None, "")):
-            return float(zahl(k["ziel"])), False
-    return DB2_ZIEL_STANDARD, True
+            return float(zahl(k["ziel"])), std
+    return DB1_ZIEL_STANDARD, True
 
 
 def ziel_quelle(std: bool) -> list[str]:
@@ -271,13 +274,18 @@ def bausteine(name: str, formel: str) -> list[tuple[int, str]]:
 def abschluss(kl: dict, defs: dict, art: str) -> dict:
     """DB I, DB II and the service result from class values; None where a part (e.g. a plan) is missing."""
     erg = defs["ergebnisrechnung"]
+    traeger = str(erg.get("gewaehrleistung_traeger") or "service").casefold()
     out: dict = {}
     for key, label in (("db1", "DB I"), ("db2", "DB II")):
         formel = erg.get(key) or STANDARD_DB[key]
-        teile = [(vz, out.get("db1") if k == "db1" else kl.get(k)) for vz, k in bausteine(label, formel)]
+        bs = bausteine(label, formel)
+        if traeger != "service" and any(k == "gewaehrleistung" for _, k in bs):
+            # D19 edge: warranty borne by product or quality is not service's cost – not deducted (DB II = DB I).
+            bs = [(vz, k) for vz, k in bs if k != "gewaehrleistung"]
+            formel = f"{formel} (Gewährleistung nicht abgezogen, Träger: {traeger})"
+        teile = [(vz, out.get("db1") if k == "db1" else kl.get(k)) for vz, k in bs]
         out[key] = None if any(t is None for _, t in teile) else w(
             f"{label} {art}", sum(vz * t["betrag"] for vz, t in teile), quellen(*[t for _, t in teile]), formel)
-    traeger = str(erg.get("gewaehrleistung_traeger") or "service").casefold()
     kosten = [k for k in KOSTEN if not (k == "gewaehrleistung" and traeger != "service")]
     teile = [kl.get("umsatz"), *[kl.get(k) for k in kosten]]
     out["ergebnis"] = None if any(t is None for t in teile) else w(
@@ -360,14 +368,14 @@ def kernzahlen(r: dict, ry: dict | None, defs: dict) -> list[dict]:
             if x is not None:
                 out.append(dict(x, name=name))
     u = r["klassen"]["ist"]["umsatz"]
-    # K1: DB I % is shown without a target; the margin target belongs to DB II %.
+    # D19: the margin target belongs to DB I %; DB II % is shown without a target.
     for key, label in (("db1", "DB I"), ("db2", "DB II")):
         db = r["ist"][key]
         if db and u and u["betrag"]:
             out.append(w(f"{label} in % vom Umsatz Monat", db["betrag"] / u["betrag"] * 100, quellen(db, u),
                          f"{label} / Umsatz × 100", "%", 1))
-    ziel, std = db2_ziel(defs)
-    out.append(w("Ziel DB II in %", ziel, ziel_quelle(std), None, "%", 1))
+    ziel, std = db1_ziel(defs)
+    out.append(w("Ziel DB I in %", ziel, ziel_quelle(std), None, "%", 1))
     return out
 
 
@@ -590,7 +598,7 @@ def cmd_abgleich(a, ws: Path) -> tuple[int, dict]:
 
 BUDGET_KAPITEL = [
     ("Auf einen Blick", "kernzahlen: Budget gegen Basis (Umsatz, DB I, DB II, Ergebnis), Zielvorschläge Umsatz und "
-                        "DB II in %"),
+                        "DB I in %"),
     ("Basis", "basis_monate, positionen[].basis – Fortschreibung der letzten 12 Monate"),
     ("Annahmen", "annahmen: je Zeile Ziel, Änderung, Begründung, Quelle (Personal, Angebot, Nutzer)"),
     ("Budget je Position und Monat", "positionen[].budget und .monate (Blatt 'Monate' in Excel)"),
@@ -701,16 +709,16 @@ def cmd_budgetplanung(a, ws: Path) -> tuple[int, dict]:
     ab_basis, ab_budget = abschluss(kl_basis, defs, "Basis"), abschluss(kl_budget, defs, f"Budget {a.jahr}")
     kern = [kl_budget["umsatz"], kl_basis["umsatz"], ab_budget["ergebnis"], ab_basis["ergebnis"]]
     kern += [x for x in (ab_budget["db1"], ab_budget["db2"]) if x]
-    # K1: the proposed kpi-ziele targets are Umsatz and DB II % (not DB I %).
-    if ab_budget["db2"] and kl_budget["umsatz"]["betrag"]:
-        kern.append(w(f"Zielvorschlag DB II in % {a.jahr}", ab_budget["db2"]["betrag"] / kl_budget["umsatz"]["betrag"] * 100,
-                      quellen(ab_budget["db2"], kl_budget["umsatz"]), "DB II Budget / Umsatz Budget × 100", "%", 1))
+    # D19: the proposed kpi-ziele targets are Umsatz and DB I % (not DB II %).
+    if ab_budget["db1"] and kl_budget["umsatz"]["betrag"]:
+        kern.append(w(f"Zielvorschlag DB I in % {a.jahr}", ab_budget["db1"]["betrag"] / kl_budget["umsatz"]["betrag"] * 100,
+                      quellen(ab_budget["db1"], kl_budget["umsatz"]), "DB I Budget / Umsatz Budget × 100", "%", 1))
     dokument, zahlen = freier_name(ws, "03_Berichte", f"{a.heute}_budgetplanung-{a.jahr}", ".xlsx")
     ablegen(ws, zahlen, "budgetplanung", a.heute, dokument, posten, kern)
     return 0, {"ok": True, "jahr": a.jahr, "basis_monate": basis_monate, "positionen": tabelle, "klassen": kl_budget,
                "basis_klassen": kl_basis, "basis_abschluss": ab_basis, "budget_abschluss": ab_budget,
                "kernzahlen": kern, "annahmen": annahmen, "vertragsbasis": vertragsbasis(ws, a.jahr), "teams": teams(ws),
-               "zielvorschlag": ["Umsatz", "DB II in %"],
+               "zielvorschlag": ["Umsatz", "DB I in %"],
                "beispiel": beispiel, "hinweise": [BEISPIEL_HINWEIS] if beispiel else [],
                "definitionen": verwendet(defs, ("ergebnisrechnung",), []),
                "gliederung": [{"kapitel": k, "inhalt": i} for k, i in BUDGET_KAPITEL],
@@ -951,7 +959,7 @@ def cmd_margen_pruefung(a, ws: Path) -> tuple[int, dict]:
     netto = liste * (1 - rabatt / 100)
     db = netto - kosten
     dbp = db / netto * 100
-    ziel, ziel_std = db2_ziel(defs)
+    ziel, ziel_std = db1_ziel(defs)
     spanne, spanne_std = zusatzwert(ws, "margen_auflagen_spanne_pp")
     fg = defs["freigabegrenzen"]
     gruende = []
@@ -964,9 +972,9 @@ def cmd_margen_pruefung(a, ws: Path) -> tuple[int, dict]:
     q = [a.quelle]
     werte = {"netto": w("Netto nach Rabatt", netto, q, "Listenpreis × (1 − Rabatt)"),
              "kosten": kosten_w,
-             "db": w("DB II", db, quellen(kosten_w), "Netto − direkte Kosten (inkl. Technikerstunden zu Vollkosten)"),
-             "db_prozent": w("DB II in %", dbp, quellen(kosten_w), "DB II / Netto × 100", "%", 1),
-             "ziel": w("Ziel DB II in %", ziel, ziel_quelle(ziel_std), None, "%", 1)}
+             "db": w("DB I", db, quellen(kosten_w), "Netto − direkte Kosten (inkl. Technikerstunden zu Vollkosten)"),
+             "db_prozent": w("DB I in %", dbp, quellen(kosten_w), "DB I / Netto × 100", "%", 1),
+             "ziel": w("Ziel DB I in %", ziel, ziel_quelle(ziel_std), None, "%", 1)}
     if satz:
         werte["stundensatz"] = satz
     mindest = kosten / (1 - ziel / 100)
@@ -984,8 +992,8 @@ def cmd_margen_pruefung(a, ws: Path) -> tuple[int, dict]:
             auflagen.append(f"Rabatt über Freigabegrenze – {entscheider(defs, 'preise', netto)}")
         urteil = "zustimmen mit Auflagen" if auflagen else "zustimmen"
     std_text = f" ({STANDARD_HINWEIS})" if ziel_std or spanne_std else ""
-    text = (f"Empfehlung: {urteil} – Netto {werte['netto']['anzeige']}, {kosten_text}, DB II "
-            f"{werte['db']['anzeige']} ({werte['db_prozent']['anzeige']}), Ziel DB II {werte['ziel']['anzeige']}"
+    text = (f"Empfehlung: {urteil} – Netto {werte['netto']['anzeige']}, {kosten_text}, DB I "
+            f"{werte['db']['anzeige']} ({werte['db_prozent']['anzeige']}), Ziel DB I {werte['ziel']['anzeige']}"
             f"{std_text}."
             + (" " + ("Hinweis" if urteil == "ablehnen" else "Auflagen") + ": " + "; ".join(auflagen) + "." if auflagen else "")
             + f" Quelle: {a.quelle}.")

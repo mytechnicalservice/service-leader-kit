@@ -1,6 +1,6 @@
 ---
 name: budgetplanung
-description: Yearly service budget and targets (Umsatz and DB II %) from the run-rate of the last 12 months plus explicit, sourced assumptions (headcount from Personal at team level, prices/portfolio from Angebot), reconciled and handed to the decision memo. Use for "Budget 2027", "Jahresplanung", "Planung nächstes Jahr", "Ziele fürs nächste Jahr".
+description: Yearly service budget and targets (Umsatz and DB I %) from the run-rate of the last 12 months plus explicit, sourced assumptions (headcount from Personal at team level, prices/portfolio from Angebot), reconciled and handed to the decision memo. Use for "Budget 2027", "Jahresplanung", "Planung nächstes Jahr", "Ziele fürs nächste Jahr".
 ---
 
 # Budgetplanung (spec §5, §8 Jahresbudget)
@@ -54,5 +54,5 @@ Run the step-1 command again with all `--annahme` flags.
    reviewer sub-agent for this case). Then call the `entscheidungsvorlage` skill for that case: decision = "Budget
    <Jahr> freigeben", options and effects from `kernzahlen`, assumptions with sources, owner = the head of service.
    The decision itself is the human's (§6). Close with "Bitte prüfen – du vertrittst das Budget."
-4. The proposed targets (Umsatz, DB II % – `Umsatz Budget <Jahr>` and `Zielvorschlag DB II in % <Jahr>`) go into
+4. The proposed targets (Umsatz, DB I % – `Umsatz Budget <Jahr>` and `Zielvorschlag DB I in % <Jahr>`) go into
    `kpi-ziele.md` only after the decision, by the system architect. Say so in the hand-over text.

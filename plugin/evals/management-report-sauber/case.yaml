@@ -38,7 +38,7 @@ graders:
     type: llm
     criteria: >-
       PASS if the answer is in German, gives Umsatz, DB I and Ergebnis for September 2026 (actual and plan) and
-      DB II in % against its target (Ziel DB II in %; DB I in % carries no target), names the cases opened for
+      DB I in % against its target (Ziel DB I in %; DB II in % carries no target), names the cases opened for
       unfavourable variances with Jana Becker and 2026-10-20, says which P&L definitions were used (or that kit
       standard definitions were used), and leaves the review to the user. FAIL if it states a number the scripts
       did not produce or claims anything was sent.
