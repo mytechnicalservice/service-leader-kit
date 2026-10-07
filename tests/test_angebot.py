@@ -295,3 +295,61 @@ def test_portfolio_classes_use_the_db2_target(jahr_ws):
     assert out["zielmarge"]["prozent"] == 45.0 and out["zielmarge"]["kennzahl"] == "DB II-Marge"
     p = {x["produkt"]: x["klasse"] for x in out["produkte"]}
     assert p["Wartung"] == "halten" and p["Reparatur"] == "sanieren"
+
+
+STUFEN = ["--stufe", "Basic;1.900;6;30", "--stufe", "Plus;3400;10;20", "--stufe", "Premium;5900;16;10"]
+
+
+def test_konzept_business_case_and_capacity(jahr_ws):
+    code, out = cli("konzept", "--ws", jahr_ws, "--name", "Verfügbarkeitspaket", "--bis", "2026-09", *STUFEN,
+                    "--heute", "2026-10-06")
+    assert code == 0, out
+    assert out["potenzial"]["betrag"] == 3
+    assert out["kostensatz"]["betrag"] == 70.58  # 14.680 EUR ÷ 208 h
+    assert out["umsatz_gesamt"]["betrag"] == 5520  # 3 × (0,3×1.900 + 0,2×3.400 + 0,1×5.900)
+    assert out["stunden_gesamt"]["betrag"] == pytest.approx(16.2)
+    assert out["sollstunden_je_techniker"]["betrag"] == 1800
+    assert out["fte_bedarf"]["betrag"] == 0.01
+    assert [(f["name"], f["betrag"]) for f in out["freie_stunden"]] == [
+        ("Freie Stunden Team Nord", 600), ("Freie Stunden Team Süd", 0)]
+    basic = out["stufen"][0]
+    assert basic["vertraege"]["betrag"] == pytest.approx(0.9) and basic["umsatz"]["betrag"] == 1710
+    ziel = out["zielmarge"]["prozent"]  # 35 unless Plan 3's kit standard sets another target
+    assert basic["mindestpreis"]["betrag"] == pytest.approx(round(6 * 70.58 / (1 - ziel / 100), 2))
+    assert out["warnungen"] == []
+    assert out["ziel"] == "04_Angebote/2026-10-06_serviceprodukt-konzept_verfuegbarkeitspaket.docx"
+    assert out["uebergabe_finanzen"]["betrag_eur"] == 5520
+    assert all(s["umsatz"]["berechnet"] for s in out["stufen"])
+
+
+def test_konzept_filters_by_machine_type_and_warns_below_minimum(jahr_ws):
+    out = cli("konzept", "--ws", jahr_ws, "--name", "Ferndiagnose", "--bis", "2026-09", "--maschinentyp", "MM-400",
+              "--stufe", "Premium;900;16;50")[1]
+    assert out["potenzial"]["betrag"] == 2
+    assert any("Premium" in w and "Mindestpreis" in w for w in out["warnungen"])
+
+
+@pytest.mark.parametrize("stufen,text", [
+    (["Basic;1900;6;50", "Plus;3400;10;40", "Premium;5900;16;30"], "120 %"),
+    (["Premium;;16;10"], "Stufe 'Premium'"),
+    (["Basic;1900;6"], "Name;Preis_EUR_Jahr;Stunden_je_Anlage;Quote_Prozent"),
+])
+def test_konzept_refuses_incomplete_levels(jahr_ws, stufen, text):
+    args = [x for s in stufen for x in ("--stufe", s)]
+    code, out = cli("konzept", "--ws", jahr_ws, "--name", "X", "--bis", "2026-09", *args)
+    assert code == 1 and text in out["fehler"][0]
+
+
+def test_konzept_user_cost_rate_wins(jahr_ws):
+    out = cli("konzept", "--ws", jahr_ws, "--name", "X", "--bis", "2026-09", "--stufe", "Basic;1900;6;30",
+              "--kostensatz", "80")[1]
+    assert out["kostensatz"]["betrag"] == 80 and out["kostensatz"]["quelle"] == ["Angabe des Nutzers"]
+
+
+def test_konzept_minimum_price_uses_the_db2_target(jahr_ws):
+    """K1: minimum price = hours × cost rate ÷ (1 − DB II target), labelled 'Ziel: DB II-Marge'."""
+    schreibe_kpi_ziele(jahr_ws, [{"name": "DB I-Marge", "ziel": 70}, {"name": "DB II-Marge", "ziel": 30}])
+    out = cli("konzept", "--ws", jahr_ws, "--name", "X", "--bis", "2026-09", "--stufe", "Basic;1900;6;30")[1]
+    assert out["zielmarge"]["prozent"] == 30.0 and out["zielmarge"]["anzeige"] == "Ziel: DB II-Marge 30,0 %"
+    assert out["stufen"][0]["mindestpreis"]["betrag"] == pytest.approx(round(6 * 70.58 / 0.7, 2))
+    assert "DB II-Marge" in out["stufen"][0]["mindestpreis"]["formel"]

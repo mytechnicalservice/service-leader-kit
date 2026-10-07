@@ -407,6 +407,116 @@ def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
             "gliederung": PORTFOLIO_GLIEDERUNG}
 
 
+# ---------- konzept ----------
+
+KONZEPT_GLIEDERUNG = ["Kundenproblem und Nutzen", "Zielgruppe und Potenzial (Installed Base)",
+                      "Leistungsumfang je Stufe (Basic / Plus / Premium)", "Preislogik (Preis, Mindestpreis bei Ziel: DB II-Marge, "
+                      "Bezug zu preislogik.md)", "Liefer-Kapazität (nur Teamebene)", "Business Case je Stufe",
+                      "Vermarktung (Zielgruppe, Botschaft, Kanal)", "Risiken und offene Punkte",
+                      "Übergabe an Finanzen und nächste Schritte", "Quellen und Definitionen"]
+UMLAUTE = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+
+
+def slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.casefold().translate(UMLAUTE)).strip("-") or "produkt"
+
+
+def stufen(texte: list[str]) -> list[tuple[str, float, float, float]]:
+    out = []
+    for t in texte:
+        teile = [x.strip() for x in t.split(";")]
+        if len(teile) != 4 or not teile[0]:
+            raise AngebotFehler(f"Stufe '{t}': erwartet Name;Preis_EUR_Jahr;Stunden_je_Anlage;Quote_Prozent")
+        try:
+            preis, std, quote = (zahl(x.replace("%", "")) for x in teile[1:])
+        except ValueError as exc:
+            raise AngebotFehler(f"Stufe '{teile[0]}': Preis, Stunden und Quote müssen Zahlen sein – bitte nennen") from exc
+        if preis <= 0 or std < 0 or not 0 < quote <= 100:
+            raise AngebotFehler(f"Stufe '{teile[0]}': Preis > 0, Stunden ≥ 0 und Quote 1–100 % nötig")
+        out.append((teile[0], preis, std, quote))
+    if not 1 <= len(out) <= 3:
+        raise AngebotFehler("Bitte 1 bis 3 Stufen nennen (z. B. Basic, Plus, Premium)")
+    gesamt = sum(s[3] for s in out)
+    if gesamt > 100:
+        raise AngebotFehler(f"Die Quoten ergeben zusammen {deutsch(gesamt)} % – mehr als 100 % der Anlagen ohne "
+                            "Vertrag geht nicht. Bitte korrigieren.")
+    return out
+
+
+def konzept(ws, basis, name, bis, stufen_texte, maschinentypen, kostensatz, heute) -> dict:
+    alle = monate(bis, 12)
+    st = stufen(stufen_texte)
+    ziel, ziel_quelle = zielmarge(ws)
+    ib = lade(basis, "installed_base", [bis])
+    typen = {t.strip() for t in maschinentypen}
+    kand = [z for z in ib if str(z.get("Vertrag")).strip() == "nein"
+            and (not typen or str(z.get("Maschinentyp")).strip() in typen)]
+    pot = w("Anlagen ohne Vertrag (Zielgruppe)", len(kand), quelle_von(kand) or quelle_von(ib),
+            "Anzahl installed_base mit Vertrag = nein" + (f", Maschinentyp {', '.join(sorted(typen))}" if typen else ""),
+            "Anlagen")
+    if kostensatz:
+        ks = w("Kostensatz je Stunde", zahl(kostensatz), ["Angabe des Nutzers"], None, "EUR/h", 2)
+    else:
+        auf = [z for z in lade(basis, "auftraege", alle) if hat_werte([z], "Kosten_EUR") and hat_werte([z], "Stunden")]
+        std_summe = sum(zahl(z["Stunden"]) for z in auf)
+        if not std_summe:
+            raise AngebotFehler("Kostensatz nicht berechenbar (Aufträge ohne Kosten oder Stunden) – bitte einen "
+                                "Kostensatz je Stunde nennen")
+        ks = w("Kostensatz je Stunde", round(sum(zahl(z["Kosten_EUR"]) for z in auf) / std_summe, 2), quelle_von(auf),
+               "Σ Kosten_EUR ÷ Σ Stunden (Aufträge, 12 Monate)", "EUR/h", 2)
+    kap = lade(basis, "kapazitaet", alle)
+    koepfe = sum(zahl(z["Techniker_Anzahl"]) for z in kap) / 12
+    if not koepfe:
+        raise AngebotFehler("Kapazitätsdaten ohne Techniker – Kapazitätsbedarf nicht berechenbar")
+    je_tech = w("Sollstunden je Techniker und Jahr", round(sum(zahl(z["Soll_Stunden"]) for z in kap) / koepfe, 1),
+                quelle_von(kap), "Σ Soll_Stunden ÷ (Σ Techniker_Anzahl ÷ 12)", "h", 0)
+    teams: dict[str, list[dict]] = {}
+    for z in kap:
+        teams.setdefault(str(z["Team"]).strip(), []).append(z)
+    frei = [w(f"Freie Stunden Team {t}", round(sum(zahl(z["Soll_Stunden"]) - zahl(z["Ist_Stunden"]) for z in zz), 1),
+              quelle_von(zz), "Σ (Soll_Stunden − Ist_Stunden), 12 Monate", "h", 0) for t, zz in sorted(teams.items())]
+    ergebnis, warnungen = [], []
+    for sname, preis, std, quote in st:
+        n = len(kand) * quote / 100
+        umsatz, stunden = round(n * preis, 2), round(n * std, 2)
+        kosten = round(stunden * ks["betrag"], 2)
+        q = pot["quelle"] + ks["quelle"]
+        mindest = round(std * ks["betrag"] / (1 - ziel / 100), 2)
+        ergebnis.append({
+            "stufe": sname, "preis": w(f"Preis {sname}", preis, ["Angabe des Nutzers"], None, "EUR/Jahr"),
+            "vertraege": w(f"Verträge {sname} (erwartet)", round(n, 2), pot["quelle"],
+                           f"Anlagen ohne Vertrag × Quote {deutsch(quote)} % (Annahme des Nutzers)", "Verträge", 1),
+            "umsatz": w(f"Umsatz {sname}", umsatz, pot["quelle"], "Verträge × Preis"),
+            "stunden": w(f"Stunden {sname}", stunden, pot["quelle"], "Verträge × Stunden je Anlage", "h", 0),
+            "kosten": w(f"Kosten {sname}", kosten, q, "Stunden × Kostensatz"),
+            "db": w(f"DB {sname}", round(umsatz - kosten, 2), q, "Umsatz − Kosten"),
+            "marge": prozent_wert(f"Marge {sname}", umsatz - kosten, umsatz, q, "DB ÷ Umsatz"),
+            "mindestpreis": w(f"Mindestpreis {sname}", mindest, ks["quelle"],
+                              f"Stunden je Anlage × Kostensatz ÷ (1 − Ziel {ZIEL_KPI} {deutsch(ziel, 1)} %)", "EUR/Jahr")})
+        if preis < mindest:
+            warnungen.append(f"Stufe {sname}: Preis {deutsch(preis)} EUR liegt unter dem Mindestpreis "
+                             f"{deutsch(mindest)} EUR bei Ziel {ZIEL_KPI} {deutsch(ziel, 1)} %")
+    def total(key, label, einheit="EUR", nk=0):
+        return w(label, round(sum(s[key]["betrag"] for s in ergebnis), 2),
+                 sorted({q for s in ergebnis for q in s[key]["quelle"]}), f"Σ {label} je Stufe", einheit, nk)
+    umsatz_g, stunden_g, db_g = total("umsatz", "Umsatz gesamt"), total("stunden", "Stunden gesamt", "h", 1), \
+        total("db", "DB gesamt")
+    if stunden_g["betrag"] > sum(f["betrag"] for f in frei):
+        warnungen.append("Der Stundenbedarf ist größer als die freien Stunden aller Teams – Einstellung oder "
+                         "Fremdleistung im Business Case berücksichtigen")
+    return {"produkt": name, "potenzial": pot, "kostensatz": ks, "stufen": ergebnis, "umsatz_gesamt": umsatz_g,
+            "stunden_gesamt": stunden_g, "db_gesamt": db_g, "sollstunden_je_techniker": je_tech,
+            "fte_bedarf": w("Kapazitätsbedarf (Vollzeitkräfte)", round(stunden_g["betrag"] / je_tech["betrag"], 2),
+                            stunden_g["quelle"] + je_tech["quelle"], "Stunden gesamt ÷ Sollstunden je Techniker",
+                            "VZÄ", 2),
+            "freie_stunden": frei, "warnungen": warnungen, "zielmarge": {"prozent": ziel, "quelle": ziel_quelle, "kennzahl": ZIEL_KPI,
+                                                  "anzeige": f"Ziel: {ZIEL_KPI} {deutsch(ziel, 1)} %"},
+            "ziel": freier_name(ws, "04_Angebote", f"{heute}_serviceprodukt-konzept_{slug(name)}", ".docx"),
+            "gliederung": KONZEPT_GLIEDERUNG,
+            "uebergabe_finanzen": {"typ": "entscheidung", "betrag_eur": umsatz_g["betrag"],
+                                   "titel": f"Serviceprodukt {name} – Business Case"}}
+
+
 # ---------- CLI ----------
 
 def parser() -> JsonParser:
@@ -428,6 +538,12 @@ def parser() -> JsonParser:
     p.add_argument("--schreiben", action="store_true")
     r = add("portfolio")
     r.add_argument("--bis", required=True)
+    k = add("konzept")
+    k.add_argument("--name", required=True)
+    k.add_argument("--bis", required=True)
+    k.add_argument("--stufe", action="append", required=True)
+    k.add_argument("--maschinentyp", action="append", default=[])
+    k.add_argument("--kostensatz")
     return ap
 
 
@@ -440,6 +556,8 @@ def ausfuehren(a, ws: Path, q: dict) -> dict:
         return preisliste(ws, q, a.jahr, a.lohn, a.material, a.allgemein, a.markt, a.datei, a.schreiben, a.heute)
     if a.cmd == "portfolio":
         return portfolio(ws, q["ordner"], a.bis, a.heute)
+    if a.cmd == "konzept":
+        return konzept(ws, q["ordner"], a.name, a.bis, a.stufe, a.maschinentyp, a.kostensatz, a.heute)
     raise AngebotFehler(f"Unbekannter Befehl {a.cmd}")
 
 
