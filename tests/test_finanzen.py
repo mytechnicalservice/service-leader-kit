@@ -425,3 +425,81 @@ def test_investment_names_the_company_decision_right(kit_ws):
     _, out = rufe("investitionsantrag", "--ws", kit_ws, "--titel", "X", "--invest", "100.000", "--rueckfluss", "30.000",
                   "--jahre", 5, "--quelle", "Eingabe")
     assert out["entscheidung"] == "Entscheidung durch Geschäftsführung (über 15.000 EUR)"
+
+
+def angebotsfall(ws, von="vertrieb"):
+    code, out = vorgang._main(["neu", "--ws", str(ws), "--titel", "Angebot Wartungsvertrag Nordmetall", "--typ",
+                               "angebot", "--kunde", "Nordmetall GmbH", "--verantwortlich", "Jana Becker", "--von", von,
+                               "--text", "Quelle: 04_Angebote/angebot.docx", "--heute", HEUTE])
+    assert code == 0, out
+    return out["nr"]
+
+
+def margenpruefung(ws, nr, kosten, rabatt="10 %"):
+    return rufe("margen-pruefung", "--ws", ws, "--nr", nr, "--listenpreis", "50.000", "--rabatt-prozent", rabatt,
+                "--kosten", kosten, "--quelle", "04_Angebote/kalkulation.xlsx")
+
+
+@pytest.mark.parametrize("kosten,urteil", [("25.000", "zustimmen"), ("30.000", "zustimmen mit Auflagen"),
+                                           ("42.000", "ablehnen")])
+def test_margin_check_recommendation(kit_ws, kosten, urteil):
+    nr = angebotsfall(kit_ws)
+    vorher = (kit_ws / "01_Vorgaenge" / "offen" / f"{nr}.md").read_text(encoding="utf-8")
+    code, out = margenpruefung(kit_ws, nr, kosten)
+    assert code == 0, out
+    assert out["urteil"] == urteil and out["empfehlung"].startswith(f"Empfehlung: {urteil} – ")
+    assert out["pruefpflicht"] is True  # no limits set -> always review (§8 rule 1)
+    assert finanzen.STANDARD_HINWEIS in out["empfehlung"]
+    assert (kit_ws / "01_Vorgaenge" / "offen" / f"{nr}.md").read_text(encoding="utf-8") == vorher
+
+
+def test_margin_check_names_the_maximum_discount(kit_ws):
+    _, out = margenpruefung(kit_ws, angebotsfall(kit_ws), "30.000")
+    assert "Rabatt auf höchstens 7,7 %" in out["empfehlung"] and out["werte"]["db_prozent"]["anzeige"] == "33,3 %"
+
+
+def test_margin_check_german_formats_and_negative_margin(kit_ws):
+    code, out = rufe("margen-pruefung", "--ws", kit_ws, "--nr", angebotsfall(kit_ws), "--listenpreis", "45.000,00 €",
+                     "--rabatt-prozent", "12,5", "--kosten", "40.500", "--quelle", "Eingabe")
+    assert code == 0 and out["urteil"] == "ablehnen" and out["werte"]["db"]["betrag"] == -1125
+
+
+def test_own_case_is_refused(kit_ws):
+    nr = angebotsfall(kit_ws, von="finanzen")
+    code, out = margenpruefung(kit_ws, nr, "25.000")
+    assert code == 1 and "§8 Regel 3" in out["fehler"][0]
+
+
+def test_margin_check_is_a_db2_check(kit_ws):
+    """Max's correction K1: the deal margin is DB II (all direct costs incl. technician hours at full cost)."""
+    _, out = margenpruefung(kit_ws, angebotsfall(kit_ws), "30.000")
+    assert [out["werte"][k]["name"] for k in ("db", "db_prozent", "ziel")] == ["DB II", "DB II in %", "Ziel DB II in %"]
+    assert "DB II" in out["empfehlung"] and not re.search(r"DB I(?!I)", out["empfehlung"])
+    assert out["werte"]["ziel"]["betrag"] == 35.0
+
+
+def test_margin_check_prices_hours_at_the_full_cost_rate(kit_ws):
+    nr = angebotsfall(kit_ws)
+    args = ["margen-pruefung", "--ws", kit_ws, "--nr", nr, "--listenpreis", "50.000", "--rabatt-prozent", "0",
+            "--material", "20.000", "--fremdleistung", "1.000", "--stunden", "100", "--quelle", "Kalkulation"]
+    _, out = rufe(*args)
+    assert out["werte"]["stundensatz"]["anzeige"] == "53,13 EUR/h"  # kit standard 85.000 EUR / 1.600 h
+    assert out["werte"]["stundensatz"]["quelle"] == [finanzen.STANDARD_HINWEIS]
+    assert out["werte"]["kosten"]["betrag"] == 26313 and "53,13 EUR/h" in out["empfehlung"]
+    (kit_ws / "Unternehmen" / "ergebnisrechnung.md").write_text(
+        '---\npersonal: {"vollkosten_techniker_eur": 82000, "netto_stunden": 1520}\n---\n\n# Ergebnisrechnung\n',
+        encoding="utf-8")
+    _, out = rufe(*args)
+    assert out["werte"]["stundensatz"]["anzeige"] == "53,95 EUR/h"
+    assert out["werte"]["stundensatz"]["quelle"] == ["Unternehmen/ergebnisrechnung.md (personal)"]
+    assert out["werte"]["kosten"]["betrag"] == 26395
+
+
+def test_margin_check_needs_one_kind_of_cost_input(kit_ws):
+    nr = angebotsfall(kit_ws)
+    basis = ["margen-pruefung", "--ws", kit_ws, "--nr", nr, "--listenpreis", "50.000", "--rabatt-prozent", "0",
+             "--quelle", "Eingabe"]
+    code, out = rufe(*basis)
+    assert code == 1 and "--kosten" in out["fehler"][0]
+    code, out = rufe(*basis, "--kosten", "25.000", "--stunden", "10")
+    assert code == 1 and "entweder" in out["fehler"][0]

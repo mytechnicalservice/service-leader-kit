@@ -15,6 +15,7 @@ import json
 import re
 import sys
 import zipfile
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import daten_pruefen as dp
@@ -875,6 +876,112 @@ def cmd_margen_analyse(a, ws: Path) -> tuple[int, dict]:
                "dokument": dokument, "zahlen": zahlen}
 
 
+# ---------- margen-pruefung ----------
+
+# K1: technician hours count at the full cost rate; kit standard while ergebnisrechnung.md has no `personal:` block.
+VOLLKOSTEN_STANDARD = (85000.0, 1600.0)
+
+
+def stundensatz(defs: dict) -> dict:
+    """Full cost rate per technician hour from the `personal:` block of ergebnisrechnung.md, else the kit standard."""
+    erg = defs["ergebnisrechnung"]
+    p = erg.get("personal") if "personal" not in (erg.get("standard_felder") or []) else None
+    try:
+        kosten, stunden = float(zahl(p["vollkosten_techniker_eur"])), float(zahl(p["netto_stunden"]))
+        quelle, formel = "Unternehmen/ergebnisrechnung.md (personal)", "vollkosten_techniker_eur / netto_stunden"
+    except (TypeError, KeyError, ValueError):
+        kosten, stunden = VOLLKOSTEN_STANDARD
+        quelle, formel = STANDARD_HINWEIS, "Kit-Standard 85.000 EUR / 1.600 h"
+    if stunden <= 0:
+        raise FinanzFehler("Unternehmen/ergebnisrechnung.md: personal.netto_stunden muss größer 0 sein")
+    satz = float(Decimal(str(kosten / stunden)).quantize(Decimal("0.01"), ROUND_HALF_UP))  # 53,125 -> 53,13
+    return w("Vollkostensatz Techniker", satz, [quelle],
+             f"{formel} = {de(kosten)} EUR / {de(stunden)} h", "EUR/h", 2)
+
+
+def deal_kosten(a, defs: dict) -> tuple[float, dict, dict | None, str]:
+    """All direct costs of the deal (K1): a total, or material + third-party + hours × full cost rate."""
+    teile = {k: getattr(a, k) for k in ("material", "fremdleistung", "stunden") if getattr(a, k) not in (None, "")}
+    if a.kosten not in (None, "") and teile:
+        raise FinanzFehler("Bitte entweder --kosten (alle direkten Kosten inkl. Technikerstunden) oder die Einzelkosten "
+                           "(--material, --fremdleistung, --stunden) angeben, nicht beides")
+    if a.kosten not in (None, ""):
+        k = eingabe(a.kosten)
+        return k, w("Direkte Kosten", k, [a.quelle], None), None, (
+            f"Kosten {de(k)} EUR (alle direkten Kosten laut Quelle, inkl. Technikerstunden zu Vollkosten)")
+    if not teile:
+        raise FinanzFehler("Kosten fehlen: --kosten (alle direkten Kosten inkl. Technikerstunden zu Vollkosten) oder "
+                           "--material, --fremdleistung und --stunden angeben")
+    mat, fremd = eingabe(teile.get("material", 0)), eingabe(teile.get("fremdleistung", 0))
+    satz = stundensatz(defs) if "stunden" in teile else None
+    h = eingabe(teile["stunden"]) if satz else 0.0
+    k = round(mat + fremd + h * (satz["betrag"] if satz else 0), 2)
+    formel = "Material + Fremdleistung" + (f" + {de(h, 1)} h × {satz['anzeige']}" if satz else "")
+    text = f"Kosten {de(k)} EUR (Material {de(mat)} EUR, Fremdleistung {de(fremd)} EUR" + (
+        f", {de(h, 1)} Technikerstunden × {satz['anzeige']} Vollkostensatz" + (
+            f" – {STANDARD_HINWEIS}" if satz["quelle"] == [STANDARD_HINWEIS] else "") if satz else "") + ")"
+    return k, w("Direkte Kosten", k, [a.quelle] + (satz["quelle"] if satz else []), formel), satz, text
+
+
+def cmd_margen_pruefung(a, ws: Path) -> tuple[int, dict]:
+    _, meta, _ = vorgang.load(ws, a.nr)
+    if set(meta["bearbeitet_von"]) <= {"finanzen"}:
+        raise FinanzFehler(f"{meta['nr']} stammt nur von Finanzen – Finanzen prüft keine eigenen Ergebnisse "
+                           "(§8 Regel 3). Die Prüfung macht die Leitung Kundendienst.")
+    defs = definitionen(ws)
+    liste, rabatt = eingabe(a.listenpreis), prozent(a.rabatt_prozent)
+    if liste <= 0 or not 0 <= rabatt < 100:
+        raise FinanzFehler("Listenpreis muss größer 0 und Rabatt zwischen 0 und unter 100 % sein")
+    kosten, kosten_w, satz, kosten_text = deal_kosten(a, defs)
+    netto = liste * (1 - rabatt / 100)
+    db = netto - kosten
+    dbp = db / netto * 100
+    ziel, ziel_std = db2_ziel(defs)
+    spanne, spanne_std = zusatzwert(ws, "margen_auflagen_spanne_pp")
+    fg = defs["freigabegrenzen"]
+    gruende = []
+    for key, ist, text in (("angebot_eur", netto, "Angebotswert"), ("rabatt_prozent", rabatt, "Rabatt")):
+        grenze = fg.get(key)
+        if grenze in (None, ""):
+            gruende.append(f"keine Freigabegrenze '{key}' festgelegt – immer prüfen (§8 Regel 1)")
+        elif ist > float(zahl(grenze)):
+            gruende.append(f"{text} über der Freigabegrenze {de(float(zahl(grenze)), 1)}")
+    q = [a.quelle]
+    werte = {"netto": w("Netto nach Rabatt", netto, q, "Listenpreis × (1 − Rabatt)"),
+             "kosten": kosten_w,
+             "db": w("DB II", db, quellen(kosten_w), "Netto − direkte Kosten (inkl. Technikerstunden zu Vollkosten)"),
+             "db_prozent": w("DB II in %", dbp, quellen(kosten_w), "DB II / Netto × 100", "%", 1),
+             "ziel": w("Ziel DB II in %", ziel, ziel_quelle(ziel_std), None, "%", 1)}
+    if satz:
+        werte["stundensatz"] = satz
+    mindest = kosten / (1 - ziel / 100)
+    auflagen = []
+    if db <= 0 or dbp < ziel - spanne:
+        urteil = "ablehnen"
+        auflagen.append(f"Netto-Mindestpreis für das Ziel: {de(mindest)} EUR")
+    else:
+        if dbp < ziel:
+            rmax = (1 - mindest / liste) * 100
+            auflagen.append(f"Rabatt auf höchstens {de(rmax, 1)} % begrenzen" if rmax >= 0
+                            else f"Netto-Mindestpreis {de(mindest)} EUR (Listenpreis reicht nicht)")
+        grenze = fg.get("rabatt_prozent")
+        if grenze not in (None, "") and rabatt > float(zahl(grenze)):
+            auflagen.append(f"Rabatt über Freigabegrenze – {entscheider(defs, 'preise', netto)}")
+        urteil = "zustimmen mit Auflagen" if auflagen else "zustimmen"
+    std_text = f" ({STANDARD_HINWEIS})" if ziel_std or spanne_std else ""
+    text = (f"Empfehlung: {urteil} – Netto {werte['netto']['anzeige']}, {kosten_text}, DB II "
+            f"{werte['db']['anzeige']} ({werte['db_prozent']['anzeige']}), Ziel DB II {werte['ziel']['anzeige']}"
+            f"{std_text}."
+            + (" " + ("Hinweis" if urteil == "ablehnen" else "Auflagen") + ": " + "; ".join(auflagen) + "." if auflagen else "")
+            + f" Quelle: {a.quelle}.")
+    standardwerte = ["margen_auflagen_spanne_pp"] if spanne_std else []
+    return 0, {"ok": True, "nr": meta["nr"], "urteil": urteil, "empfehlung": text, "pruefpflicht": bool(gruende),
+               "gruende": gruende, "werte": werte,
+               "definitionen": verwendet(defs, ("kpi-ziele", "freigabegrenzen")
+                                         + (("ergebnisrechnung",) if satz else ()), standardwerte),
+               "hinweis": "Nur der Mensch entscheidet (§6). Eintragen mit vorgang.py eintrag --art empfehlung --von finanzen."}
+
+
 # ---------- files ----------
 
 def freier_name(ws: Path, ordner: str, stamm: str, endung: str) -> tuple[str, str]:
@@ -961,12 +1068,19 @@ def parser() -> JsonParser:
     sp.add_argument("--periode", required=True)
     sp.add_argument("--vergleich", required=True)
     sp.add_argument("--segment", choices=["Auftragsart", "Team", "Kunde"], default="Auftragsart")
+    sp = add("margen-pruefung")
+    for flag in ("--nr", "--listenpreis", "--quelle"):
+        sp.add_argument(flag, required=True)
+    sp.add_argument("--rabatt-prozent", dest="rabatt_prozent", required=True)
+    for flag in ("--kosten", "--material", "--fremdleistung", "--stunden"):  # K1: total or parts incl. hours
+        sp.add_argument(flag)
     return ap
 
 
 COMMANDS = {"management-report": cmd_management_report, "abgleich": cmd_abgleich,
             "budgetplanung": cmd_budgetplanung,
-            "investitionsantrag": cmd_investitionsantrag, "margen-analyse": cmd_margen_analyse}
+            "investitionsantrag": cmd_investitionsantrag, "margen-analyse": cmd_margen_analyse,
+            "margen-pruefung": cmd_margen_pruefung}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:
