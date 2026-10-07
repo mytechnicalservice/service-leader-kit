@@ -83,4 +83,7 @@ fi
 
 printf 'Service Leader Kit – Stand %s, Ordner %s%s\n' "$heute" "$ws" "${out:-
 - Nichts fällig.}"
+# D12: the main conversation is the coordinator. Its persona is the marked block in agents/assistenz.md (one source).
+persona=$(sed -n '/<!-- persona:anfang -->/,/<!-- persona:ende -->/p' "$SLK_PLUGIN/agents/assistenz.md" 2>/dev/null | sed '1d;$d')
+[ -n "$persona" ] && printf '\n%s\n' "$persona"
 exit 0

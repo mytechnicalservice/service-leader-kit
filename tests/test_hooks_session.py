@@ -57,7 +57,7 @@ def test_tagesstart_done_today_is_not_announced(shell, kit_ws):
 def test_invalid_settings_fall_back_safely(shell, kit_ws):
     (kit_ws / "Unternehmen" / ".kit-config").write_text("schema=1\nablage=dropbox\n", encoding="utf-8")
     (kit_ws / "00_Eingang" / "a.eml").write_text("x", encoding="utf-8")
-    out = start(shell, kit_ws)
+    out = start(shell, kit_ws).split("\n\n")[0]  # the status lines; the coordinator persona follows (D12)
     assert "Einstellungen unvollständig" in out and "tagesstart" not in out and "1 Datei(en) im Eingang" in out
 
 
@@ -139,3 +139,14 @@ def test_status_files_with_a_utf8_bom_are_read(shell, kit_ws):
     u.joinpath(".kit-version").write_bytes(b"\xef\xbb\xbf0.1.0\r\n")
     out = start(shell, kit_ws)
     assert "tagesstart ist heute noch nicht gelaufen" not in out and "gesundheitscheck" not in out
+
+
+def test_session_start_injects_the_coordinator_persona(shell, kit_ws, tmp_path):
+    out = start(shell, kit_ws)
+    persona = (ROOT / "plugin" / "agents" / "assistenz.md").read_text(encoding="utf-8")
+    block = persona.split("<!-- persona:anfang -->\n")[1].split("<!-- persona:ende -->")[0].strip()
+    assert out.startswith("Service Leader Kit – Stand ") and out.rstrip().endswith(block)
+    assert "persona:" not in out
+    anders = tmp_path / "anders"
+    anders.mkdir()
+    assert start(shell, anders) == ""  # outside a workspace: still silent
