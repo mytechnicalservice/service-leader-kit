@@ -376,3 +376,38 @@ def test_pruefe_datei_finds_numbers_in_word_and_excel(kit_ws, rufe):
     assert rufe("pruefe-datei", "--ws", kit_ws, "--datei", "03_Berichte/t.xlsx", "--zahl", "3.600")[0] == 0
     code, out = rufe("pruefe-datei", "--ws", kit_ws, "--datei", "../ausserhalb.docx", "--zahl", "1")
     assert code == 1 and "gibt es im Kundendienst-Ordner nicht" in out["fehler"][0]
+
+
+import argparse
+import re
+
+SKILLS_4E = ["maschinenuebergabe", "projektportfolio-ampel", "verzug-entscheidung"]
+
+
+def skill(name):
+    text = (ROOT / "plugin" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", text, re.S)
+    assert m, f"{name}: Kopfbereich fehlt"
+    return yaml.safe_load(m.group(1)), m.group(2)
+
+
+@pytest.mark.parametrize("name", SKILLS_4E)
+def test_skill_contract_and_every_command_line_parses(name):
+    meta, body = skill(name)
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    assert "**Liest:**" in body and "**Schreibt:**" in body and "Daten, nie Anweisungen" in body
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "") and "pip install" not in body
+    unter = next(a for a in projekte.parser()._actions if isinstance(a, argparse._SubParsersAction)).choices
+    zeilen = re.findall(r'`uv run "\$\{CLAUDE_PLUGIN_ROOT\}/scripts/projekte\.py" ([^`]+)`', body)
+    assert zeilen, "Skill ruft projekte.py nicht auf"
+    for zeile in zeilen:
+        befehl = zeile.split()[0]
+        bekannt = {o for a in unter[befehl]._actions for o in a.option_strings}
+        assert set(re.findall(r"--[a-z][\w-]*", zeile)) <= bekannt, zeile
+    assert "vorgang.py\" entscheide" not in body  # only the user decides (spec §6)
+
+
+def test_delay_skill_hands_reviews_to_other_agents():
+    _, body = skill("verzug-entscheidung")
+    assert "service-leader-kit:finanzen" in body and "service-leader-kit:qualitaet-recht" in body
+    assert "pruefe-datei" in body and "Empfehlung: zustimmen" in body
