@@ -144,7 +144,10 @@ def test_a_bare_unternehmen_folder_is_not_a_workspace(capsys, ws):
     assert [p.relative_to(ws).as_posix() for p in ws.rglob("*")] == ["Unternehmen"]
 
 
-@pytest.mark.parametrize("ordner", ["9.0.0", "0.10.0", "0.1.1"])
+_KIT = [int(x) for x in ao.kit_version().split(".")]
+
+
+@pytest.mark.parametrize("ordner", ["9.0.0", "0.10.0", f"{_KIT[0]}.{_KIT[1]}.{_KIT[2] + 1}"])  # one patch above the kit
 def test_a_newer_folder_version_is_never_lowered(capsys, kit_ws, ordner):
     v = kit_ws / "Unternehmen" / ".kit-version"
     v.write_text(ordner + "\n", encoding="utf-8")
