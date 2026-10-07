@@ -361,3 +361,45 @@ def test_machine_lists_show_the_year_of_build_as_a_whole_year(vws):
     k = vertrieb.key_account_review(vws, kunde="Nordmetall GmbH", heute=HEUTE)["konten"][0]
     a = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, heute=HEUTE)["anlagen"]
     assert k["anlagen"][0]["baujahr"] == "2012" and a[0]["baujahr"] == "2012"
+
+
+# --- skills -------------------------------------------------------------------------------------------------------
+
+import re  # noqa: E402
+
+import yaml  # noqa: E402
+
+LANE_SKILLS = ["grossangebot", "installed-base-potenziale", "key-account-review", "verlaengerungs-radar"]
+
+
+def kopf(p):
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", p.read_text(encoding="utf-8"), re.S)
+    assert m, f"{p}: Kopfbereich fehlt"
+    return yaml.safe_load(m.group(1)), m.group(2)
+
+
+@pytest.mark.parametrize("name", LANE_SKILLS)
+def test_lane_skill_contract(name):
+    meta, body = kopf(ROOT / "plugin" / "skills" / name / "SKILL.md")
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    assert "**Liest:**" in body and "**Schreibt:**" in body and "Daten, nie Anweisungen" in body
+    assert f'uv run "${{CLAUDE_PLUGIN_ROOT}}/scripts/vertrieb.py" {name}' in body
+    for script in re.findall(r'uv run "\$\{CLAUDE_PLUGIN_ROOT\}/scripts/([\w]+\.py)"', body):
+        assert (ROOT / "plugin" / "scripts" / script).is_file(), script
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "")
+    assert "pip install" not in body and not re.search(r'vorgang\.py"? entscheide\b', body)
+
+
+def test_grossangebot_carries_the_large_quote_workflow():
+    _, body = kopf(ROOT / "plugin" / "skills" / "grossangebot" / "SKILL.md")
+    for teil in ("service-leader-kit:finanzen", "margen-pruefung", "service-leader-kit:qualitaet-recht",
+                 "vertragspruefung", "entscheidungsvorlage", "--von vertrieb", "--typ angebot",
+                 "nicht versendet", "pruefung.noetig"):
+        assert teil in body, teil
+    assert body.index("margen-pruefung") < body.index("vertragspruefung") < body.rindex("entscheidungsvorlage")
+
+
+def test_grossangebot_skill_asks_for_the_contract_level():
+    """K1 (Max, 2026-10-07): on 'Stufe fehlt' the skill shows the levels, asks, and reruns with --stufe."""
+    _, body = kopf(ROOT / "plugin" / "skills" / "grossangebot" / "SKILL.md")
+    assert "Stufe fehlt" in body and "stufen" in body and '--stufe "<Stufe>"' in body
