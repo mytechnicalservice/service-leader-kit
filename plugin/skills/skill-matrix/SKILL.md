@@ -17,6 +17,13 @@ write, say or repeat a person's name or rating.
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
+**Ohne Dokument-Skill:** if Claude's docx, xlsx or pptx skill is not available in this session, write the same file
+(same path, content and checks) with a short Python script in the system temp folder, never in the workspace, and
+start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 python "<temporärer Ordner>/datei.py"`
+(.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). Copy a letterhead or master from
+`Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into `Unternehmen/` stays forbidden) and open the
+copy. If this `uv run` fails, Nie vortäuschen applies: stop and name what is missing.
+
 **Workspace path:** the workspace is the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`.
 If that line is missing, use the output of `pwd`.
 If the session start says instead "Der Kundendienst-Ordner ist <pfad>" (the parent folder is open), ask the user
@@ -48,7 +55,8 @@ import it and ask for counts instead.
 Answer: cells per level (A robust … D not covered), the training needs in the script's order (fehlend, in
 training, order hours), machine types nobody covers, every `meldungen` line and the `hinweis` verbatim. Then write
 `03_Berichte/JJJJ-MM-TT_skill-matrix.xlsx` with Claude's xlsx skill (sheet "Matrix" with one row per cell and the
-level as text, sheet "Schulungsbedarf", sheet "Quellen"); `_2` if it exists; no document skill → say so and stop.
+level as text, sheet "Schulungsbedarf", sheet "Quellen"); `_2` if it exists; without the xlsx skill as in
+**Ohne Dokument-Skill** above.
 Check it: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" pruefe-ausgabe --datei "<xlsx>" --name "<every name the user mentioned>"`
 (skip when no name was mentioned). With `treffer` > 0, fix and check again.
 

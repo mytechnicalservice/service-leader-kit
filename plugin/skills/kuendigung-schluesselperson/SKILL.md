@@ -18,6 +18,13 @@ Fachkraft (Team <Team>)", never the name; do not read hours lists or exports abo
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
+**Ohne Dokument-Skill:** if Claude's docx, xlsx or pptx skill is not available in this session, write the same file
+(same path, content and checks) with a short Python script in the system temp folder, never in the workspace, and
+start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 python "<temporärer Ordner>/datei.py"`
+(.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). Copy a letterhead or master from
+`Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into `Unternehmen/` stays forbidden) and open the
+copy. If this `uv run` fails, Nie vortäuschen applies: stop and name what is missing.
+
 **Workspace path:** the workspace is the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`.
 If that line is missing, use the output of `pwd`.
 If the session start says instead "Der Kundendienst-Ordner ist <pfad>" (the parent folder is open), ask the user
@@ -31,9 +38,9 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
 3. Answer: what is no longer covered (team → after, firm-wide after), the annual revenue and hours at risk
    (`werte`, German format as in `gliederung`), affected customers with contracts, the options in the script's
    order with the uncovered months, the knowledge-transfer list, every `meldungen` line and the `hinweis` verbatim.
-4. Write the coverage plan `03_Berichte/JJJJ-MM-TT_kuendigung-schluesselperson.docx` with Claude's docx skill and
-   the company letterhead (`Unternehmen/vorlagen/`), one heading per `gliederung` section; `_2` if it exists; no
-   document skill → say so and stop. Then check it, passing the name the user gave:
+4. Write the coverage plan `03_Berichte/JJJJ-MM-TT_kuendigung-schluesselperson.docx` with Claude's docx skill (without it:
+   **Ohne Dokument-Skill** above) on the company letterhead `Unternehmen/vorlagen/briefkopf.docx` if it exists (a
+   missing letterhead is no reason to stop), one heading per `gliederung` section; `_2` if it exists. Then check it, passing the name the user gave:
    `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" pruefe-ausgabe --datei "<docx>" --name "<Name>"`.
    With `treffer` > 0, remove the name and check again.
 5. Offer (only on the user's word) a case with a deadline before the last working day:

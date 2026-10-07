@@ -18,6 +18,13 @@ In sample mode, every output starts with "Beispieldaten – Muster Maschinenbau 
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
+**Ohne Dokument-Skill:** if Claude's docx, xlsx or pptx skill is not available in this session, write the same file
+(same path, content and checks) with a short Python script in the system temp folder, never in the workspace, and
+start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 python "<temporärer Ordner>/datei.py"`
+(.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). Copy a letterhead or master from
+`Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into `Unternehmen/` stays forbidden) and open the
+copy. If this `uv run` fails, Nie vortäuschen applies: stop and name what is missing.
+
 ## Steps
 
 1. Read `Unternehmen/lernpunkte.md`. Ask which two offers to compare if the user did not name them (exactly two).

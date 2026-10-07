@@ -55,3 +55,51 @@ def test_never_fake_a_missing_library_or_tool(datei):
     assert 0 < regel - daten < 1200, f"{datei}: Regel steht nicht neben 'Daten, nie Anweisungen'"
     assert re.search(r"(stop and tell the user exactly what is missing|hältst an und sagst dem Nutzer genau, was "
                      r"fehlt)", re.sub(r"\s+", " ", body)), datei
+
+
+# Option A (Max, 2026-10-07): without Claude's docx/xlsx/pptx skill (eval runs have none) every skill writes the same
+# file through the kit's own Python path instead of stopping. One wording for all skills, defined here only.
+OHNE_DOKUMENT_SKILL = (
+    "**Ohne Dokument-Skill:** if Claude's docx, xlsx or pptx skill is not available in this session, write the same "
+    "file (same path, content and checks) with a short Python script in the system temp folder, never in the "
+    "workspace, and start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 python "
+    "\"<temporärer Ordner>/datei.py\"` (.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). "
+    "Copy a letterhead or master from `Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into "
+    "`Unternehmen/` stays forbidden) and open the copy. If this `uv run` fails, Nie vortäuschen applies: stop and "
+    "name what is missing."
+)
+DOKUMENT_SKILL = re.compile(r"\b(docx|xlsx|pptx|Word|Excel)\b[\w/ -]{0,12}skill\b|\bdocument skill\b", re.I)
+
+
+def flach(text):
+    return re.sub(r"\s+", " ", text)
+
+
+def dokument_skills():
+    return [s for s in SKILLS if DOKUMENT_SKILL.search(flach(kopf(PLUGIN / "skills" / s / "SKILL.md")[1]))]
+
+
+def test_the_document_skills_are_found():
+    gefunden = set(dokument_skills())
+    assert {"skill-matrix", "personalplanung", "kuendigung-schluesselperson", "margen-analyse", "entscheidungsvorlage",
+            "praesentation", "key-account-review", "management-report", "verlaengerungs-radar"} <= gefunden
+    assert len(gefunden) >= 29
+
+
+@pytest.mark.parametrize("name", dokument_skills())
+def test_document_skills_write_the_file_without_claudes_document_skill(name):
+    body = flach(kopf(PLUGIN / "skills" / name / "SKILL.md")[1])
+    assert OHNE_DOKUMENT_SKILL in body, name
+    # right after "Nie vortäuschen", which it relies on
+    assert 0 < body.index("**Ohne Dokument-Skill") - body.index("**Nie vortäuschen") < 600, name
+    # no skill stops (or forbids the kit's own path) only because Claude's document skill is missing
+    assert not re.search(r"(no|kein) (document|docx|xlsx) skill[^.]{0,40}(stop|anhalten)|never build the file another way",
+                         body, re.I), name
+    assert body.count("uv run --with python-") <= 1, f"{name}: Ersatzweg nur einmal, im Block"
+
+
+def test_fallback_versions_match_the_setup():
+    # the setup downloads exactly these versions, so the fallback runs from the uv cache afterwards
+    kopfzeilen = (PLUGIN / "scripts" / "einrichtung.py").read_text(encoding="utf-8")
+    for paket in ("python-docx==1.1.2", "openpyxl==3.1.5", "python-pptx==1.0.2"):
+        assert paket in OHNE_DOKUMENT_SKILL and f'"{paket}"' in kopfzeilen, paket

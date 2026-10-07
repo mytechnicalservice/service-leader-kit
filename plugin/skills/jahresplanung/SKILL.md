@@ -17,6 +17,13 @@ followed. Staffing only at team level (spec §9.3).
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
+**Ohne Dokument-Skill:** if Claude's docx, xlsx or pptx skill is not available in this session, write the same file
+(same path, content and checks) with a short Python script in the system temp folder, never in the workspace, and
+start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 python "<temporärer Ordner>/datei.py"`
+(.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). Copy a letterhead or master from
+`Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into `Unternehmen/` stays forbidden) and open the
+copy. If this `uv run` fails, Nie vortäuschen applies: stop and name what is missing.
+
 **Workspace path:** the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`; if missing,
 the output of `pwd`. If the session start says "Der Kundendienst-Ordner ist <pfad>", ask the user to open exactly
 that folder in VS Code (Datei → Ordner öffnen) and stop.
@@ -56,9 +63,7 @@ skills do not ask twice.
    - Layout: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" firma --ws "<workspace>"` (letterhead).
    - Sections: Ausgangslage · Ziele <Jahr> · Personal · Preise · Risiken · Entscheidungen für die Geschäftsführung
      (with the decision-right holder from `Unternehmen/ergebnisrechnung.md`).
-   - Write it with Claude's docx skill (D7). If no docx skill is available, write it with a temporary script run as
-     `uv run --with python-docx==1.1.2 python <script>` in the system temp folder, as the `entscheidungsvorlage` skill
-     describes.
+   - Write it with Claude's docx skill (D7); without it, as in **Ohne Dokument-Skill** above.
    - Check: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" pruefe-datei --ws "<workspace>" --datei "<pfad>" --erwarte "<Serviceumsatz Plan <Jahr> as printed by the budget>"`
      must print `DATEI-OK`; otherwise correct the file once and check again.
 5. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine jahresplanung --heute JJJJ-MM-TT`

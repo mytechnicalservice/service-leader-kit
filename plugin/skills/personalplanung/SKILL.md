@@ -18,6 +18,13 @@ name, personnel number or any value per person (spec §9.3).
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
+**Ohne Dokument-Skill:** if Claude's docx, xlsx or pptx skill is not available in this session, write the same file
+(same path, content and checks) with a short Python script in the system temp folder, never in the workspace, and
+start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 python "<temporärer Ordner>/datei.py"`
+(.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). Copy a letterhead or master from
+`Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into `Unternehmen/` stays forbidden) and open the
+copy. If this `uv run` fails, Nie vortäuschen applies: stop and name what is missing.
+
 **Workspace path:** the workspace is the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`.
 If that line is missing, use the output of `pwd`.
 If the session start says instead "Der Kundendienst-Ordner ist <pfad>" (the parent folder is open), ask the user
@@ -57,7 +64,7 @@ the gap with an estimate.
 2. Write `03_Berichte/JJJJ-MM-TT_personalplanung.xlsx` with Claude's built-in xlsx skill: one sheet per
    `gliederung` section, rows exactly as given, plus a sheet "Quellen" with each value's `quelle` and `formel`.
    With `beispiel: true`, put "Beispieldaten – Muster Maschinenbau GmbH" on every sheet. If the file exists, add
-   `_2`, `_3`. If no document skill is available, say so and stop; never build the file another way.
+   `_2`, `_3`. Without the xlsx skill: **Ohne Dokument-Skill** above.
 3. If a staff list was used, check the file:
    `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" pruefe-ausgabe --datei "<xlsx>" --namen-aus "<staff list>"`.
    With `treffer` > 0, remove those cells and check again.
