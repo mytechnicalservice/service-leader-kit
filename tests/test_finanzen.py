@@ -1,13 +1,16 @@
 import csv
 import json
+import os
 import re
 import shutil
+import subprocess
 
 import pytest
 import yaml
 from docx import Document
 from openpyxl import Workbook
 
+import erwartet_finanzen as ef
 import finanzen
 import kennzahlen as kz
 import vorgang
@@ -548,3 +551,97 @@ def test_skills_carry_the_db2_target():
     assert "Umsatz, DB II %" in bp and "DB I %" not in bp
     for teil in ("DB II", "--material", "--fremdleistung", "--stunden", "Vollkostensatz"):
         assert teil in mp, teil
+
+
+EVALS = ROOT / "plugin" / "evals"
+FAELLE_4B = [f"{s}-{d}" for s in SKILLS_4B for d in ("sauber", "unordentlich")] + ["workflow-monatsbericht",
+                                                                                     "workflow-budget"]
+BINDUNG = {("management-report-sauber", "umsatz"): "mr_umsatz_ist",
+           ("workflow-monatsbericht", "umsatz"): "mr_umsatz_ist",
+           ("management-report-unordentlich", "kein-mittel-position"): "konflikt_mittel_position",
+           ("management-report-unordentlich", "kein-mittel-umsatz"): "konflikt_mittel_umsatz",
+           ("budgetplanung-sauber", "basis-umsatz"): "budget_basis_umsatz",
+           ("workflow-budget", "budget-umsatz"): "budget_umsatz_2027",
+           ("workflow-budget", "budget-personal"): "budget_personal_2027",
+           ("margen-analyse-sauber", "veraenderung"): "ma_delta", ("margen-analyse-sauber", "volumen"): "ma_volumen",
+           ("margen-analyse-sauber", "mix"): "ma_mix", ("margen-analyse-sauber", "preis"): "ma_preis",
+           ("margen-analyse-sauber", "kosten"): "ma_kosten",
+           ("investitionsantrag-sauber", "kapitalwert"): "inv_kw_sauber",
+           ("investitionsantrag-unordentlich", "szenario-a"): "inv_kw_a",
+           ("investitionsantrag-unordentlich", "szenario-b"): "inv_kw_b"}
+RUNNER_ENV = {"PATH": os.environ["PATH"], "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+
+
+def grader(fall, name):
+    c = yaml.safe_load((EVALS / fall / "case.yaml").read_text(encoding="utf-8"))
+    return next(g for g in c["graders"] if g["name"] == name)
+
+
+def test_lane_eval_cases_exist_and_are_filled():
+    for f in FAELLE_4B:
+        assert (EVALS / f / "prompt.md").is_file(), f
+        assert "{{" not in (EVALS / f / "case.yaml").read_text(encoding="utf-8"), f
+
+
+def test_graders_carry_the_independent_totals():
+    e = json.loads((EVALS / "erwartet" / "finanzen.json").read_text(encoding="utf-8"))
+    assert e == ef.berechne(), "erwartet/finanzen.json veraltet: uv run tools/erwartet_finanzen.py --einsetzen"
+    for (fall, name), key in BINDUNG.items():
+        assert grader(fall, name)["pattern"] == ef.muster(e[key]), (fall, name)
+        assert kz.deutsch(abs(e[key])) == ef.de(abs(e[key]))
+    for fall in ("management-report-sauber", "workflow-monatsbericht"):
+        assert grader(fall, "massnahmen-als-vorgang")["min"] == e["mr_massnahmen"]
+
+
+def test_margin_check_evals_use_the_db2_names():
+    """Max's correction K1 in the evals: graders and criteria speak of DB II, never of a DB I target."""
+    for fall in ("margen-pruefung-sauber", "margen-pruefung-unordentlich", "management-report-sauber"):
+        text = (EVALS / fall / "case.yaml").read_text(encoding="utf-8")
+        assert "DB II" in text and not re.search(r"(Ziel DB I(?!I)|DB I %)", text), fall
+
+
+def test_sample_year_supports_the_finance_evals():
+    e = ef.berechne()
+    assert e["mr_massnahmen"] >= 1, "Beispieljahr: September 2026 ohne Abweichung über der Maßnahmen-Schwelle"
+    assert all(ef.zahl(r["Plan_EUR"]) is not None for r in ef.lies("ergebnis_2026-09.csv"))
+    for m in ef.monate("2026-09", 6):
+        assert all(ef.zahl(r["Kosten_EUR"]) is not None for r in ef.lies(f"auftraege_{m}.csv")), m
+
+
+def test_finanzen_agrees_with_the_independent_totals(kit_ws):
+    shutil.copytree(ROOT / "plugin" / "beispiel" / "07_Daten", kit_ws / "07_Daten", dirs_exist_ok=True)
+    for p in (ROOT / "plugin" / "beispiel" / "Unternehmen").glob("*.md"):
+        shutil.copy(p, kit_ws / "Unternehmen" / p.name)
+    e = ef.berechne()
+    _, out = rufe("management-report", "--ws", kit_ws, "--monat", "2026-09", "--heute", HEUTE)
+    assert kern(out, "Umsatz Monat Ist")["betrag"] == e["mr_umsatz_ist"] and out["massnahmen_offen"] == e["mr_massnahmen"]
+    assert out["quellenvergleich"] == [], "Beispieljahr: Ergebnisrechnung und Exporte passen nicht zusammen"
+    _, ma = rufe("margen-analyse", "--ws", kit_ws, "--periode", "2026-07..2026-09", "--vergleich", "2026-04..2026-06")
+    assert ma["effekte"]["veraenderung"]["betrag"] == e["ma_delta"]
+
+
+def test_messy_report_scaffold_builds_the_conflict(tmp_path, shell):
+    r = subprocess.run([shell, str(EVALS / "management-report-unordentlich" / "scaffold.sh")], cwd=tmp_path,
+                       env=RUNNER_ENV | {"HOME": str(tmp_path)}, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr
+    text = (tmp_path / "00_Eingang" / "ergebnis_2026-09_controlling.csv").read_text(encoding="utf-8")
+    assert text.startswith("Monat;Position;Plan;Ist\n")
+    assert ef.de(ef.berechne()["konflikt_mittel_position"] + 6000, 2) in text
+    code, out = rufe("management-report", "--ws", tmp_path, "--monat", "2026-09",
+                     "--zweitquelle", "00_Eingang/ergebnis_2026-09_controlling.csv")
+    assert code == 0 and [k["differenz"]["betrag"] for k in out["konflikte"]] == [12000]
+
+
+def test_messy_margin_scaffold_blanks_two_costs(tmp_path, shell):
+    r = subprocess.run([shell, str(EVALS / "margen-analyse-unordentlich" / "scaffold.sh")], cwd=tmp_path,
+                       env=RUNNER_ENV | {"HOME": str(tmp_path)}, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr
+    code, out = rufe("margen-analyse", "--ws", tmp_path, "--periode", "2026-07..2026-09", "--vergleich", "2026-04..2026-06")
+    assert code == 1 and "auftraege_2026-09.csv Zeile 3" in out["fehler"][0] and "Zeile 7" in out["fehler"][0]
+
+
+def test_source_comparison_names_service_revenue_against_orders(fin_ws):
+    out = bericht(fin_ws)
+    v = {x["thema"]: x for x in out["quellenvergleich"]}
+    assert v["Serviceumsatz"]["ergebnisrechnung"]["betrag"] == 89000 and v["Serviceumsatz"]["export"]["betrag"] == 3800
+    assert v["Serviceumsatz"]["differenz"]["betrag"] == 85200

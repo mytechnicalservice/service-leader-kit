@@ -1,0 +1,1 @@
+Jahresplanung: Erstell das Budget 2027 auf Basis der letzten 12 Monate. Annahmen – vom Serviceangebot: Preiserhöhung 3 % auf alle Umsätze; von Personal: ein zusätzlicher Techniker im Team Süd, Personalkosten +78.000 EUR. Danach bitte die Entscheidungsvorlage für die Geschäftsführung.

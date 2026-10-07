@@ -1,0 +1,1 @@
+Erstell den Management-Bericht für September 2026. In 00_Eingang liegt außerdem die Controlling-Auswertung ergebnis_2026-09_controlling.csv für denselben Monat. Für alle Maßnahmen ist Jana Becker (Teamleitung Süd) verantwortlich, fällig am 2026-10-20; bei günstigen Abweichungen keine Maßnahme.

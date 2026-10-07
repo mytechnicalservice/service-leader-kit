@@ -1,0 +1,1 @@
+Monatsabschluss September 2026: Bitte den Management-Bericht erstellen, daraus die Präsentation für die Geschäftsführung machen und eine Begleitmail an Dr. Anna Weber (Geschäftsführung) entwerfen. Für alle Maßnahmen ist Jana Becker (Teamleitung Süd) verantwortlich, fällig am 2026-10-20; bei günstigen Abweichungen keine Maßnahme.

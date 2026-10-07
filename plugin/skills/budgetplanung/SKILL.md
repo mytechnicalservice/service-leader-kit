@@ -47,8 +47,12 @@ Run the step-1 command again with all `--annahme` flags.
    Sample data → first line "Beispieldaten – Muster Maschinenbau GmbH". Numbers exactly as `anzeige`/`betrag`.
 2. Reconcile (§8 Regel 3, not a self-review): `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/finanzen.py" abgleich --ws "<workspace>" --zahlen "<zahlen>" --dokument "<dokument>"`.
    Fix only document text; any data deviation → stop and tell the user. You write no recommendation on the budget.
-3. Workflow Jahresbudget: call the `entscheidungsvorlage` skill for the budget file: decision = "Budget <Jahr>
-   freigeben", options and effects from `kernzahlen`, assumptions with sources, owner = the head of service. The
-   decision itself is the human's (§6). Close with "Bitte prüfen – du vertrittst das Budget."
+3. Workflow Jahresbudget: open the decision case
+   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" neu --ws "<workspace>" --titel "Budget <Jahr> freigeben" --typ entscheidung --kunde intern --verantwortlich "<Leitung Kundendienst>" --von finanzen --text "Budget <Jahr>: <dokument>, Abgleich ohne Abweichung. Quelle: <zahlen>"`
+   and record the reconciliation as `eintrag --art notiz --von finanzen` (never `empfehlung`: finanzen does not
+   review its own budget, §8 Regel 3 – the check is the reconciliation, then the head of service; no finanzen
+   reviewer sub-agent for this case). Then call the `entscheidungsvorlage` skill for that case: decision = "Budget
+   <Jahr> freigeben", options and effects from `kernzahlen`, assumptions with sources, owner = the head of service.
+   The decision itself is the human's (§6). Close with "Bitte prüfen – du vertrittst das Budget."
 4. The proposed targets (Umsatz, DB II % – `Umsatz Budget <Jahr>` and `Zielvorschlag DB II in % <Jahr>`) go into
    `kpi-ziele.md` only after the decision, by the system architect. Say so in the hand-over text.

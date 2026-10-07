@@ -414,12 +414,27 @@ def betrieb(ws: Path, monat: str, posten: list, datenlage: list[str]) -> dict:
     return out
 
 
-def quellenvergleich(r: dict, b: dict) -> list[dict]:
-    """P&L revenue vs the order and parts exports of the month: both values named, never averaged (default 9)."""
+def umsatzart(position: str, defs: dict) -> str:
+    """Revenue type of a P&L position: the `positionen` map of ergebnisrechnung.md, else from the name."""
+    karte = defs["ergebnisrechnung"].get("positionen")
+    if isinstance(karte, dict) and position in karte:
+        return str(karte[position]).casefold()
+    p = position.casefold()
+    for art, worte in (("ersatzteile", ("ersatzteil",)), ("vertraege", ("vertr",)), ("schulung", ("schulung",)),
+                       ("retrofit", ("retrofit",))):
+        if any(x in p for x in worte):
+            return art
+    return "aussendienst"
+
+
+def quellenvergleich(r: dict, b: dict, defs: dict) -> list[dict]:
+    """P&L revenue vs the order and parts exports of the month: both values named, never averaged (default 9).
+    Service revenue = positions of type aussendienst/retrofit (what the order export holds); contracts and training
+    are not in any export and are not compared."""
     pos = [p for p in r["positionen"] if p["klasse"] == "umsatz"]
-    paare = (("Serviceumsatz", [p for p in pos if "ersatzteil" not in p["position"].casefold()],
+    paare = (("Serviceumsatz", [p for p in pos if umsatzart(p["position"], defs) in ("aussendienst", "retrofit")],
               b["auftragseingang"], "Aufträge"),
-             ("Ersatzteilumsatz", [p for p in pos if "ersatzteil" in p["position"].casefold()], b["ersatzteile"],
+             ("Ersatzteilumsatz", [p for p in pos if umsatzart(p["position"], defs) == "ersatzteile"], b["ersatzteile"],
               "Ersatzteile"))
     out = []
     for thema, ps, export, name in paare:
@@ -1026,7 +1041,7 @@ def cmd_management_report(a, ws: Path) -> tuple[int, dict]:
         "guv": {"monat": guv(r), "kumuliert": guv(ry) if ry else None},
         "abweichungen": abw, "massnahmen_offen": sum(x["massnahme_pruefen"] for x in abw),
         "auftragseingang": b["auftragseingang"], "auslastung_teams": b["teams"],
-        "quellenvergleich": quellenvergleich(r, b), "konflikte": konflikte, "datenlage": datenlage,
+        "quellenvergleich": quellenvergleich(r, b, defs), "konflikte": konflikte, "datenlage": datenlage,
         "definitionen": verwendet(defs, ("ergebnisrechnung", "kpi-ziele"),
                                   std + (["geschaeftsjahr_beginn_monat"] if beginn_std else [])),
         "gliederung": [{"kapitel": k, "inhalt": i} for k, i in KAPITEL],

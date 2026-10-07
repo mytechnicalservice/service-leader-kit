@@ -1,0 +1,1 @@
+Investitionsantrag Retrofit-Prüfstand: Laut Lieferantenangebot kostet er 1,2 Mio. €, laut Einkauf eher 1,35 Mio. € – keine Ahnung, was stimmt. Rückfluss 280.000 € pro Jahr über 5 Jahre, Restwert 120.000 €. Rechne mit 6,5 % Zins.
