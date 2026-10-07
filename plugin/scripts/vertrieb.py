@@ -129,8 +129,9 @@ def summe_oder_null(zeilen: list[dict], spalte: str, name: str, leer: str) -> di
 
 
 def addiere(name: str, teile: list[dict], formel: str) -> dict:
-    return wert(name, round(sum(t["betrag"] for t in teile), 2), sorted({q for t in teile for q in t["quelle"]}),
-                formel=formel)
+    """Sum of wert objects; with no parts it is 0 and says so (kennzahlen.wert refuses an empty source list)."""
+    quellen = sorted({q for t in teile for q in t["quelle"]}) or ["keine bewerteten Einzelwerte – Summe 0"]
+    return wert(name, round(sum(t["betrag"] for t in teile), 2), quellen, formel=formel)
 
 
 def lade_zeitraum(ws: Path, vorlage: str, monate: list[str]) -> tuple[list[dict], list[str]]:
@@ -284,6 +285,140 @@ def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | No
         "ziel": f"03_Berichte/{tag_heute.isoformat()}_verlaengerungs-radar.xlsx"}, zeilen_text)
 
 
+# --- price list ---------------------------------------------------------------------------------------------------
+
+POSITION = ("position", "leistung", "artikel", "bezeichnung")
+PREIS = ("preis_eur", "preis", "listenpreis", "netto_eur", "preis (eur)")
+
+
+def preisliste(ws: Path) -> dict:
+    """Rows (position, price) of the newest 04_Angebote/preisliste_*.xlsx; the header is searched in rows 1–10."""
+    dateien = sorted((datenordner(ws) / "04_Angebote").glob("preisliste_*.xlsx"))
+    if not dateien:
+        return {"datei": None, "zeilen": []}
+    p = dateien[-1]
+    name, zeilen = rel(ws, p), []
+    wb = load_workbook(p, read_only=True, data_only=True)
+    try:
+        for blatt in wb.worksheets:
+            rows = list(blatt.iter_rows(values_only=True))
+            for i, r in enumerate(rows[:10]):
+                kopf = [text(c).casefold() for c in r]
+                ip = next((kopf.index(s) for s in POSITION if s in kopf), None)
+                ipr = next((kopf.index(s) for s in PREIS if s in kopf), None)
+                if ip is None or ipr is None:
+                    continue
+                for n, z in enumerate(rows[i + 1:], start=i + 2):
+                    if len(z) <= max(ip, ipr) or not text(z[ip]) or not text(z[ipr]):
+                        continue
+                    try:
+                        zeilen.append({"position": text(z[ip]), "preis": zahl(z[ipr]),
+                                       "quelle": f"{name} Blatt {blatt.title} Zeile {n}"})
+                    except ValueError:
+                        continue
+                break
+    finally:
+        wb.close()
+    return {"datei": name, "zeilen": zeilen}
+
+
+def preis_zeile(liste: dict, *woerter: str) -> dict | None:
+    """First row containing every word (case-insensitive); with several, the shortest name (base variant)."""
+    w = [x.casefold() for x in woerter]
+    treffer = [z for z in liste["zeilen"] if all(x in z["position"].casefold() for x in w)]
+    return min(treffer, key=lambda z: (len(z["position"]), z["position"])) if treffer else None
+
+
+# --- installed-base-potenziale ------------------------------------------------------------------------------------
+
+def baujahr(a: dict) -> int | None:
+    """Year of build as int; the validated CSV may hold '2012' or '2012.0'; empty or unreadable → None."""
+    try:
+        return None if text(a.get("Baujahr")) == "" else int(zahl(a.get("Baujahr")))
+    except ValueError:
+        return None
+
+
+def retrofit_grenze(typ: str) -> int:
+    for prefix, jahre in RETROFIT_ALTER.items():
+        if typ.casefold().startswith(prefix.casefold()):
+            return jahre
+    return RETROFIT_ALTER_SONST
+
+
+def installed_base_potenziale(ws: Path, kunde: str | None = None, stichtag: str | None = None,
+                              heute: str | None = None) -> dict:
+    tag_heute = heute_von(heute)
+    anlagen, ib = installed_base(ws)
+    tag = pruefe_datum(stichtag, "--stichtag") if stichtag else ib["stichtag"]
+    preise = preisliste(ws)
+    meldungen = list(ib["meldungen"])
+    if not preise["zeilen"]:
+        meldungen.append("Keine Preisliste (04_Angebote/preisliste_*.xlsx) – Potenziale nur gezählt, nicht bewertet.")
+    kunden: dict[str, dict] = {}
+    for a in anlagen:
+        k, typ, anlage = text(a.get("Kunde")), text(a.get("Maschinentyp")), text(a.get("Anlage"))
+        if kunde and not gleich(k, kunde):
+            continue
+        e = kunden.setdefault(k, {"kunde": k, "ohne_vertrag": [], "retrofit": [], "nicht_bewertet": []})
+        if not gleich(a.get("Vertrag"), "ja"):
+            p = preis_zeile(preise, "wartungsvertrag", typ)
+            e["ohne_vertrag"].append({"anlage": anlage, "typ": typ, "potenzial": wert(
+                f"Wartungsvertrag {typ} je Jahr, Basisstufe ({k} / {anlage})", p["preis"], [ort(a), p["quelle"]])
+                if p else None})
+            if not p:
+                e["nicht_bewertet"].append(f"{anlage} ({typ}): ohne Vertrag, kein Preis 'Wartungsvertrag {typ}' in "
+                                           "der Preisliste")
+        if "retrofit" in typ.casefold():
+            continue
+        bj = baujahr(a)
+        if bj is None:
+            e["nicht_bewertet"].append(f"{anlage} ({typ}): Baujahr fehlt – Retrofit nicht beurteilt ({ort(a)})")
+            continue
+        if bj > tag.year:
+            meldungen.append(f"{k} / {anlage}: Baujahr {bj} liegt nach dem Stichtag – unplausibel, nicht beurteilt "
+                             f"({ort(a)}).")
+            continue
+        alter, grenze = tag.year - bj, retrofit_grenze(typ)
+        if alter < grenze:
+            continue
+        p = preis_zeile(preise, "retrofit", typ)
+        e["retrofit"].append({"anlage": anlage, "typ": typ, "baujahr": bj, "alter": alter, "grenze": grenze,
+                              "potenzial": wert(f"Retrofit {typ} ({k} / {anlage})", p["preis"], [ort(a), p["quelle"]])
+                              if p else None})
+        if not p:
+            e["nicht_bewertet"].append(f"{anlage} ({typ}, {alter} Jahre): Retrofit-Kandidat, kein Preis "
+                                       f"'Retrofit {typ}' in der Preisliste")
+    for e in kunden.values():
+        e["vertragspotenzial"] = addiere(f"Vertragspotenzial je Jahr {e['kunde']}",
+                                         [x["potenzial"] for x in e["ohne_vertrag"] if x["potenzial"]],
+                                         "Σ Listenpreis Wartungsvertrag je Anlage ohne Vertrag")
+        e["retrofitpotenzial"] = addiere(f"Retrofitpotenzial einmalig {e['kunde']}",
+                                         [x["potenzial"] for x in e["retrofit"] if x["potenzial"]],
+                                         "Σ Listenpreis Retrofit je Retrofit-Kandidat")
+    liste = sorted((e for e in kunden.values() if e["ohne_vertrag"] or e["retrofit"] or e["nicht_bewertet"]),
+                   key=lambda e: (-(e["vertragspotenzial"]["betrag"] + e["retrofitpotenzial"]["betrag"]), e["kunde"]))
+    s_v = addiere("Vertragspotenzial je Jahr gesamt", [e["vertragspotenzial"] for e in liste],
+                  "Σ Vertragspotenzial je Kunde")
+    s_r = addiere("Retrofitpotenzial einmalig gesamt", [e["retrofitpotenzial"] for e in liste],
+                  "Σ Retrofitpotenzial je Kunde")
+    n_o, n_r = sum(len(e["ohne_vertrag"]) for e in liste), sum(len(e["retrofit"]) for e in liste)
+    annahmen = [f"Retrofit-Kandidat ab Alter: {', '.join(f'{t} {j} Jahre' for t, j in RETROFIT_ALTER.items())}, "
+                f"sonst {RETROFIT_ALTER_SONST} Jahre; Typen mit 'Retrofit' im Namen gelten als modernisiert ({STANDARD})",
+                f"Alter = Jahr des Stichtags {tag:%d.%m.%Y} − Baujahr",
+                "Vertragspotenzial zum Listenpreis der Basisstufe (kürzeste Position 'Wartungsvertrag <Typ>' der "
+                f"Preisliste) ({STANDARD})"]
+    zeilen = [f"{n_o} Anlagen ohne Vertrag: Vertragspotenzial {deutsch(s_v['betrag'])} EUR je Jahr.",
+              f"{n_r} Retrofit-Kandidaten: Retrofitpotenzial {deutsch(s_r['betrag'])} EUR einmalig "
+              "(nicht mit dem Vertragspotenzial addiert)."]
+    zeilen += [f"{e['kunde']}: Vertrag {deutsch(e['vertragspotenzial']['betrag'])} EUR/Jahr, Retrofit "
+               f"{deutsch(e['retrofitpotenzial']['betrag'])} EUR einmalig" for e in liste]
+    return ergebnis(ws, {
+        "stichtag": tag.isoformat(), "kunden": liste, "summe_vertrag": s_v, "summe_retrofit": s_r,
+        "anzahl_ohne_vertrag": n_o, "anzahl_retrofit": n_r, "annahmen": annahmen, "meldungen": meldungen,
+        "ziel": f"03_Berichte/{tag_heute.isoformat()}_installed-base-potenziale.xlsx"}, zeilen)
+
+
 # --- CLI ----------------------------------------------------------------------------------------------------------
 
 def parser() -> JsonParser:
@@ -299,11 +434,15 @@ def parser() -> JsonParser:
     r = add("verlaengerungs-radar")
     r.add_argument("--monate", type=int)
     r.add_argument("--stichtag")
+    p = add("installed-base-potenziale")
+    p.add_argument("--kunde")
+    p.add_argument("--stichtag")
     return ap
 
 
 BEFEHLE = {
     "verlaengerungs-radar": lambda a, ws: verlaengerungs_radar(ws, a.monate, a.stichtag, a.heute),
+    "installed-base-potenziale": lambda a, ws: installed_base_potenziale(ws, a.kunde, a.stichtag, a.heute),
 }
 
 

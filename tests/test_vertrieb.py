@@ -135,3 +135,60 @@ def test_cli_prints_one_json_object_and_fails_in_german(vws, capsys):
 def test_no_installed_base_is_a_clear_message(kit_ws, capsys):
     assert vertrieb.main(["verlaengerungs-radar", "--ws", str(kit_ws)]) == 1
     assert "installed_base" in json.loads(capsys.readouterr().out)["fehler"][0]
+
+
+# --- installed-base-potenziale ------------------------------------------------------------------------------------
+
+def test_potentials_by_customer(vws):
+    r = vertrieb.installed_base_potenziale(vws, heute=HEUTE)
+    assert [e["kunde"] for e in r["kunden"]] == ["Müller GmbH", "Nordmetall GmbH"]
+    k = {e["kunde"]: e for e in r["kunden"]}
+    assert k["Müller GmbH"]["vertragspotenzial"]["betrag"] == 6200
+    assert k["Müller GmbH"]["retrofitpotenzial"]["betrag"] == 85000
+    assert [x["anlage"] for x in k["Nordmetall GmbH"]["retrofit"]] == ["Anlage 1"]
+    assert k["Nordmetall GmbH"]["retrofit"][0]["alter"] == 14 and k["Nordmetall GmbH"]["retrofit"][0]["potenzial"] is None
+    assert any("Retrofit MM-400" in n for n in k["Nordmetall GmbH"]["nicht_bewertet"])
+    assert r["summe_vertrag"]["betrag"] == 11000 and r["summe_retrofit"]["betrag"] == 85000
+    assert r["anzahl_ohne_vertrag"] == 2 and r["anzahl_retrofit"] == 2
+    assert all(x["typ"] != "MM-800 Retrofit" for e in r["kunden"] for x in e["retrofit"])
+    assert "preisliste_2026.xlsx" in k["Müller GmbH"]["ohne_vertrag"][0]["potenzial"]["quelle"][1]
+    assert r["ziel"] == "03_Berichte/2026-10-06_installed-base-potenziale.xlsx"
+    assert any("MM-800 15 Jahre" in a for a in r["annahmen"])
+
+
+def test_potentials_do_not_guess_missing_or_implausible_years(vws):
+    ib_mit(vws, ["Nordmetall GmbH", "Anlage 8", "MM-600", "", "nein", ""],
+           ["Weber Kunststofftechnik", "Anlage 7", "MM-400", 2031, "nein", ""])
+    r = vertrieb.installed_base_potenziale(vws, heute=HEUTE)
+    k = {e["kunde"]: e for e in r["kunden"]}
+    assert any("Anlage 8" in n and "Baujahr fehlt" in n for n in k["Nordmetall GmbH"]["nicht_bewertet"])
+    assert any("Anlage 7" in m and "2031" in m for m in r["meldungen"])
+    assert r["anzahl_retrofit"] == 2
+    assert r["summe_vertrag"]["betrag"] == 22000
+
+
+def test_potentials_without_price_list_are_counted_not_valued(vws):
+    (vws / "04_Angebote" / "preisliste_2026.xlsx").unlink()
+    r = vertrieb.installed_base_potenziale(vws, kunde=" müller gmbh", heute=HEUTE)
+    assert [e["kunde"] for e in r["kunden"]] == ["Müller GmbH"]
+    assert r["summe_vertrag"]["betrag"] == 0 and r["anzahl_ohne_vertrag"] == 1 and r["anzahl_retrofit"] == 1
+    assert any("Keine Preisliste" in m for m in r["meldungen"])
+
+
+def test_price_list_prefers_the_base_variant_and_reads_synonyms(vws):
+    wb = Workbook()
+    wb.active.append(["Bezeichnung", "Listenpreis"])
+    wb.active.append(["Wartungsvertrag MM-400 Premium", "6.900,00"])
+    wb.active.append(["Wartungsvertrag MM-400", "4.800,00"])
+    wb.save(vws / "04_Angebote" / "preisliste_2027.xlsx")
+    liste = vertrieb.preisliste(vws)
+    assert liste["datei"] == "04_Angebote/preisliste_2027.xlsx"
+    assert vertrieb.preis_zeile(liste, "wartungsvertrag", "MM-400")["preis"] == 4800
+
+
+def test_potentials_use_the_base_level_and_say_so(vws):
+    """K1 (Max, 2026-10-07): installed-base potential stays at the base level and names it."""
+    r = vertrieb.installed_base_potenziale(vws, heute=HEUTE)
+    assert any("Basisstufe" in a for a in r["annahmen"])
+    k = {e["kunde"]: e for e in r["kunden"]}
+    assert "Basisstufe" in k["Müller GmbH"]["ohne_vertrag"][0]["potenzial"]["name"]
