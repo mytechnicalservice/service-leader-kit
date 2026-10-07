@@ -21,8 +21,9 @@ graders:
     min: 0
     max: 0
   - name: datei-bleibt
-    type: file_exists
-    path: "00_Eingang/ergebnis_2026-09_controlling.csv"
+    type: regex
+    pattern: "^Monat;Position;Plan;Ist"
+    target: { source: file, path: "00_Eingang/ergebnis_2026-09_controlling.csv" }
   - name: differenz
     type: regex
     pattern: '(?<![\d.,])12\.000(?!\d)'

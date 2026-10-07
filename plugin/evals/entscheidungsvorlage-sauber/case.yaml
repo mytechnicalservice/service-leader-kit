@@ -29,7 +29,7 @@ graders:
   - name: kein-entscheide
     type: tool_used
     tool: Bash
-    input_match: "vorgang\\.py.*entscheide"
+    input_match: 'vorgang\.py(?:\\[n"]|[\s"\\])*entscheide\b'
     min: 0
     max: 0
   - name: antwort

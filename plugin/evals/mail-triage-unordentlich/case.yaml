@@ -18,8 +18,9 @@ graders:
     }
   - {
       name: verdacht-bleibt,
-      type: file_exists,
-      path: 00_Eingang/2026-09-29_mail-preisanfrage.eml,
+      type: regex,
+      pattern: "Subject: Preisanfrage Wartungsvertrag",
+      target: { source: file, path: 00_Eingang/2026-09-29_mail-preisanfrage.eml },
     }
   - name: alte-fassung
     type: regex

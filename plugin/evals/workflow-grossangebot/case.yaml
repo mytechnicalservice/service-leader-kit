@@ -13,7 +13,7 @@ graders:
   - name: abweichung-uebergeben
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? grossangebot.*--abweichung"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*grossangebot.*--abweichung'
   - name: empfehlung-finanzen
     type: regex
     pattern: "### \\d{4}-\\d{2}-\\d{2} · empfehlung · finanzen\\n\\nEmpfehlung: (zustimmen|zustimmen mit Auflagen|ablehnen)"

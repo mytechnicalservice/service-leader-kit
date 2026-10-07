@@ -21,8 +21,9 @@ graders:
     min: 0
     max: 0
   - name: export-bleibt
-    type: file_exists
-    path: "00_Eingang/kapazitaet_2026-09_controlling.csv"
+    type: regex
+    pattern: "^Monat;Team;"
+    target: { source: file, path: "00_Eingang/kapazitaet_2026-09_controlling.csv" }
   - name: sued-rot
     type: regex
     pattern: "108,3"

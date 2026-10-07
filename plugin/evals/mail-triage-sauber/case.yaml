@@ -33,16 +33,19 @@ graders:
       type: file_exists,
       path: "06_Kunden/*/2026-09-29_mail-eskalation.eml",
     }
+  # A scaffold file's absence cannot be graded (file_exists sees only new files): the mail left the inbox when the
+  # moving script filed it by name (assistenz.py ablegen moves, never copies; raw mv is ruled out by kein-mv).
   - {
       name: eingang-leer,
-      type: file_exists,
-      path: 00_Eingang/2026-09-28_mail-reklamation.eml,
-      exists: false,
+      type: tool_used,
+      tool: Bash,
+      input_match: "assistenz\\.py.*ablegen.*2026-09-28_mail-reklamation\\.eml",
     }
   - {
       name: export-bleibt,
-      type: file_exists,
-      path: 00_Eingang/auftraege_2026-09.xlsx,
+      type: regex,
+      pattern: "\\[Content_Types\\]\\.xml",
+      target: { source: file, path: 00_Eingang/auftraege_2026-09.xlsx },
     }
   - {
       name: quelle-1,

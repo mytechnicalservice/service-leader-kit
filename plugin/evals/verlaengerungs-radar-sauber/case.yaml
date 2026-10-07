@@ -13,7 +13,7 @@ graders:
   - name: skript
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? verlaengerungs-radar"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*verlaengerungs-radar'
   - name: wert-im-risiko
     type: regex
     pattern: "972\\.731"

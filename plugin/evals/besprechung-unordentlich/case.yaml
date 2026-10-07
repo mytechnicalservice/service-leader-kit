@@ -41,7 +41,7 @@ graders:
       name: kein-agent-owner,
       type: tool_used,
       tool: Bash,
-      input_match: "vorgang\\.py.*neu.*--verantwortlich[= ]\"?betrieb",
+      input_match: 'vorgang\.py.*neu.*--verantwortlich(?:=|\s|\\")+betrieb',
       min: 0,
       max: 0,
     }
@@ -49,7 +49,7 @@ graders:
       name: nie-entschieden,
       type: tool_used,
       tool: Bash,
-      input_match: "vorgang\\.py.*entscheide",
+      input_match: 'vorgang\.py(?:\\[n"]|[\s"\\])*entscheide\b',
       min: 0,
       max: 0,
     }

@@ -20,7 +20,7 @@ graders:
       name: nie-entschieden,
       type: tool_used,
       tool: Bash,
-      input_match: "vorgang\\.py.*entscheide",
+      input_match: 'vorgang\.py(?:\\[n"]|[\s"\\])*entscheide\b',
       min: 0,
       max: 0,
     }
@@ -32,8 +32,10 @@ graders:
     }
   - {
       name: v0001-bleibt,
-      type: file_exists,
-      path: 01_Vorgaenge/offen/V-0001.md,
+      type: regex,
+      pattern: '^nr: "V-0001"$',
+      flags: m,
+      target: { source: file, path: 01_Vorgaenge/offen/V-0001.md },
     }
   - {
       name: defekt,

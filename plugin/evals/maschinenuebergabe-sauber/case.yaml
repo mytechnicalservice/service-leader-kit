@@ -38,10 +38,12 @@ graders:
   - name: mail-verschoben
     type: file_exists
     path: "05_Projekte/Inbetriebnahme KX-400 Brenner/2026-10-01_mail-auftrag-brenner.eml"
+  # A scaffold file's absence cannot be graded (file_exists sees only new files): projekte.py moves the mail given
+  # as --beleg into the project folder (never copies it).
   - name: mail-nicht-mehr-im-eingang
-    type: file_exists
-    path: 00_Eingang/2026-10-01_mail-auftrag-brenner.eml
-    exists: false
+    type: tool_used
+    tool: Bash
+    input_match: "projekte\\.py.*--beleg.*2026-10-01_mail-auftrag-brenner\\.eml"
   - name: servicevertrag-vorgang
     type: regex
     pattern: "^typ: \"angebot\"$[\\s\\S]*^verantwortlich: \"Sandra Vogt[^\"]*\"$[\\s\\S]*^faellig: \"2026-11-20\"$"

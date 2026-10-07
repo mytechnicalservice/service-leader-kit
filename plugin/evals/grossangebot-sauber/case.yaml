@@ -13,11 +13,11 @@ graders:
   - name: skript
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? grossangebot.*--anzahl 2"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*grossangebot.*--anzahl 2'
   - name: stufe-basis
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? grossangebot.*--stufe \"?[Bb]asis"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*grossangebot.*--stufe(?:=|\s|\\")+[Bb]asis'
   - name: angebotswert
     type: regex
     pattern: "27\\.360"

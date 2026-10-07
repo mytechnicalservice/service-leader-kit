@@ -13,7 +13,7 @@ graders:
   - name: skript-kunde
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? key-account-review.*--kunde"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*key-account-review.*--kunde'
   - name: nordmetall-umsatz
     type: regex
     pattern: "315\\.105"

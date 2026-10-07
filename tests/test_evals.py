@@ -186,3 +186,64 @@ def test_output_globs_cannot_be_met_by_the_folder_readme():
                     if fnmatch.fnmatch("LIESMICH.md", muster):
                         treffer.append((c.name, g["name"], g["path"]))
     assert treffer == []
+
+
+def _graders():
+    return [(c.name, g) for c in CASES for g in lade(c)["graders"]]
+
+
+def test_regexes_use_flags_not_inline_modifiers():
+    # The runner uses JavaScript regexes: inline (?i) is not supported, case-insensitivity goes into flags: i.
+    assert [(c, g["name"]) for c, g in _graders()
+            if "(?i" in g.get("pattern", "") + g.get("input_match", "")] == []
+
+
+def test_never_called_checks_set_min_zero():
+    # tool_used counts calls between min (default 1) and max: max 0 alone can never pass.
+    assert [(c, g["name"]) for c, g in _graders() if g["type"] == "tool_used" and g.get("max") == 0
+            and g.get("min") != 0] == []
+
+
+def test_input_match_does_not_expect_a_bare_quote():
+    # input_match sees the JSON-encoded input, where a quote is \\" – a pattern "? never matches a quoted path.
+    assert [(c, g["name"]) for c, g in _graders() if '"?' in g.get("input_match", "")] == []
+
+
+def _bash(befehl):
+    return json.dumps({"command": befehl, "description": "x"})  # what tool_used's input_match is matched against
+
+
+def test_decision_checks_only_match_the_subcommand():
+    # "vorgang.py … entscheide" must not match the word "entscheidet" in a recommendation text.
+    import re
+    ja = ['uv run "/p/scripts/vorgang.py" entscheide --ws "/w" --nr V-0004 --entscheidung freigegeben',
+          'uv run /p/scripts/vorgang.py entscheide --nr V-0004', 'uv run "/p/vorgang.py" \\\n  entscheide --nr V-0004']
+    nein = ['uv run "/p/scripts/vorgang.py" neu --ws "/w" --titel "Kunde entscheidet über V-0004"',
+            'uv run "/p/scripts/vorgang.py" notiz --nr V-0004 --text "Max entscheidet morgen"']
+    for c, g in _graders():
+        m = g.get("input_match", "")
+        if "entscheide" in m:
+            assert all(re.search(m, _bash(b)) for b in ja), (c, g["name"])
+            assert not any(re.search(m, _bash(b)) for b in nein), (c, g["name"])
+
+
+def test_script_checks_match_a_quoted_script_path():
+    import re
+    for c, name, befehl in (("grossangebot-sauber", "stufe-basis",
+                             'uv run "/p/scripts/vertrieb.py" grossangebot --ws "/w" --anzahl 2 --stufe "Basis"'),
+                            ("key-account-review-sauber", "skript", 'uv run "/p/scripts/vertrieb.py" key-account-review'),
+                            ("verlaengerungs-radar-sauber", "skript", 'uv run "/p/vertrieb.py" verlaengerungs-radar'),
+                            ("installed-base-potenziale-sauber", "skript",
+                             'uv run "/p/vertrieb.py" \\\n  installed-base-potenziale --ws "/w"')):
+        g = next(x for x in lade(EVALS / c)["graders"] if x["name"] == name)
+        assert re.search(g["input_match"], _bash(befehl)), (c, name)
+
+
+@pytest.mark.parametrize("case", mit_scaffold(), ids=lambda c: c.name)
+def test_file_checks_never_target_scaffold_files(case, tmp_path):
+    # file_exists only sees files created during the run: a scaffold file is invisible to it (exists: true can never
+    # pass, exists: false always passes). Grade such a file's content with a regex on { source: file } instead.
+    assert scaffold(case, tmp_path).returncode == 0
+    treffer = [(g["name"], g["path"]) for g in lade(case)["graders"]
+               if g["type"] == "file_exists" and list(tmp_path.glob(g["path"]))]
+    assert treffer == []

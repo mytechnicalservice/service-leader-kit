@@ -18,8 +18,9 @@ graders:
     type: file_exists
     path: 04_Angebote/preisliste_2027_v2.xlsx
   - name: entwurf-bleibt
-    type: file_exists
-    path: 04_Angebote/preisliste_2027.xlsx
+    type: regex
+    pattern: "\\[Content_Types\\]\\.xml"
+    target: { source: file, path: 04_Angebote/preisliste_2027.xlsx }
   - name: vertrag-basic
     type: regex
     pattern: "3\\.210"

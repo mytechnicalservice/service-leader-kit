@@ -36,7 +36,7 @@ graders:
       name: entscheide,
       type: tool_used,
       tool: Bash,
-      input_match: "vorgang\\.py.*entscheide.*V-0004",
+      input_match: 'vorgang\.py(?:\\[n"]|[\s"\\])*entscheide\b.*V-0004',
       min: 1,
     }
   - name: v0004-frei

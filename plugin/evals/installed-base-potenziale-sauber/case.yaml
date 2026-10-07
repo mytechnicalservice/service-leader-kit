@@ -13,7 +13,7 @@ graders:
   - name: skript
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? installed-base-potenziale"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*installed-base-potenziale'
   - name: vertragspotenzial
     type: regex
     pattern: "273\\.600"

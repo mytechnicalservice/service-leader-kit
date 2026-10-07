@@ -13,7 +13,7 @@ graders:
   - name: skript
     type: tool_used
     tool: Bash
-    input_match: "vertrieb\\.py\"? key-account-review"
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*key-account-review'
   - name: top1-kunde
     type: regex
     pattern: "Hansa\\ Pack\\ AG"
