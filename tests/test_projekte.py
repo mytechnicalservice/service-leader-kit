@@ -292,3 +292,87 @@ def test_setze_refuses_what_it_cannot_take(kit_ws, defs, rufe):
                        (["--feld", "kosten_ist_eur", "--wert", "viel"], "keine Zahl")):
         code, out = rufe("setze", "--ws", kit_ws, "--projekt", "Im Plan", *argv)
         assert code == 1 and text in " ".join(out["fehler"]), (argv, out)
+
+
+BRENNER = "Inbetriebnahme KX-400 Brenner"
+
+
+def anlegen_argv(ws, _meilensteine=("Lieferung=2026-11-16", "Montage=2026-11-27", "Abnahme=2026-12-04"), **ueber):
+    werte = {"projekt": BRENNER, "typ": "inbetriebnahme", "kunde": "Brenner Verpackung GmbH",
+             "maschine": "Kartonierer KX-400, Masch.-Nr. 40-1203", "projektleitung": "Jana Becker", "budget": "38.500",
+             "gewaehrleistung-monate": "12", "strafe-prozent-woche": "0,5", "strafe-max-prozent": "5",
+             "strafe-bezugswert": "312000", "strafe-meilenstein": "Abnahme", "heute": "2026-10-01"} | ueber
+    argv = ["anlegen", "--ws", ws]
+    for k, v in werte.items():
+        if v is not None:
+            argv += [f"--{k}", v]
+    for m in _meilensteine:
+        argv += ["--meilenstein", m]
+    return argv
+
+
+def test_handover_creates_project_checklist_and_files_the_document(kit_ws, defs, rufe):
+    mail = kit_ws / "00_Eingang" / "2026-10-01_mail-auftrag-brenner.eml"
+    mail.write_text("Auftrag Brenner", encoding="utf-8")
+    code, out = rufe(*anlegen_argv(kit_ws, beleg=f"00_Eingang/{mail.name}"))
+    assert code == 0, out
+    d = kit_ws / "05_Projekte" / BRENNER
+    assert not mail.exists() and (d / mail.name).read_text(encoding="utf-8") == "Auftrag Brenner"
+    meta = projekte.lies(d / "projekt.md")
+    assert projekte.pruefe(meta, dt.date(2026, 10, 1)) == {}
+    assert (meta["budget_eur"], meta["kosten_prognose_eur"], meta["kosten_ist_eur"], meta["status"]) == (38500, 38500, 0, "geplant")
+    assert meta["vertragsstrafe_prozent_je_woche"] == 0.5 and meta["quelle"] == f"05_Projekte/{BRENNER}/{mail.name}"
+    text = (d / "projekt.md").read_text(encoding="utf-8")
+    assert "\nbudget_eur: 38500\n" in text
+    assert '{"name": "Abnahme", "plan": "2026-12-04", "prognose": null, "ist": null}' in text
+    liste = (d / "uebergabe.md").read_text(encoding="utf-8")
+    assert liste.count("- [ ] ") == 16 and "Servicevertrag" in liste and "12 Monate ab Abnahme" in liste
+    assert "0,5 % je angefangene Woche" in liste
+    assert (out["servicevertrag_faellig"], out["abnahme_meilenstein"]) == ("2026-11-20", "Abnahme")
+
+
+def test_handover_lists_everything_missing_at_once(kit_ws, defs, rufe):
+    code, out = rufe(*anlegen_argv(kit_ws, budget=None, **{"gewaehrleistung-monate": None, "strafe-max-prozent": None}))
+    assert code == 1 and not (kit_ws / "05_Projekte" / BRENNER).exists()
+    assert len(out["fehlende_angaben"]) == 3 and out["fehlende_angaben"][-1].startswith("Vertragsstrafe")
+
+
+def test_handover_never_overwrites_and_never_moves(kit_ws, defs, rufe):
+    assert rufe(*anlegen_argv(kit_ws))[0] == 0
+    datei = kit_ws / "05_Projekte" / BRENNER / "projekt.md"
+    vorher = datei.read_bytes()
+    mail = kit_ws / "00_Eingang" / "auftrag.eml"
+    mail.write_text("x", encoding="utf-8")
+    code, out = rufe(*anlegen_argv(kit_ws, beleg="00_Eingang/auftrag.eml", kunde="Andere GmbH"))
+    assert code == 1 and "gibt es schon" in out["fehler"][0]
+    assert mail.exists() and datei.read_bytes() == vorher
+
+
+def test_handover_refuses_bad_input(kit_ws, defs, rufe):
+    faelle = ((dict(beleg="Unternehmen/profil.md"), "direkt in 00_Eingang"),
+              (dict(_meilensteine=("Abnahme=04.12.2026",)), "Name=JJJJ-MM-TT"),
+              (dict(projektleitung="projekte"), "kein Agent"),
+              (dict(**{"strafe-meilenstein": "Übergabe"}), "nicht unter den Meilensteinen"),
+              (dict(projekt="../Unternehmen"), "Ungültiger Projektname"))
+    for ueber, text in faelle:
+        code, out = rufe(*anlegen_argv(kit_ws, **ueber))
+        assert code == 1 and text in " ".join(out["fehler"]), (ueber, out)
+    assert (kit_ws / "Unternehmen" / "profil.md").exists() and not (kit_ws / "05_Projekte" / BRENNER).exists()
+
+
+def test_pruefe_datei_finds_numbers_in_word_and_excel(kit_ws, rufe):
+    import docx
+    import openpyxl
+    doc = docx.Document()
+    doc.add_paragraph("Ergebnisbelastung Option A: 17.600 EUR")
+    doc.add_table(rows=1, cols=2).cell(0, 1).text = "21.700"
+    doc.save(kit_ws / "05_Projekte" / "memo.docx")
+    code, out = rufe("pruefe-datei", "--ws", kit_ws, "--datei", "05_Projekte/memo.docx",
+                     "--zahl", "17.600", "--zahl", "21.700", "--zahl", "3.600")
+    assert code == 1 and out["gefunden"] == ["17.600", "21.700"] and out["fehlend"] == ["3.600"]
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = 3600
+    wb.save(kit_ws / "03_Berichte" / "t.xlsx")
+    assert rufe("pruefe-datei", "--ws", kit_ws, "--datei", "03_Berichte/t.xlsx", "--zahl", "3.600")[0] == 0
+    code, out = rufe("pruefe-datei", "--ws", kit_ws, "--datei", "../ausserhalb.docx", "--zahl", "1")
+    assert code == 1 and "gibt es im Kundendienst-Ordner nicht" in out["fehler"][0]

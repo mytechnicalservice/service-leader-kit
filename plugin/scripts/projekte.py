@@ -504,6 +504,168 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
     return 0, {"ok": True, "datei": quelle, "geaendert": a.feld, "alt": alt, "neu": wert}
 
 
+CHECKLISTE = (
+    ("Vertrag und Umfang", (
+        "Auftragsbestätigung bzw. Vertrag und technische Spezifikation liegen im Projektordner",
+        "Lieferumfang, Optionen und mündliche Zusagen des Vertriebs sind schriftlich übergeben",
+        "Abnahmekriterien (Leistungsnachweis, Prüfprotokoll) sind mit dem Kunden vereinbart",
+        "Vertragsstrafe und Haftungsgrenzen sind bekannt; Abweichungen von den eigenen AGB hat Qualität & Recht gesehen")),
+    ("Kunde und Standort", (
+        "Ansprechpartner technisch und kaufmännisch, Anlieferadresse, Zugang und Sicherheitsunterweisung vor Ort geklärt",
+        "Bauseitige Leistungen des Kunden (Fundament, Medien, Netzwerk) mit Termin vereinbart")),
+    ("Termine und Kapazität", (
+        "Meilensteine mit dem Kunden abgestimmt",
+        "Monteure und Inbetriebnehmer auf Teamebene eingeplant, Reisen gebucht",
+        "Kalkulation des Vertriebs (Montagestunden, Reisen, Fremdleistungen) als Budget übernommen")),
+    ("Dokumentation", (
+        "Betriebsanleitung in Landessprache, EG-Konformitätserklärung, Schaltpläne und Ersatzteilkatalog zur Übergabe bereit",)),
+    ("Ersatzteile", ("Empfohlene Ersatz- und Verschleißteilliste an den Kunden, Angebot für die Erstausstattung",)),
+    ("Schulung", ("Bediener- und Instandhaltungsschulung vereinbart (Umfang, Teilnehmende, Termin); Teilnahme wird protokolliert",)),
+    ("Gewährleistung", ("Abnahmeprotokoll unterschrieben; sein Datum als Ist-Datum der Abnahme eingetragen = Beginn der Gewährleistung",)),
+    ("Service nach der Abnahme", (
+        "Servicevertrag (Wartung, Inspektion, Hotline, Fernservice) angeboten – als Vorgang mit Frist",
+        "Fernservice-Zugang mit der IT des Kunden geklärt",
+        "Anlage mit Maschinennummer in die Installed Base aufgenommen")),
+)
+
+
+def render(meta: dict, titel: str) -> str:
+    kopf = "\n".join(f"{k}: {zeige(meta.get(k))}" for k in FELDER)
+    return (f"---\n{kopf}\n---\n\n# {titel}\n\nDaten oben: Datum als JJJJ-MM-TT, Beträge als Zahl ohne Punkt und €, "
+            "null = nicht vereinbart. Änderungen am einfachsten im Gespräch („Abnahme verschiebt sich auf …“).\n\n"
+            "## Notizen\n\n")
+
+
+def checkliste(meta: dict, titel: str) -> str:
+    d = kennzahlen.deutsch
+    if meta["vertragsstrafe_meilenstein"] is None:
+        strafe = "keine"
+    else:
+        strafe = (f"{d(meta['vertragsstrafe_prozent_je_woche'], 1)} % je angefangene Woche Verzug "
+                  f"({meta['vertragsstrafe_meilenstein']}), höchstens {d(meta['vertragsstrafe_max_prozent'], 1)} % "
+                  f"von {d(meta['vertragsstrafe_bezugswert_eur'])} EUR")
+    zeilen = [f"# Übergabe Vertrieb → Service: {titel}", "",
+              f"Kunde: {meta['kunde']} · Maschine: {meta['maschine']} · Projektleitung: {meta['projektleitung']}",
+              "Meilensteine (Plan): " + ", ".join(f"{m['name']} {m['plan']}" for m in meta["meilensteine"]),
+              f"Budget: {d(meta['budget_eur'])} EUR · Vertragsstrafe: {strafe}",
+              f"Gewährleistung: {meta['gewaehrleistung_monate']} Monate ab Abnahme · Beleg: {meta['quelle'] or 'keiner abgelegt'}",
+              "", "Erledigtes mit [x] abhaken. Offene Punkte klärt die Projektleitung mit dem Vertrieb.", ""]
+    for gruppe, punkte in CHECKLISTE:
+        zeilen += [f"## {gruppe}", "", *(f"- [ ] {p}" for p in punkte), ""]
+    return "\n".join(zeilen)
+
+
+def cmd_anlegen(a, ws: Path) -> tuple[int, dict]:
+    strafe = [a.strafe_prozent_woche, a.strafe_max_prozent, a.strafe_bezugswert, a.strafe_meilenstein]
+    fehlend = [text for wert, text in (
+        (a.projekt, "Projektname"), (a.typ, "Art: inbetriebnahme oder retrofit"), (a.kunde, "Kunde"),
+        (a.maschine, "Maschine mit Maschinennummer"), (a.projektleitung, "Projektleitung (eine Person)"),
+        (a.budget, "Budget der Projektkosten in EUR"), (a.meilenstein, "Meilensteine mit Plantermin"),
+        (a.gewaehrleistung_monate, "Gewährleistung in Monaten ab Abnahme")) if wert in (None, [], "")]
+    if a.keine_vertragsstrafe and any(s is not None for s in strafe):
+        raise ProjektFehler("Widerspruch: --keine-vertragsstrafe und Angaben zur Vertragsstrafe zugleich.")
+    if not a.keine_vertragsstrafe and any(s is None for s in strafe):
+        fehlend.append("Vertragsstrafe: Satz je angefangene Woche (%), Höchstsatz (%), Bezugswert (EUR) und "
+                       "Meilenstein – oder ausdrücklich keine")
+    if fehlend:
+        text = "Für die Übergabe fehlt noch: " + "; ".join(fehlend) + ". Das Kit trägt nichts geschätzt ein."
+        return 1, {"ok": False, "fehlende_angaben": fehlend, "fehler": [text], "meldungen": [text]}
+    if VERBOTEN.search(a.projekt) or a.projekt.strip(". ") != a.projekt:
+        raise ProjektFehler(f"Ungültiger Projektname: {zeige(a.projekt)}")
+    pruefe_mensch(a.projektleitung, "projektleitung")
+    if a.budget <= 0 or not 0 <= a.gewaehrleistung_monate <= 120:
+        raise ProjektFehler("Budget muss größer als 0 sein, Gewährleistung 0 bis 120 Monate.")
+    meilensteine = []
+    for e in a.meilenstein:
+        name, sep, tag = e.partition("=")
+        if not sep or not name.strip() or datum(tag.strip()) is None:
+            raise ProjektFehler(f"Meilenstein {e!r}: erwartet Name=JJJJ-MM-TT, z. B. Abnahme=2026-12-04")
+        meilensteine.append({"name": name.strip(), "plan": tag.strip(), "prognose": None, "ist": None})
+    namen = [m["name"] for m in meilensteine]
+    if len(set(namen)) != len(namen):
+        raise ProjektFehler("Jeder Meilenstein braucht einen eigenen Namen.")
+    if a.strafe_meilenstein is not None and a.strafe_meilenstein not in namen:
+        raise ProjektFehler(f"Meilenstein der Vertragsstrafe {zeige(a.strafe_meilenstein)} ist nicht unter den "
+                            f"Meilensteinen ({', '.join(namen)}).")
+    risiken = []
+    for e in a.risiko or []:
+        stufe, sep, text = e.partition(":")
+        if not sep or stufe.strip() not in STUFEN or not text.strip():
+            raise ProjektFehler(f"Risiko {e!r}: erwartet hoch|mittel|niedrig:Text")
+        risiken.append({"text": text.strip(), "stufe": stufe.strip()})
+    d = ws / "05_Projekte" / a.projekt
+    for name in ("projekt.md", "uebergabe.md"):
+        if (d / name).exists():
+            raise ProjektFehler(f"05_Projekte/{a.projekt}/{name} gibt es schon – nichts überschrieben, nichts verschoben.")
+    beleg = None
+    if a.beleg:
+        roh = Path(a.beleg) if Path(a.beleg).is_absolute() else ws / a.beleg
+        if roh.is_symlink() or not roh.is_file() or roh.resolve().parent != (ws / "00_Eingang").resolve():
+            raise ProjektFehler(f"Der Beleg muss eine Datei direkt in 00_Eingang/ sein: {a.beleg}")
+        beleg = (roh, d / roh.name)
+        if beleg[1].exists():
+            raise ProjektFehler(f"{rel(ws, beleg[1])} gibt es schon – Beleg nicht verschoben.")
+    meta = {"typ": a.typ, "status": "geplant", "kunde": a.kunde.strip(), "maschine": a.maschine.strip(),
+            "auftragsnr": a.auftragsnr, "projektleitung": a.projektleitung.strip(), "budget_eur": a.budget,
+            "kosten_ist_eur": 0, "kosten_prognose_eur": a.budget, "kosten_stand": a.heute.isoformat(),
+            "erloes_eur": a.erloes, **dict(zip(STRAFE, strafe)), "gewaehrleistung_monate": a.gewaehrleistung_monate,
+            "meilensteine": meilensteine, "risiken": risiken, "quelle": rel(ws, beleg[1]) if beleg else None}
+    d.mkdir(parents=True, exist_ok=True)
+    if beleg:
+        os.replace(*beleg)  # a move inside the workspace, once (spec §3.2)
+    write_atomic(d / "projekt.md", render(meta, a.projekt))
+    write_atomic(d / "uebergabe.md", checkliste(meta, a.projekt))
+    abnahme = next((m for m in meilensteine if m["name"].casefold() == "abnahme"), max(meilensteine, key=lambda m: m["plan"]))
+    faellig = max(datum(abnahme["plan"]) - dt.timedelta(days=14), a.heute)
+    meldungen = ["Abnahme in weniger als 14 Tagen: Servicevertrag sofort anbieten."] if faellig == a.heute else []
+    return 0, {"ok": True, "projekt": a.projekt, "angelegt": [rel(ws, d / "projekt.md"), rel(ws, d / "uebergabe.md")],
+               "beleg": meta["quelle"], "servicevertrag_faellig": faellig.isoformat(),
+               "abnahme_meilenstein": abnahme["name"], "meldungen": meldungen}
+
+
+def datei_text(p: Path) -> str:
+    endung = p.suffix.lower()
+    try:
+        if endung in (".md", ".txt"):
+            return p.read_text(encoding="utf-8-sig")
+        if endung == ".docx":
+            import docx
+            doc = docx.Document(str(p))
+            teile = [x.text for x in doc.paragraphs]
+            teile += [c.text for t in doc.tables for r in t.rows for c in r.cells]
+            return "\n".join(teile)
+        if endung == ".xlsx":
+            import openpyxl
+            teile = []
+            for blatt in openpyxl.load_workbook(p, read_only=True, data_only=True).worksheets:
+                for zeile in blatt.iter_rows(values_only=True):
+                    for v in zeile:
+                        if isinstance(v, (int, float)) and not isinstance(v, bool):
+                            teile += [str(v), kennzahlen.deutsch(v, 0 if float(v).is_integer() else 2)]
+                        elif v is not None:
+                            teile.append(str(v))
+            return "\n".join(teile)
+        if endung == ".pptx":
+            import pptx
+            return "\n".join(s.text_frame.text for f in pptx.Presentation(str(p)).slides for s in f.shapes if s.has_text_frame)
+    except Exception as exc:  # a damaged Office file must still give one German JSON answer
+        raise ProjektFehler(f"{p.name} ist nicht lesbar ({type(exc).__name__}).") from exc
+    raise ProjektFehler(f"{p.name}: Dateityp {endung or '(ohne)'} kann nicht geprüft werden.")
+
+
+def cmd_pruefe_datei(a, ws: Path) -> tuple[int, dict]:
+    p = ws / a.datei
+    if not p.is_file() or ws.resolve() not in p.resolve().parents:
+        raise ProjektFehler(f"{a.datei} gibt es im Kundendienst-Ordner nicht.")
+    text = datei_text(p)
+    gefunden = [z for z in a.zahl if z in text]
+    fehlend = [z for z in a.zahl if z not in text]
+    meldung = (f"In {a.datei} fehlt: {', '.join(fehlend)} – bitte das Dokument korrigieren." if fehlend
+               else f"{a.datei}: alle {len(gefunden)} Zahlen gefunden.")
+    return (1 if fehlend else 0), {"ok": not fehlend, "datei": a.datei, "gefunden": gefunden, "fehlend": fehlend,
+                                   "meldungen": [meldung]}
+
+
 def iso_datum(s: str) -> dt.date:
     d = datum(s)
     if d is None:
@@ -547,11 +709,23 @@ def parser() -> JsonParser:
     sp.add_argument("--meilenstein")
     sp.add_argument("--prognose", type=iso_datum)
     sp.add_argument("--ist", type=iso_datum)
-    # PARSER-ERWEITERUNG (Task 4 inserts its subcommands here)
+    sp = add("anlegen")
+    for opt in ("--projekt", "--kunde", "--maschine", "--projektleitung", "--strafe-meilenstein", "--auftragsnr", "--beleg"):
+        sp.add_argument(opt)
+    sp.add_argument("--typ", choices=TYPEN)
+    for opt in ("--budget", "--strafe-prozent-woche", "--strafe-max-prozent", "--strafe-bezugswert", "--erloes"):
+        sp.add_argument(opt, type=betrag)
+    sp.add_argument("--gewaehrleistung-monate", type=int)
+    sp.add_argument("--keine-vertragsstrafe", action="store_true")
+    sp.add_argument("--meilenstein", action="append", default=[])
+    sp.add_argument("--risiko", action="append", default=[])
+    sp = add("pruefe-datei")
+    sp.add_argument("--datei", required=True)
+    sp.add_argument("--zahl", action="append", required=True)
     return ap
 
 
-COMMANDS = {"ampel": cmd_ampel, "verzug": cmd_verzug, "setze": cmd_setze}
+COMMANDS = {"ampel": cmd_ampel, "verzug": cmd_verzug, "setze": cmd_setze, "anlegen": cmd_anlegen, "pruefe-datei": cmd_pruefe_datei}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:
