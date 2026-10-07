@@ -368,3 +368,137 @@ def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12) -> dict:
                            "Gleiche Anlage erneut repariert", "Offene Reklamationen", "Datenlage und Quellen",
                            "Bitte an die Konstruktion"],
             "hinweise": hinweise, "meldungen": meldungen}
+
+
+# ---------- vertragspruefung ----------
+
+STANDARDS = {"Haftung": "höchstens 100 % des Auftrags-/Jahresvertragswerts; Folgeschäden und entgangener Gewinn "
+                        "ausgeschlossen (außer zwingender Haftung)",
+             "Vertragsstrafe": "nur mit Obergrenze: höchstens 0,5 % je vollendete Woche, insgesamt höchstens 5 %",
+             "Reaktionszeit": "nicht kürzer als 24 Stunden an Werktagen",
+             "Gewährleistung": "12 Monate ab Abnahme",
+             "Garantien": "keine Verfügbarkeits- oder Leistungsgarantie",
+             "Recht": "deutsches Recht, Gerichtsstand am Sitz des Unternehmens",
+             "Laufzeit": "höchstens 24 Monate mit ordentlicher Kündigung",
+             "Produktsicherheit": "keine Übernahme von Herstellerpflichten oder Freistellungen für Dritte"}
+
+
+def zeile_mit(zeilen: list[str], muster: str) -> tuple[int, str] | None:
+    rx = re.compile(muster, re.I)
+    return next(((i, z.strip()) for i, z in enumerate(zeilen, 1) if rx.search(z)), None)
+
+
+def _abw(datei: str, punkt: str, t: tuple[int, str] | None, befund: str, rolle: str = "recht",
+         kritisch: bool = False) -> dict:
+    return {"punkt": punkt, "fundstelle": f"{datei} Zeile {t[0]}" if t else f"{datei} (keine Regelung)",
+            "auszug": t[1][:240] if t else "", "befund": befund, "standard": STANDARDS[punkt.split(" ")[0]],
+            "rolle": rolle, "kritisch": kritisch}
+
+
+def _haftung(zeilen: list[str], datei: str, jahreswert: dict | None, werte: list[dict]) -> list[dict]:
+    t = zeile_mit(zeilen, r"\bhaft")
+    if not t:
+        return [_abw(datei, "Haftung", None, "keine Haftungsbegrenzung – ohne Regelung gilt das Gesetz (unbegrenzt)",
+                     kritisch=True)]
+    out = []
+    if re.search(r"unbeschränkt|unbegrenzt|in voller höhe", t[1], re.I):
+        out.append(_abw(datei, "Haftung", t, "Haftung unbeschränkt", kritisch=True))
+    elif m := re.search(ZAHL + r"\s*%", t[1]):
+        prozent = zahl(m.group(1))
+        if jahreswert:
+            werte.append(kz.wert("Haftungsgrenze", round(jahreswert["betrag"] * prozent / 100, 2),
+                                 [f"{datei} Zeile {t[0]}", *jahreswert["quelle"]],
+                                 formel=f"{kz.deutsch(prozent)} % × Jahresvertragswert"))
+        if prozent > 100:
+            out.append(_abw(datei, "Haftung", t, f"Haftungsgrenze {kz.deutsch(prozent)} % des Vertragswerts – über "
+                                                 "eurem Standard"))
+    if re.search(r"folgeschä|entgangen", t[1], re.I) and re.search(r"einschließlich|inklusive|auch für", t[1], re.I):
+        out.append(_abw(datei, "Haftung (Folgeschäden)", t, "Haftung auch für Folgeschäden und entgangenen Gewinn",
+                        kritisch=True))
+    return out
+
+
+def _vertragsstrafe(zeilen: list[str], datei: str) -> list[dict]:
+    t = zeile_mit(zeilen, r"vertragsstrafe|pönale")
+    if not t:
+        return []
+    befunde, kritisch = [], False
+    m = re.search(ZAHL + r"\s*%[^.;]*?je\s+(?:angefangene[nr]?\s+|vollendete[nr]?\s+)?(stunde|tag|woche|monat)",
+                  t[1], re.I)
+    if m and (m.group(2).lower() != "woche" or zahl(m.group(1)) > 0.5):
+        befunde.append(f"Satz {m.group(1)} % je {m.group(2)}")
+    cap = re.search(r"(?:höchstens|maximal|begrenzt auf)\D{0,30}" + ZAHL + r"\s*%", t[1], re.I)
+    if re.search(r"ohne (ober)?grenze|unbegrenzt", t[1], re.I) or not cap:
+        befunde.append("keine Obergrenze")
+        kritisch = True
+    elif zahl(cap.group(1)) > 5:
+        befunde.append(f"Obergrenze {cap.group(1)} %")
+    return [_abw(datei, "Vertragsstrafe", t, "; ".join(befunde), kritisch=kritisch)] if befunde else []
+
+
+def _einfach(zeilen: list[str], datei: str) -> list[dict]:
+    out = []
+    t = zeile_mit(zeilen, r"reaktionszeit")
+    m = t and re.search(r"(\d+)\s*(?:stunden|std\.?|h)\b", t[1], re.I)
+    if m and int(m.group(1)) < 24:
+        nacht = ", auch nachts/am Wochenende" if re.search(r"rund um die uhr|24/7|wochenende", t[1], re.I) else ""
+        out.append(_abw(datei, "Reaktionszeit", t, f"{m.group(1)} Stunden{nacht} – Machbarkeit mit dem Betrieb "
+                                                    "(kapazitaet-lage) prüfen"))
+    t = zeile_mit(zeilen, r"gewährleistung|mängelansprüche|verjährung")
+    m = t and re.search(r"(\d+)\s*monat", t[1], re.I)
+    if m and int(m.group(1)) > 12:
+        out.append(_abw(datei, "Gewährleistung", t, f"{m.group(1)} Monate"))
+    if t := zeile_mit(zeilen, r"verfügbarkeit|garantiert|garantie"):
+        out.append(_abw(datei, "Garantien", t, "Verfügbarkeits- oder Leistungsgarantie"))
+    t = zeile_mit(zeilen, r"(es gilt|anwendbar)[^.]*recht|gerichtsstand")
+    if t and not re.search(r"deutsch", t[1], re.I):
+        out.append(_abw(datei, "Recht", t, "fremdes Recht oder fremder Gerichtsstand"))
+    if t := zeile_mit(zeilen, r"laufzeit"):
+        m = re.search(r"(\d+)\s*monat", t[1], re.I)
+        if (m and int(m.group(1)) > 24) or re.search(r"nur aus wichtigem grund", t[1], re.I):
+            out.append(_abw(datei, "Laufzeit", t, "lange Bindung oder keine ordentliche Kündigung"))
+    if t := zeile_mit(zeilen, r"hersteller|produktsicherheit|produkthaftung|ce-kennzeichnung|freistell"):
+        out.append(_abw(datei, "Produktsicherheit", t, "Herstellerpflichten oder Freistellung übernommen",
+                        rolle="produktsicherheit", kritisch=True))
+    return out
+
+
+def vertragspruefung(ws: Path, datei: str, kunde: str | None = None) -> dict:
+    text = text_von(ws, datei)
+    zeilen = text.splitlines()
+    ordner, hinweise = quelle(ws)
+    hinweise.append(f"Vertragsstandards V1–V8: {STANDARD}")
+    meldungen: list[str] = []
+    werte: list[dict] = []
+    jahreswert = None
+    if t := zeile_mit(zeilen, r"vertragswert\D{0,20}" + ZAHL + r"\s*(?:EUR|€|Euro)"):
+        m = re.search(r"vertragswert\D{0,20}" + ZAHL, t[1], re.I)
+        jahreswert = kz.wert("Jahresvertragswert", zahl(m.group(1)), [f"{datei} Zeile {t[0]}"])
+        werte.append(jahreswert)
+    else:
+        meldungen.append("Kein Jahresvertragswert im Vertrag gefunden – Haftungs- und Strafbeträge nicht in EUR "
+                         "umgerechnet.")
+    abw = _haftung(zeilen, datei, jahreswert, werte) + _vertragsstrafe(zeilen, datei) + _einfach(zeilen, datei)
+    rollen = (["recht"] if abw else []) + [a["rolle"] for a in abw if a["rolle"] != "recht"]
+    fx_liste, fx_text = experten(kz.definitionen(ordner), rollen, meldungen)
+    kritisch = [a["punkt"] for a in abw if a["kritisch"]]
+    rest = [a["punkt"] for a in abw if not a["kritisch"]]
+    if not abw:
+        urteil, grund = "zustimmen", "keine Abweichung von euren Vertragsstandards gefunden"
+    elif kritisch:
+        urteil = "ablehnen"
+        grund = "in dieser Fassung nicht unterschreiben: " + ", ".join(kritisch) + (
+            "; außerdem nachverhandeln: " + ", ".join(rest) if rest else "")
+    else:
+        urteil, grund = "zustimmen mit Auflagen", "nachverhandeln: " + ", ".join(rest)
+    text_empf = " ".join(x for x in (f"Empfehlung: {urteil} – {grund}.", fx_text, "Hinweis: keine Rechtsberatung.")
+                         if x)
+    return {"ok": True, "datei": datei, "kunde": kunde, "abweichungen": abw, "anzahl_abweichungen": len(abw),
+            "kritisch": len(kritisch), "werte": werte, "urteil": urteil, "fachexperten": fx_liste,
+            "empfehlung": text_empf, "auffaellige_anweisungen": eingang_anweisungen(ws, {datei: text}),
+            "ausgabe_datei": f"04_Angebote/{dt.date.today().isoformat()}_vertragspruefung-"
+                             f"{kunde or Path(datei).stem}.docx",
+            "gliederung": ["Ergebnis auf einen Blick", "Abweichungen von euren Standards (mit Fundstelle)",
+                           "Nachverhandlungsvorschläge", "Vom Skript nicht bewertete Klauseln", "Fachexperten",
+                           "Hinweis: keine Rechtsberatung"],
+            "hinweise": hinweise, "meldungen": meldungen, "rechtshinweis": KEIN_RAT}

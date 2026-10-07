@@ -230,3 +230,60 @@ def test_damaged_case_is_named_and_skipped(qws):
 def test_no_order_data_is_an_error(kit_ws):
     with pytest.raises(qr.QRFehler, match="Keine Auftragsdaten"):
         qr.wiederholfehler(kit_ws)
+
+
+HANSA = "00_Eingang/Wartungsvertrag_Hansa_Pack_2027.md"
+NORD = "00_Eingang/Rahmenvertrag_Nordmetall_Entwurf.md"
+
+
+def test_contract_close_to_standard(qws):
+    out = qr.vertragspruefung(qws, HANSA, kunde="Hansa Pack AG")
+    assert (out["anzahl_abweichungen"], out["kritisch"], out["urteil"]) == \
+        (ERWARTET["vertrag_hansa_abweichungen"], 0, "zustimmen mit Auflagen")
+    a = out["abweichungen"][0]
+    assert (a["punkt"], a["fundstelle"], a["rolle"]) == ("Haftung", f"{HANSA} Zeile 6", "recht")
+    jahr, grenze = out["werte"]
+    assert (jahr["betrag"], jahr["quelle"]) == (36000, [f"{HANSA} Zeile 8"])
+    assert grenze["betrag"] == ERWARTET["vertrag_hansa_haftungsgrenze_eur"] and grenze["berechnet"]
+    assert out["empfehlung"] == ("Empfehlung: zustimmen mit Auflagen – nachverhandeln: Haftung. Fachexperten "
+                                 "einbinden: Recht – Dr. Anna Roth. Hinweis: keine Rechtsberatung.")
+    assert out["ausgabe_datei"].endswith("_vertragspruefung-Hansa Pack AG.docx")
+
+
+def test_customer_draft_with_critical_deviations(qws):
+    out = qr.vertragspruefung(qws, NORD)
+    assert [a["punkt"] for a in out["abweichungen"]] == [
+        "Haftung", "Haftung (Folgeschäden)", "Vertragsstrafe", "Reaktionszeit", "Gewährleistung", "Garantien",
+        "Recht", "Laufzeit", "Produktsicherheit"]
+    assert out["anzahl_abweichungen"] == ERWARTET["vertrag_nordmetall_abweichungen"]
+    assert out["kritisch"] == ERWARTET["vertrag_nordmetall_kritisch"] and out["urteil"] == "ablehnen"
+    assert out["empfehlung"].startswith("Empfehlung: ablehnen – in dieser Fassung nicht unterschreiben: Haftung, "
+                                        "Haftung (Folgeschäden), Vertragsstrafe, Produktsicherheit")
+    assert [e["rolle"] for e in out["fachexperten"]] == ["recht", "produktsicherheit"]
+    assert "Produktsicherheit – Sabine Kühn" in out["empfehlung"]
+    assert out["werte"][0]["betrag"] == 48000
+
+
+def test_word_contract_gives_the_same_result(qws):
+    from docx import Document
+    d = Document()
+    for z in (qws / HANSA).read_text(encoding="utf-8").splitlines():
+        d.add_paragraph(z)
+    d.save(qws / "00_Eingang" / "hansa.docx")
+    assert qr.vertragspruefung(qws, "00_Eingang/hansa.docx")["anzahl_abweichungen"] == 1
+
+
+def test_pdf_and_outside_paths_are_refused(qws, tmp_path):
+    (qws / "00_Eingang" / "vertrag.pdf").write_bytes(b"%PDF-1.4")
+    with pytest.raises(qr.QRFehler, match=r"Dateiformat \.pdf"):
+        qr.vertragspruefung(qws, "00_Eingang/vertrag.pdf")
+    (tmp_path / "x.md").write_text("Haftung", encoding="utf-8")
+    with pytest.raises(qr.QRFehler, match="außerhalb des Arbeitsordners"):
+        qr.vertragspruefung(qws, "../x.md")
+
+
+def test_contract_without_liability_clause_is_critical(qws):
+    (qws / "00_Eingang" / "kurz.md").write_text("§ 1 Gegenstand: Wartung.\n", encoding="utf-8")
+    out = qr.vertragspruefung(qws, "00_Eingang/kurz.md")
+    assert out["abweichungen"][0]["befund"].startswith("keine Haftungsbegrenzung") and out["urteil"] == "ablehnen"
+    assert any("Kein Jahresvertragswert" in m for m in out["meldungen"])
