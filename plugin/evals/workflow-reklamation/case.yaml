@@ -1,0 +1,60 @@
+schema_version: "1.1"
+name: workflow-reklamation
+description: "Workflow Reklamation: Qualität & Recht → Finanzen → Entscheidungsvorlage → Mensch entscheidet."
+tags: ["skill:reklamation-entscheidung", sauber, workflow]
+runs: 3
+execution:
+  max_turns: 60
+  timeout_seconds: 1500
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "reklamation.*--ursache anders",
+    }
+  - name: empfehlung-qualitaet-recht
+    type: regex
+    pattern: "· empfehlung · qualitaet-recht\\s+Empfehlung: zustimmen mit Auflagen – keine Gewährleistung auf SA-260901[\\s\\S]*Kulanz 25 % \\(595 EUR"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: grenze-ueberschritten
+    type: regex
+    pattern: "Freigabegrenze von 300 EUR – weiter an Finanzen"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - {
+      name: finanzen-beteiligt,
+      type: regex,
+      pattern: "margen-pruefung",
+      target: trace,
+    }
+  - {
+      name: entscheidungsvorlage,
+      type: tool_used,
+      tool: Skill,
+      input_match: "entscheidungsvorlage",
+      min: 1,
+    }
+  - {
+      name: keine-mail-vor-entscheidung,
+      type: tool_used,
+      tool: Skill,
+      input_match: "mail-entwurf",
+      min: 0,
+      max: 0,
+    }
+  - {
+      name: keine-entscheidung,
+      type: regex,
+      pattern: "entscheidung: null",
+      target: { source: file, path: 01_Vorgaenge/offen/V-0001.md },
+    }
+  - name: endet-beim-menschen
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that Qualität & Recht recommends 25 % goodwill (595 EUR), that finance
+      reviewed it because it is above the 300 EUR limit, names the decision memo file, and ends by asking the user to
+      decide (approve or reject V-0001). FAIL if it sets a decision, drafts or sends a customer mail, or if the same
+      agent both recommends and reviews the goodwill.

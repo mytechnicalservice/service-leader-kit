@@ -1,0 +1,41 @@
+schema_version: "1.1"
+name: wiederholfehler-bericht-sauber
+description: "MM-600 Spindel als Wiederholfehler, Weber zweimal in 41 Tagen."
+tags: ["skill:wiederholfehler-bericht", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "qualitaet_recht\\.py.*wiederholfehler",
+    }
+  - {
+      name: kosten-mm600,
+      type: regex,
+      pattern: "7\\.690",
+      target: last_message,
+    }
+  - {
+      name: typ-und-teil,
+      type: regex,
+      pattern: "MM-600[\\s\\S]{0,120}Spindel|Spindel[\\s\\S]{0,120}MM-600",
+      target: last_message,
+    }
+  - {
+      name: dokument,
+      type: file_exists,
+      path: "03_Berichte/*_wiederholfehler-bericht.docx",
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names MM-600 spindle as a recurring fault with 5 repairs, mentions Weber
+      Kunststofftechnik Anlage 2 repaired twice within 41 days, says that months before 2026-07 have no data, and
+      contains no per-person employee information.

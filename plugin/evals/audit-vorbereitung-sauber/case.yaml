@@ -1,0 +1,36 @@
+schema_version: "1.1"
+name: audit-vorbereitung-sauber
+description: "Nachweisliste 3 von 10, V-0001 überfällig."
+tags: ["skill:audit-vorbereitung", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "qualitaet_recht\\.py.*audit-vorbereitung",
+    }
+  - {
+      name: nachweise,
+      type: regex,
+      pattern: "\\b3 von 10\\b",
+      target: last_message,
+    }
+  - { name: ueberfaellig, type: regex, pattern: "V-0001", target: last_message }
+  - {
+      name: dokument,
+      type: file_exists,
+      path: "03_Berichte/*_audit-vorbereitung.xlsx",
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, lists the missing evidence (among them the contracts of the contract customers
+      and the retention period), names V-0001 as overdue, mentions the MM-600 spindle recurring fault, and lists what
+      the kit cannot cover (for example calibration). FAIL if it shows any per-person employee data.

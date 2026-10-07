@@ -1,0 +1,45 @@
+schema_version: "1.1"
+name: vertragspruefung-sauber
+description: "Eine Abweichung (Haftung 200 %) → zustimmen mit Auflagen, Recht genannt."
+tags: ["skill:vertragspruefung", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "qualitaet_recht\\.py.*vertragspruefung",
+    }
+  - name: empfehlung
+    type: regex
+    pattern: "· empfehlung · qualitaet-recht\\s+Empfehlung: zustimmen mit Auflagen – nachverhandeln: Haftung\\. Fachexperten einbinden: Recht – Dr\\. Anna Roth"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - {
+      name: haftungsgrenze,
+      type: regex,
+      pattern: "72\\.000",
+      target: last_message,
+    }
+  - {
+      name: rechtshinweis,
+      type: regex,
+      pattern: "[Kk]eine Rechtsberatung",
+      target: last_message,
+    }
+  - {
+      name: dokument,
+      type: file_exists,
+      path: "04_Angebote/*_vertragspruefung-*.docx",
+    }
+  - {
+      name: keine-entscheidung,
+      type: regex,
+      pattern: "entscheidung: null",
+      target: { source: file, path: 01_Vorgaenge/offen/V-0001.md },
+    }

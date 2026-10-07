@@ -1,0 +1,5 @@
+﻿Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,Komponente,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-260901,Müller GmbH,Anlage 4,Reparatur,2026-09-03,2026-09-03,abgeschlossen,8.0,2380.0,1640.0,Süd,Spindel,auftraege_2026-09.xlsx,Tabelle1,2
+SA-260902,Hansa Pack AG,Anlage 2,Reparatur,2026-09-10,2026-09-11,abgeschlossen,6.0,1310.0,905.0,Nord,Hydraulik,auftraege_2026-09.xlsx,Tabelle1,3
+SA-260903,Rhein Chemie Service,Anlage 1,Inbetriebnahme,2026-09-15,2026-09-17,abgeschlossen,16.0,4120.0,2870.0,West,,auftraege_2026-09.xlsx,Tabelle1,4
+SA-260904,Schreiner & Söhne,Anlage 2,Reparatur,2026-09-22,2026-09-23,abgeschlossen,6.0,1590.0,1120.0,Süd,Spindel,auftraege_2026-09.xlsx,Tabelle1,5

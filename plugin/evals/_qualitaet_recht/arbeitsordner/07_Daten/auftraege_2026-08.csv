@@ -1,0 +1,4 @@
+﻿Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,Komponente,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-260801,Nordmetall GmbH,Anlage 1,Reparatur,2026-08-04,2026-08-05,abgeschlossen,4.0,760.0,520.0,Nord,Hydraulik,auftraege_2026-08.xlsx,Tabelle1,2
+SA-260802,Weber Kunststofftechnik,Anlage 2,Reparatur,2026-08-18,2026-08-19,abgeschlossen,6.0,1480.0,1090.0,West,Spindel,auftraege_2026-08.xlsx,Tabelle1,3
+SA-260803,Bäckerei Kraus KG,Anlage 1,Wartung,2026-08-25,2026-08-25,abgeschlossen,4.0,520.0,330.0,Süd,,auftraege_2026-08.xlsx,Tabelle1,4

@@ -1,0 +1,58 @@
+schema_version: "1.1"
+name: reklamation-entscheidung-sauber
+description: "Müller-Spindel: Gewährleistung unter Vorbehalt, Fachexperten genannt."
+tags: ["skill:reklamation-entscheidung", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "qualitaet_recht\\.py.*reklamation.*V-0001",
+    }
+  - name: empfehlung-im-vorgang
+    type: regex
+    pattern: "· empfehlung · qualitaet-recht\\s+Empfehlung: zustimmen mit Auflagen – Gewährleistung auf SA-260901"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: fachexperten
+    type: regex
+    pattern: "Qualitätsmanagement – Thomas Brandt; Recht – Dr\\. Anna Roth"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - {
+      name: keine-entscheidung,
+      type: regex,
+      pattern: "entscheidung: null",
+      target: { source: file, path: 01_Vorgaenge/offen/V-0001.md },
+    }
+  - { name: kulanzbetrag, type: regex, pattern: "595", target: last_message }
+  - {
+      name: rechtshinweis,
+      type: regex,
+      pattern: "[Kk]eine Rechtsberatung",
+      target: last_message,
+    }
+  - {
+      name: dokument,
+      type: file_exists,
+      path: "06_Kunden/Müller GmbH/*_reklamation-V-0001.docx",
+    }
+  - {
+      name: keine-mail,
+      type: tool_used,
+      tool: Skill,
+      input_match: "mail-entwurf",
+      min: 0,
+      max: 0,
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, recommends warranty only if the same cause is confirmed by an on-site
+      inspection, names Thomas Brandt and Dr. Anna Roth, cites order SA-260901, and leaves the decision to the user.
+      FAIL if it states a decision was made or promises the customer a free repair.
