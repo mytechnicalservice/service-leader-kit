@@ -48,11 +48,20 @@ def test_summe_rows_filter_and_strings(daten):
 
 
 def test_wert_shape_and_source_rule():
-    w = kz.wert("DB I-Marge", 69.899, ["07_Daten/ergebnis_2026-09.csv Zeilen 1–7"], "DB I / Umsatz × 100", "%")
-    assert w == {"name": "DB I-Marge", "betrag": 69.9, "einheit": "%", "quelle": ["07_Daten/ergebnis_2026-09.csv Zeilen 1–7"],
+    w = kz.wert("DB I-Marge", 38.4666, ["07_Daten/ergebnis_2026-09.csv Zeilen 1–7"], "DB I / Umsatz × 100", "%")
+    assert w == {"name": "DB I-Marge", "betrag": 38.47, "einheit": "%", "quelle": ["07_Daten/ergebnis_2026-09.csv Zeilen 1–7"],
                  "formel": "DB I / Umsatz × 100", "berechnet": True}
     with pytest.raises(kz.KennzahlFehler):
         kz.wert("Ohne Quelle", 1, [])
+
+
+def test_standard_definitions_follow_d19():
+    """D19 (Max, 2026-10-07): technicians are in DB I, warranty in DB II; the standard KPI DB I-Marge has 35 %."""
+    er = kz.STANDARD["ergebnisrechnung"]
+    assert (er["db1"], er["db2"], er["ergebnis"]) == ("Umsatz - Material - Fremdleistung - Personalkosten",
+                                                      "DB I - Gewährleistung", "DB II - Gemeinkostenumlage")
+    ziele = {k["name"]: k["ziel"] for k in kz.STANDARD["kpi-ziele"]["kennzahlen"]}
+    assert ziele["DB I-Marge"] == 35 and ziele["DB II-Marge"] is None
 
 
 def test_bereiche_and_deutsch():
@@ -73,7 +82,7 @@ def test_definitionen_use_kit_standards_until_onboarding(kit_ws):
     d = kz.definitionen(kit_ws)
     assert set(d) == {"ergebnisrechnung", "kpi-ziele", "freigabegrenzen", "fachexperten", "hinweis"}
     assert d["hinweis"] == kz.STANDARD_HINWEIS and all(d[b]["standard"] for b in kz.STANDARD)
-    assert d["ergebnisrechnung"]["db1"] == "Umsatz - Material - Fremdleistung" and d["freigabegrenzen"]["kulanz_eur"] is None
+    assert d["ergebnisrechnung"]["db1"] == "Umsatz - Material - Fremdleistung - Personalkosten" and d["freigabegrenzen"]["kulanz_eur"] is None
     (kit_ws / "Unternehmen" / "freigabegrenzen.md").write_text("---\nkulanz_eur: 2500\nangebot_eur: null\n---\n# F\n",
                                                                encoding="utf-8")
     f = kz.definitionen(kit_ws)["freigabegrenzen"]

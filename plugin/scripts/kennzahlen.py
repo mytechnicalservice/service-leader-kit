@@ -28,9 +28,9 @@ STANDARD = {
     "ergebnisrechnung": {
         "umsatzarten": ["ersatzteile", "aussendienst", "vertraege", "retrofit", "schulung"],
         "gewaehrleistung_traeger": "service",
-        "db1": "Umsatz - Material - Fremdleistung",
-        "db2": "DB I - Personalkosten",
-        "ergebnis": "DB II - Gewährleistung - Gemeinkostenumlage",
+        "db1": "Umsatz - Material - Fremdleistung - Personalkosten",  # D19: technicians are in DB I
+        "db2": "DB I - Gewährleistung",
+        "ergebnis": "DB II - Gemeinkostenumlage",
         "gemeinkosten_umlage": "Gemeinkostenumlage laut Ergebnis-Export (Position 'Gemeinkostenumlage')",
         "verrechnungspreise": None,
         "positionen": {"Umsatz Ersatzteile": "ersatzteile", "Umsatz Service": "aussendienst",
@@ -44,8 +44,8 @@ STANDARD = {
     "kpi-ziele": {"kennzahlen": [
         {"name": "Serviceumsatz", "formel": "Summe der Umsatzpositionen (Ist_EUR)", "quelle": "ergebnis",
          "ziel": None, "einheit": "EUR", "richtung": "hoch"},
-        {"name": "DB I-Marge", "formel": "DB I / Serviceumsatz × 100", "quelle": "ergebnis", "ziel": None,
-         "einheit": "%", "richtung": "hoch"},
+        {"name": "DB I-Marge", "formel": "DB I / Serviceumsatz × 100", "quelle": "ergebnis", "ziel": 35,
+         "einheit": "%", "richtung": "hoch"},  # D19 kit standard; standard while "kennzahlen" is in standard_felder
         {"name": "DB II-Marge", "formel": "DB II / Serviceumsatz × 100", "quelle": "ergebnis", "ziel": None,
          "einheit": "%", "richtung": "hoch"},
         {"name": "Planerfüllung Umsatz", "formel": "Serviceumsatz Ist / Plan × 100", "quelle": "ergebnis",
