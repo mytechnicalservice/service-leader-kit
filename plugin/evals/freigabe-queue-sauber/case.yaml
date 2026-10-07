@@ -1,0 +1,57 @@
+schema_version: "1.1"
+name: freigabe-queue-sauber
+description: "Queue in Reihenfolge; der Nutzer gibt V-0004 frei."
+tags: ["skill:freigabe-queue", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "assistenz\\.py.*freigabe-queue",
+    }
+  - name: reihenfolge
+    type: regex
+    pattern: "1\\. V-0004 ·[\\s\\S]*2\\. V-0005 ·"
+    target: { source: file, path: 03_Berichte/2026-10-07_freigabe-queue.md }
+  - {
+      name: summe,
+      type: regex,
+      pattern: "Zusammen: 17\\.300 €",
+      target: { source: file, path: 03_Berichte/2026-10-07_freigabe-queue.md },
+    }
+  - {
+      name: ohne-empfehlung,
+      type: regex,
+      pattern: "Noch ohne Empfehlung[\\s\\S]*V-0006",
+      target: { source: file, path: 03_Berichte/2026-10-07_freigabe-queue.md },
+    }
+  - {
+      name: entscheide,
+      type: tool_used,
+      tool: Bash,
+      input_match: "vorgang\\.py.*entscheide.*V-0004",
+      min: 1,
+    }
+  - name: v0004-frei
+    type: regex
+    pattern: "entscheidung: \"freigegeben\"[\\s\\S]*entschieden_von: \"Max Mustermann\""
+    target: { source: file, path: 01_Vorgaenge/offen/V-0004.md }
+  - {
+      name: v0005-offen,
+      type: regex,
+      pattern: "entscheidung: null",
+      target: { source: file, path: 01_Vorgaenge/offen/V-0005.md },
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, lists V-0004 before V-0005 with their recommendations and the total
+      17.300 €, mentions V-0006 as still without recommendation, and confirms only V-0004 as approved by Max
+      Mustermann.

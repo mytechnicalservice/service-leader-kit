@@ -1,0 +1,49 @@
+schema_version: "1.1"
+name: wochenplanung-sauber
+description: "Wochenplan KW 41 aus Vorgängen."
+tags: ["skill:wochenplanung", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "assistenz\\.py.*wochenplanung",
+    }
+  - {
+      name: kopf,
+      type: regex,
+      pattern: "Wochenplanung KW 41",
+      target: { source: file, path: 03_Berichte/2026-10-07_wochenplanung.md },
+    }
+  - name: schwerpunkte
+    type: regex
+    pattern: "## Schwerpunkte der Woche\\n\\n1\\. V-0001[^\\n]*\\n2\\. V-0002[^\\n]*\\n3\\. V-0004"
+    target: { source: file, path: 03_Berichte/2026-10-07_wochenplanung.md }
+  - name: mittwoch
+    type: regex
+    pattern: "### Mittwoch, 07\\.10\\.2026\\n\\n(- [^\\n]*\\n)*- fällig: V-0004"
+    target: { source: file, path: 03_Berichte/2026-10-07_wochenplanung.md }
+  - {
+      name: wochenende,
+      type: regex,
+      pattern: "### Wochenende\\n\\n- fällig: V-0007",
+      target: { source: file, path: 03_Berichte/2026-10-07_wochenplanung.md },
+    }
+  - {
+      name: routine,
+      type: regex,
+      pattern: "- Montag: wochenstart",
+      target: { source: file, path: 03_Berichte/2026-10-07_wochenplanung.md },
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names three priorities (V-0001 overdue, the V-0002 escalation, the V-0004
+      decision due Wednesday) with a reason each, and makes no decision.
