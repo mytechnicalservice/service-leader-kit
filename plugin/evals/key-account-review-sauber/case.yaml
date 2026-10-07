@@ -1,0 +1,31 @@
+schema_version: "1.1"
+name: key-account-review-sauber
+description: "Top-5-Kunden nach 12-Monats-Umsatz mit Basis, Verträgen, Vorgängen, Potenzial."
+tags: ["skill:key-account-review", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? key-account-review"
+  - name: top1-kunde
+    type: regex
+    pattern: "Hansa\\ Pack\\ AG"
+  - name: top1-umsatz
+    type: regex
+    pattern: "422\\.438"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*_key-account-review.docx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, lists five customers ranked by 12-month revenue (service plus parts) with
+      German-format numbers, mentions installed base, contract status, open cases and potential, and names the report
+      file. FAIL if it evaluates individual employees or states a number not in the vertrieb.py output.

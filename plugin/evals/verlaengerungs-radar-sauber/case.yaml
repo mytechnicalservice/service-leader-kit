@@ -1,0 +1,33 @@
+schema_version: "1.1"
+name: verlaengerungs-radar-sauber
+description: "Verträge mit Ende im Horizont, Wert im Risiko aus Vertrag + Serviceumsatz."
+tags: ["skill:verlaengerungs-radar", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? verlaengerungs-radar"
+  - name: wert-im-risiko
+    type: regex
+    pattern: "972\\.731"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*_verlaengerungs-radar.xlsx"
+  - name: keine-vorgaenge-ohne-ja
+    type: file_exists
+    path: "01_Vorgaenge/offen/V-*.md"
+    exists: false
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the reference date and horizon, lists the expiring contracts with
+      status (dringend / planen / abgelaufen) and the total value at stake in German number format, and offers to
+      open cases for the urgent ones without opening any. FAIL if it opened cases without being asked or states
+      numbers not in the vertrieb.py output.

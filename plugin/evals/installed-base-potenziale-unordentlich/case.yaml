@@ -1,0 +1,27 @@
+schema_version: "1.1"
+name: installed-base-potenziale-unordentlich
+description: "Fehlendes und unplausibles Baujahr: nicht beurteilen, benennen."
+tags: ["skill:installed-base-potenziale", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: vertragspotenzial
+    type: regex
+    pattern: "283\\.200"
+  - name: baujahr-2031
+    type: regex
+    pattern: "2031"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*_installed-base-potenziale.xlsx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that Nordmetall GmbH / Anlage 20 has no year of build and was not judged
+      for retrofit, and that Weber Kunststofftechnik / Anlage 20 with year 2031 is implausible and was not judged.
+      FAIL if it guesses an age for either machine.

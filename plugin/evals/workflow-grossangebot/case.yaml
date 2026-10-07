@@ -1,0 +1,50 @@
+schema_version: "1.1"
+name: workflow-grossangebot
+description: "Workflow Großangebot: Entwurf → Finanzen → Qualität & Recht → Entscheidungsvorlage → Mensch."
+tags: ["skill:grossangebot", sauber, workflow]
+runs: 3
+execution:
+  max_turns: 80
+  timeout_seconds: 1800
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: abweichung-uebergeben
+    type: tool_used
+    tool: Bash
+    input_match: "vertrieb\\.py\"? grossangebot.*--abweichung"
+  - name: empfehlung-finanzen
+    type: regex
+    pattern: "### \\d{4}-\\d{2}-\\d{2} · empfehlung · finanzen\\n\\nEmpfehlung: (zustimmen|zustimmen mit Auflagen|ablehnen)"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: empfehlung-recht
+    type: regex
+    pattern: "### \\d{4}-\\d{2}-\\d{2} · empfehlung · qualitaet-recht\\n\\nEmpfehlung: (zustimmen|zustimmen mit Auflagen|ablehnen)"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: reihenfolge
+    type: regex
+    pattern: "empfehlung · finanzen[\\s\\S]*empfehlung · qualitaet-recht"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: keine-selbstpruefung
+    type: regex
+    pattern: "empfehlung · vertrieb"
+    match: not_contains
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: keine-entscheidung
+    type: regex
+    pattern: "entscheidung: null[\\s\\S]*entschieden_von: null"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: entscheidungsvorlage
+    type: file_exists
+    path: "04_Angebote/**/*ntscheidungsvorlage*"
+  - name: angebotswert
+    type: regex
+    pattern: "27\\.360"
+  - name: abschluss
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the quote file, case V-0001, the recommendations of Finanzen and of
+      Qualität & Recht, the liability deviation as a reason for the legal review, and the decision memo, and ends by
+      saying that the user decides and signs and that nothing was sent. FAIL if any agent's recommendation is
+      presented as a decision, or if the case is approved or rejected.
