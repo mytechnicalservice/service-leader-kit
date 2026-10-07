@@ -85,3 +85,40 @@ def test_hardcoded_totals_match_the_generated_sample_data():
         muster = [g["pattern"] for g in lade(EVALS / name)["graders"] if g["type"] == "regex"]
         assert any(deutsch.replace(".", r"\.") in m for m in muster), name
     assert erwartet["unordentlich_duplikate_auftraege"] == 3
+
+
+@pytest.fixture
+def jahr_scaffold(tmp_path):
+    """A throwaway case folder next to the real ones, so the scaffold finds the plugin exactly like in a run."""
+    import shutil
+    import uuid
+    case = EVALS / f"_test-{uuid.uuid4().hex[:8]}"
+    case.mkdir()
+
+    def bau(datensatz, ziel, shell):
+        (case / "scaffold.sh").write_text(f'#!/bin/sh\n. "$(dirname "$0")/../_gemeinsam/arbeitsordner.sh"\nbaue {datensatz}\n',
+                                          encoding="utf-8")
+        env = {"PATH": os.environ["PATH"], "HOME": str(ziel), "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb"}
+        return subprocess.run([shell, str(case / "scaffold.sh")], cwd=ziel, env=env, capture_output=True, text=True,
+                              timeout=120)
+    yield bau
+    shutil.rmtree(case)
+
+
+def test_jahr_scaffold_installs_the_onboarded_sample_company(tmp_path, shell, jahr_scaffold):
+    import kennzahlen as kz
+    assert jahr_scaffold("jahr", tmp_path, shell).returncode == 0
+    assert kz.datenquelle(tmp_path)["beispiel"] is False  # the user's own folder, not sample mode
+    assert kz.summe(kz.lade(tmp_path, "ergebnis", ["2026-09"]), "Ist_EUR", "x", Position="Umsatz Service")["betrag"] == \
+        json.loads((EVALS / "erwartet" / "beispiel.json").read_text(encoding="utf-8"))["umsatz_service_2026-09"]
+    assert kz.definitionen(tmp_path)["fachexperten"]["recht"] == "Dr. Anja Roth (Rechtsabteilung)"
+    assert (tmp_path / "00_Eingang" / "2026-09-29_mail-eskalation.eml").is_file()
+    assert not list((tmp_path / "00_Eingang").glob("*.xlsx")) and not list((tmp_path / "01_Vorgaenge" / "offen").iterdir())
+
+
+def test_jahr_unordentlich_adds_the_messy_documents(tmp_path, shell, jahr_scaffold):
+    assert jahr_scaffold("jahr-unordentlich", tmp_path, shell).returncode == 0
+    eingang = {p.name for p in (tmp_path / "00_Eingang").iterdir()}
+    assert {"2026-09-29_mail-preisanfrage.eml", "2026-09-30_angebot-hydraulik-nord-scan.pdf",
+            "Controlling_Monatsbericht_2026-09.xlsx"} <= eingang
+    assert "2026-09-24_angebot-hydraulik-nord.eml" not in eingang

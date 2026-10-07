@@ -1,0 +1,140 @@
+﻿Kunde,Anlage,Maschinentyp,Baujahr,Vertrag,Vertragsende,_quelle_datei,_quelle_blatt,_quelle_zeile
+Hansa Pack AG,Anlage 1,MM-800,2011.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,2
+Hansa Pack AG,Anlage 2,MM-800,2018.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,3
+Hansa Pack AG,Anlage 3,MM-600,2010.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,4
+Hansa Pack AG,Anlage 4,MM-600,2018.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,5
+Hansa Pack AG,Anlage 5,MM-400,2016.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,6
+Hansa Pack AG,Anlage 6,MM-600,2010.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,7
+Hansa Pack AG,Anlage 7,MM-400,2021.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,8
+Hansa Pack AG,Anlage 8,MM-600,2021.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,9
+Hansa Pack AG,Anlage 9,MM-400,2009.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,10
+Hansa Pack AG,Anlage 10,MM-400,2015.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,11
+Hansa Pack AG,Anlage 11,MM-400,2017.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,12
+Hansa Pack AG,Anlage 12,MM-400,2011.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,13
+Hansa Pack AG,Anlage 13,MM-800,2025.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,14
+Hansa Pack AG,Anlage 14,MM-800,2019.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,15
+Hansa Pack AG,Anlage 15,MM-600,2022.0,nein,,installed_base_2026-09.xlsx,Sheet,16
+Hansa Pack AG,Anlage 16,MM-800,2009.0,nein,,installed_base_2026-09.xlsx,Sheet,17
+Alpen Getränke AG,Anlage 1,MM-600,2018.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,18
+Alpen Getränke AG,Anlage 2,MM-800,2014.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,19
+Alpen Getränke AG,Anlage 3,MM-800,2022.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,20
+Alpen Getränke AG,Anlage 4,MM-600,2011.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,21
+Alpen Getränke AG,Anlage 5,MM-800,2019.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,22
+Alpen Getränke AG,Anlage 6,MM-800,2016.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,23
+Alpen Getränke AG,Anlage 7,MM-600,2017.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,24
+Alpen Getränke AG,Anlage 8,MM-600,2009.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,25
+Alpen Getränke AG,Anlage 9,MM-800,2021.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,26
+Alpen Getränke AG,Anlage 10,MM-400,2017.0,ja,2027-06-30,installed_base_2026-09.xlsx,Sheet,27
+Alpen Getränke AG,Anlage 11,MM-800,2018.0,nein,,installed_base_2026-09.xlsx,Sheet,28
+Müller GmbH,Anlage 1,MM-600,2011.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,29
+Müller GmbH,Anlage 2,MM-600,2021.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,30
+Müller GmbH,Anlage 3,MM-600,2008.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,31
+Müller GmbH,Anlage 4,MM-600,2021.0,nein,,installed_base_2026-09.xlsx,Sheet,32
+Müller GmbH,Anlage 5,MM-400,2025.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,33
+Müller GmbH,Anlage 6,MM-400,2011.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,34
+Müller GmbH,Anlage 7,MM-400,2011.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,35
+Müller GmbH,Anlage 8,MM-400,2009.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,36
+Müller GmbH,Anlage 9,MM-400,2024.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,37
+Müller GmbH,Anlage 10,MM-600,2017.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,38
+Müller GmbH,Anlage 11,MM-400,2021.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,39
+Müller GmbH,Anlage 12,MM-800,2012.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,40
+Müller GmbH,Anlage 13,MM-600,2021.0,ja,2027-03-31,installed_base_2026-09.xlsx,Sheet,41
+Müller GmbH,Anlage 14,MM-600,2020.0,nein,,installed_base_2026-09.xlsx,Sheet,42
+Nordmetall GmbH,Anlage 1,MM-400,2021.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,43
+Nordmetall GmbH,Anlage 2,MM-800,2015.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,44
+Nordmetall GmbH,Anlage 3,MM-400,2013.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,45
+Nordmetall GmbH,Anlage 4,MM-800,2008.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,46
+Nordmetall GmbH,Anlage 5,MM-800,2025.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,47
+Nordmetall GmbH,Anlage 6,MM-800,2025.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,48
+Nordmetall GmbH,Anlage 7,MM-600,2016.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,49
+Nordmetall GmbH,Anlage 8,MM-400,2015.0,ja,2026-12-31,installed_base_2026-09.xlsx,Sheet,50
+Nordmetall GmbH,Anlage 9,MM-400,2008.0,nein,,installed_base_2026-09.xlsx,Sheet,51
+Rhein Chemie Service,Anlage 1,MM-600,2025.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,52
+Rhein Chemie Service,Anlage 2,MM-600,2021.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,53
+Rhein Chemie Service,Anlage 3,MM-600,2018.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,54
+Rhein Chemie Service,Anlage 4,MM-400,2010.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,55
+Rhein Chemie Service,Anlage 5,MM-400,2025.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,56
+Rhein Chemie Service,Anlage 6,MM-400,2024.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,57
+Rhein Chemie Service,Anlage 7,MM-600,2018.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,58
+Rhein Chemie Service,Anlage 8,MM-800,2024.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,59
+Rhein Chemie Service,Anlage 9,MM-800,2018.0,ja,2027-09-30,installed_base_2026-09.xlsx,Sheet,60
+Rhein Chemie Service,Anlage 10,MM-400,2008.0,nein,,installed_base_2026-09.xlsx,Sheet,61
+Weber Kunststofftechnik,Anlage 1,MM-800,2015.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,62
+Weber Kunststofftechnik,Anlage 2,MM-600,2009.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,63
+Weber Kunststofftechnik,Anlage 3,MM-400,2024.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,64
+Weber Kunststofftechnik,Anlage 4,MM-400,2020.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,65
+Weber Kunststofftechnik,Anlage 5,MM-800,2019.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,66
+Weber Kunststofftechnik,Anlage 6,MM-400,2025.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,67
+Weber Kunststofftechnik,Anlage 7,MM-600,2018.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,68
+Weber Kunststofftechnik,Anlage 8,MM-400,2019.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,69
+Weber Kunststofftechnik,Anlage 9,MM-600,2022.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,70
+Weber Kunststofftechnik,Anlage 10,MM-800,2022.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,71
+Weber Kunststofftechnik,Anlage 11,MM-800,2023.0,ja,2027-01-31,installed_base_2026-09.xlsx,Sheet,72
+Weber Kunststofftechnik,Anlage 12,MM-800,2017.0,nein,,installed_base_2026-09.xlsx,Sheet,73
+Bäckerei Kraus KG,Anlage 1,MM-400,2013.0,ja,2026-11-30,installed_base_2026-09.xlsx,Sheet,74
+Bäckerei Kraus KG,Anlage 2,MM-800,2021.0,ja,2026-11-30,installed_base_2026-09.xlsx,Sheet,75
+Bäckerei Kraus KG,Anlage 3,MM-400,2023.0,ja,2026-11-30,installed_base_2026-09.xlsx,Sheet,76
+Bäckerei Kraus KG,Anlage 4,MM-400,2019.0,ja,2026-11-30,installed_base_2026-09.xlsx,Sheet,77
+Bäckerei Kraus KG,Anlage 5,MM-800,2021.0,ja,2026-11-30,installed_base_2026-09.xlsx,Sheet,78
+Bäckerei Kraus KG,Anlage 6,MM-400,2013.0,ja,2026-11-30,installed_base_2026-09.xlsx,Sheet,79
+Bäckerei Kraus KG,Anlage 7,MM-400,2017.0,nein,,installed_base_2026-09.xlsx,Sheet,80
+Fränkische Molkerei eG,Anlage 1,MM-600,2025.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,81
+Fränkische Molkerei eG,Anlage 2,MM-800,2016.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,82
+Fränkische Molkerei eG,Anlage 3,MM-400,2011.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,83
+Fränkische Molkerei eG,Anlage 4,MM-400,2025.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,84
+Fränkische Molkerei eG,Anlage 5,MM-400,2017.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,85
+Fränkische Molkerei eG,Anlage 6,MM-800,2009.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,86
+Fränkische Molkerei eG,Anlage 7,MM-600,2020.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,87
+Fränkische Molkerei eG,Anlage 8,MM-800,2024.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,88
+Fränkische Molkerei eG,Anlage 9,MM-800,2013.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,89
+Fränkische Molkerei eG,Anlage 10,MM-800,2011.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,90
+Fränkische Molkerei eG,Anlage 11,MM-400,2012.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,91
+Fränkische Molkerei eG,Anlage 12,MM-800,2020.0,ja,2027-04-30,installed_base_2026-09.xlsx,Sheet,92
+Fränkische Molkerei eG,Anlage 13,MM-600,2025.0,nein,,installed_base_2026-09.xlsx,Sheet,93
+Schreiner & Söhne,Anlage 1,MM-600,2017.0,nein,,installed_base_2026-09.xlsx,Sheet,94
+Schreiner & Söhne,Anlage 2,MM-400,2014.0,nein,,installed_base_2026-09.xlsx,Sheet,95
+Schreiner & Söhne,Anlage 3,MM-400,2017.0,nein,,installed_base_2026-09.xlsx,Sheet,96
+Schreiner & Söhne,Anlage 4,MM-600,2025.0,nein,,installed_base_2026-09.xlsx,Sheet,97
+Schreiner & Söhne,Anlage 5,MM-600,2019.0,nein,,installed_base_2026-09.xlsx,Sheet,98
+Ostsee Fisch GmbH,Anlage 1,MM-400,2020.0,nein,,installed_base_2026-09.xlsx,Sheet,99
+Ostsee Fisch GmbH,Anlage 2,MM-400,2008.0,nein,,installed_base_2026-09.xlsx,Sheet,100
+Ostsee Fisch GmbH,Anlage 3,MM-800,2023.0,nein,,installed_base_2026-09.xlsx,Sheet,101
+Ostsee Fisch GmbH,Anlage 4,MM-600,2019.0,nein,,installed_base_2026-09.xlsx,Sheet,102
+Ostsee Fisch GmbH,Anlage 5,MM-800,2013.0,nein,,installed_base_2026-09.xlsx,Sheet,103
+Ostsee Fisch GmbH,Anlage 6,MM-800,2024.0,nein,,installed_base_2026-09.xlsx,Sheet,104
+Ostsee Fisch GmbH,Anlage 7,MM-400,2013.0,nein,,installed_base_2026-09.xlsx,Sheet,105
+Ostsee Fisch GmbH,Anlage 8,MM-600,2025.0,nein,,installed_base_2026-09.xlsx,Sheet,106
+Bergmann Pharma GmbH,Anlage 1,MM-400,2013.0,nein,,installed_base_2026-09.xlsx,Sheet,107
+Bergmann Pharma GmbH,Anlage 2,MM-400,2011.0,nein,,installed_base_2026-09.xlsx,Sheet,108
+Bergmann Pharma GmbH,Anlage 3,MM-800,2008.0,nein,,installed_base_2026-09.xlsx,Sheet,109
+Bergmann Pharma GmbH,Anlage 4,MM-600,2010.0,nein,,installed_base_2026-09.xlsx,Sheet,110
+Bergmann Pharma GmbH,Anlage 5,MM-600,2017.0,nein,,installed_base_2026-09.xlsx,Sheet,111
+Bergmann Pharma GmbH,Anlage 6,MM-400,2025.0,nein,,installed_base_2026-09.xlsx,Sheet,112
+Bergmann Pharma GmbH,Anlage 7,MM-400,2015.0,nein,,installed_base_2026-09.xlsx,Sheet,113
+Bergmann Pharma GmbH,Anlage 8,MM-400,2011.0,nein,,installed_base_2026-09.xlsx,Sheet,114
+Bergmann Pharma GmbH,Anlage 9,MM-600,2023.0,nein,,installed_base_2026-09.xlsx,Sheet,115
+Elbe Papier AG,Anlage 1,MM-400,2010.0,nein,,installed_base_2026-09.xlsx,Sheet,116
+Elbe Papier AG,Anlage 2,MM-600,2016.0,nein,,installed_base_2026-09.xlsx,Sheet,117
+Elbe Papier AG,Anlage 3,MM-800,2017.0,nein,,installed_base_2026-09.xlsx,Sheet,118
+Elbe Papier AG,Anlage 4,MM-800,2011.0,nein,,installed_base_2026-09.xlsx,Sheet,119
+Elbe Papier AG,Anlage 5,MM-600,2023.0,nein,,installed_base_2026-09.xlsx,Sheet,120
+Elbe Papier AG,Anlage 6,MM-600,2011.0,nein,,installed_base_2026-09.xlsx,Sheet,121
+Elbe Papier AG,Anlage 7,MM-800,2024.0,nein,,installed_base_2026-09.xlsx,Sheet,122
+Elbe Papier AG,Anlage 8,MM-400,2019.0,nein,,installed_base_2026-09.xlsx,Sheet,123
+Elbe Papier AG,Anlage 9,MM-800,2022.0,nein,,installed_base_2026-09.xlsx,Sheet,124
+Elbe Papier AG,Anlage 10,MM-800,2019.0,nein,,installed_base_2026-09.xlsx,Sheet,125
+Kessler Feinkost,Anlage 1,MM-400,2010.0,nein,,installed_base_2026-09.xlsx,Sheet,126
+Kessler Feinkost,Anlage 2,MM-400,2023.0,nein,,installed_base_2026-09.xlsx,Sheet,127
+Kessler Feinkost,Anlage 3,MM-600,2016.0,nein,,installed_base_2026-09.xlsx,Sheet,128
+Kessler Feinkost,Anlage 4,MM-800,2015.0,nein,,installed_base_2026-09.xlsx,Sheet,129
+Kessler Feinkost,Anlage 5,MM-400,2018.0,nein,,installed_base_2026-09.xlsx,Sheet,130
+Kessler Feinkost,Anlage 6,MM-600,2024.0,nein,,installed_base_2026-09.xlsx,Sheet,131
+Lippe Verpackung GmbH,Anlage 1,MM-800,2018.0,nein,,installed_base_2026-09.xlsx,Sheet,132
+Lippe Verpackung GmbH,Anlage 2,MM-600,2023.0,nein,,installed_base_2026-09.xlsx,Sheet,133
+Lippe Verpackung GmbH,Anlage 3,MM-600,2018.0,nein,,installed_base_2026-09.xlsx,Sheet,134
+Lippe Verpackung GmbH,Anlage 4,MM-400,2014.0,nein,,installed_base_2026-09.xlsx,Sheet,135
+Lippe Verpackung GmbH,Anlage 5,MM-600,2015.0,nein,,installed_base_2026-09.xlsx,Sheet,136
+Lippe Verpackung GmbH,Anlage 6,MM-800,2019.0,nein,,installed_base_2026-09.xlsx,Sheet,137
+Lippe Verpackung GmbH,Anlage 7,MM-600,2021.0,nein,,installed_base_2026-09.xlsx,Sheet,138
+Lippe Verpackung GmbH,Anlage 8,MM-800,2020.0,nein,,installed_base_2026-09.xlsx,Sheet,139
+Lippe Verpackung GmbH,Anlage 9,MM-400,2012.0,nein,,installed_base_2026-09.xlsx,Sheet,140

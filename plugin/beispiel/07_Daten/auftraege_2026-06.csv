@@ -1,0 +1,182 @@
+﻿Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-2601357,Hansa Pack AG,Anlage 1,Inbetriebnahme,2026-06-01,2026-06-01,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,2
+SA-2601386,Lippe Verpackung GmbH,Anlage 1,Reparatur,2026-06-01,2026-06-01,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,3
+SA-2601393,Lippe Verpackung GmbH,Anlage 7,Reparatur,2026-06-01,2026-06-02,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,4
+SA-2601407,Lippe Verpackung GmbH,Anlage 6,Reparatur,2026-06-01,2026-06-01,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,5
+SA-2601471,Bäckerei Kraus KG,Anlage 4,Reparatur,2026-06-01,2026-06-02,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,6
+SA-2601374,Hansa Pack AG,Anlage 1,Reparatur,2026-06-02,2026-06-05,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,7
+SA-2601383,Lippe Verpackung GmbH,Anlage 8,Reparatur,2026-06-02,2026-06-05,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,8
+SA-2601421,Hansa Pack AG,Anlage 2,Reparatur,2026-06-02,2026-06-03,abgeschlossen,12.0,1646.0,904.0,Nord,auftraege_2026-06.xlsx,Sheet,9
+SA-2601437,Bäckerei Kraus KG,Anlage 1,Reparatur,2026-06-02,2026-06-02,abgeschlossen,8.0,1164.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,10
+SA-2601443,Fränkische Molkerei eG,Anlage 3,Reparatur,2026-06-02,2026-06-04,abgeschlossen,6.0,908.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,11
+SA-2601460,Alpen Getränke AG,Anlage 1,Wartung,2026-06-02,2026-06-03,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,12
+SA-2601485,Alpen Getränke AG,Anlage 4,Wartung,2026-06-02,2026-06-02,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,13
+SA-2601496,Bergmann Pharma GmbH,Anlage 5,Reparatur,2026-06-02,2026-06-02,abgeschlossen,12.0,1631.0,892.0,West,auftraege_2026-06.xlsx,Sheet,14
+SA-2601499,Bergmann Pharma GmbH,Anlage 6,Inbetriebnahme,2026-06-02,2026-06-03,abgeschlossen,16.0,1520.0,1164.0,West,auftraege_2026-06.xlsx,Sheet,15
+SA-2601380,Nordmetall GmbH,Anlage 3,Inbetriebnahme,2026-06-03,2026-06-05,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,16
+SA-2601382,Hansa Pack AG,Anlage 12,Reparatur,2026-06-03,2026-06-06,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,17
+SA-2601387,Lippe Verpackung GmbH,Anlage 3,Reparatur,2026-06-03,2026-06-06,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,18
+SA-2601402,Ostsee Fisch GmbH,Anlage 4,Reparatur,2026-06-03,2026-06-04,abgeschlossen,12.0,1646.0,904.0,Nord,auftraege_2026-06.xlsx,Sheet,19
+SA-2601416,Hansa Pack AG,Anlage 4,Wartung,2026-06-03,2026-06-06,abgeschlossen,4.0,0.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,20
+SA-2601432,Hansa Pack AG,Anlage 9,Reparatur,2026-06-03,2026-06-04,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,21
+SA-2601467,Alpen Getränke AG,Anlage 6,Reparatur,2026-06-03,2026-06-04,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,22
+SA-2601481,Fränkische Molkerei eG,Anlage 6,Reparatur,2026-06-03,2026-06-04,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,23
+SA-2601482,Bäckerei Kraus KG,Anlage 1,Wartung,2026-06-03,2026-06-03,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,24
+SA-2601523,Weber Kunststofftechnik,Anlage 10,Wartung,2026-06-03,2026-06-05,abgeschlossen,4.0,0.0,348.0,West,auftraege_2026-06.xlsx,Sheet,25
+SA-2601369,Nordmetall GmbH,Anlage 8,Reparatur,2026-06-04,2026-06-06,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,26
+SA-2601403,Hansa Pack AG,Anlage 1,Reparatur,2026-06-04,2026-06-07,abgeschlossen,12.0,1646.0,904.0,Nord,auftraege_2026-06.xlsx,Sheet,27
+SA-2601412,Hansa Pack AG,Anlage 12,Wartung,2026-06-04,2026-06-04,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,28
+SA-2601440,Müller GmbH,Anlage 2,Wartung,2026-06-04,2026-06-06,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,29
+SA-2601453,Fränkische Molkerei eG,Anlage 3,Inbetriebnahme,2026-06-04,2026-06-07,abgeschlossen,24.0,2280.0,1744.0,Süd,auftraege_2026-06.xlsx,Sheet,30
+SA-2601456,Alpen Getränke AG,Anlage 8,Wartung,2026-06-04,2026-06-05,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,31
+SA-2601501,Bergmann Pharma GmbH,Anlage 6,Reparatur,2026-06-04,2026-06-05,abgeschlossen,4.0,607.0,348.0,West,auftraege_2026-06.xlsx,Sheet,32
+SA-2601353,Elbe Papier AG,Anlage 5,Wartung,2026-06-05,2026-06-05,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,33
+SA-2601358,Lippe Verpackung GmbH,Anlage 3,Reparatur,2026-06-05,2026-06-06,abgeschlossen,12.0,1646.0,904.0,Nord,auftraege_2026-06.xlsx,Sheet,34
+SA-2601415,Nordmetall GmbH,Anlage 8,Reparatur,2026-06-05,2026-06-06,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,35
+SA-2601424,Hansa Pack AG,Anlage 14,Reparatur,2026-06-05,2026-06-08,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,36
+SA-2601468,Alpen Getränke AG,Anlage 10,Reparatur,2026-06-05,2026-06-08,abgeschlossen,16.0,2188.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,37
+SA-2601507,Weber Kunststofftechnik,Anlage 5,Reparatur,2026-06-05,2026-06-06,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,38
+SA-2601513,Schreiner & Söhne,Anlage 2,Reparatur,2026-06-05,2026-06-06,abgeschlossen,3.0,479.0,280.0,West,auftraege_2026-06.xlsx,Sheet,39
+SA-2601514,Bergmann Pharma GmbH,Anlage 1,Reparatur,2026-06-05,2026-06-06,abgeschlossen,16.0,2143.0,1164.0,West,auftraege_2026-06.xlsx,Sheet,40
+SA-2601517,Weber Kunststofftechnik,Anlage 9,Reparatur,2026-06-05,2026-06-06,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,41
+SA-2601529,Weber Kunststofftechnik,Anlage 6,Reparatur,2026-06-05,2026-06-05,abgeschlossen,16.0,2143.0,1164.0,West,auftraege_2026-06.xlsx,Sheet,42
+SA-2601381,Nordmetall GmbH,Anlage 2,Inbetriebnahme,2026-06-06,2026-06-09,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,43
+SA-2601404,Hansa Pack AG,Anlage 2,Reparatur,2026-06-06,2026-06-06,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,44
+SA-2601427,Nordmetall GmbH,Anlage 6,Inbetriebnahme,2026-06-06,2026-06-07,abgeschlossen,32.0,3040.0,2264.0,Nord,auftraege_2026-06.xlsx,Sheet,45
+SA-2601449,Alpen Getränke AG,Anlage 11,Reparatur,2026-06-06,2026-06-08,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,46
+SA-2601500,Rhein Chemie Service,Anlage 4,Wartung,2026-06-06,2026-06-07,abgeschlossen,8.0,0.0,620.0,West,auftraege_2026-06.xlsx,Sheet,47
+SA-2601518,Weber Kunststofftechnik,Anlage 7,Reparatur,2026-06-06,2026-06-08,abgeschlossen,4.0,607.0,348.0,West,auftraege_2026-06.xlsx,Sheet,48
+SA-2601530,Bergmann Pharma GmbH,Anlage 4,Reparatur,2026-06-06,2026-06-09,abgeschlossen,4.0,607.0,348.0,West,auftraege_2026-06.xlsx,Sheet,49
+SA-2601360,Lippe Verpackung GmbH,Anlage 9,Wartung,2026-06-07,2026-06-07,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,50
+SA-2601363,Hansa Pack AG,Anlage 14,Reparatur,2026-06-07,2026-06-08,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,51
+SA-2601371,Nordmetall GmbH,Anlage 6,Wartung,2026-06-07,2026-06-08,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,52
+SA-2601389,Elbe Papier AG,Anlage 6,Reparatur,2026-06-07,2026-06-08,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,53
+SA-2601399,Hansa Pack AG,Anlage 14,Reparatur,2026-06-07,2026-06-08,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,54
+SA-2601408,Hansa Pack AG,Anlage 2,Reparatur,2026-06-07,2026-06-07,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,55
+SA-2601483,Fränkische Molkerei eG,Anlage 10,Reparatur,2026-06-07,2026-06-08,abgeschlossen,6.0,908.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,56
+SA-2601487,Weber Kunststofftechnik,Anlage 9,Reparatur,2026-06-07,2026-06-10,abgeschlossen,6.0,863.0,484.0,West,auftraege_2026-06.xlsx,Sheet,57
+SA-2601526,Bergmann Pharma GmbH,Anlage 8,Wartung,2026-06-07,2026-06-09,abgeschlossen,6.0,863.0,484.0,West,auftraege_2026-06.xlsx,Sheet,58
+SA-2601352,Elbe Papier AG,Anlage 2,Wartung,2026-06-08,2026-06-08,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,59
+SA-2601354,Hansa Pack AG,Anlage 6,Inbetriebnahme,2026-06-08,2026-06-08,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,60
+SA-2601385,Hansa Pack AG,Anlage 2,Reparatur,2026-06-08,2026-06-09,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,61
+SA-2601398,Nordmetall GmbH,Anlage 6,Reparatur,2026-06-08,2026-06-08,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,62
+SA-2601470,Kessler Feinkost,Anlage 1,Wartung,2026-06-08,2026-06-10,abgeschlossen,8.0,1164.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,63
+SA-2601504,Rhein Chemie Service,Anlage 3,Inbetriebnahme,2026-06-08,2026-06-10,abgeschlossen,24.0,2280.0,1708.0,West,auftraege_2026-06.xlsx,Sheet,64
+SA-2601522,Weber Kunststofftechnik,Anlage 5,Wartung,2026-06-08,2026-06-09,abgeschlossen,6.0,0.0,484.0,West,auftraege_2026-06.xlsx,Sheet,65
+SA-2601373,Lippe Verpackung GmbH,Anlage 9,Reparatur,2026-06-09,2026-06-10,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,66
+SA-2601400,Ostsee Fisch GmbH,Anlage 6,Wartung,2026-06-09,2026-06-10,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,67
+SA-2601474,Müller GmbH,Anlage 2,Wartung,2026-06-09,2026-06-10,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,68
+SA-2601498,Bergmann Pharma GmbH,Anlage 5,Inbetriebnahme,2026-06-09,2026-06-12,abgeschlossen,16.0,1520.0,1164.0,West,auftraege_2026-06.xlsx,Sheet,69
+SA-2601503,Rhein Chemie Service,Anlage 1,Reparatur,2026-06-09,2026-06-12,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,70
+SA-2601505,Bergmann Pharma GmbH,Anlage 8,Reparatur,2026-06-09,2026-06-12,abgeschlossen,12.0,1631.0,892.0,West,auftraege_2026-06.xlsx,Sheet,71
+SA-2601364,Lippe Verpackung GmbH,Anlage 5,Reparatur,2026-06-10,2026-06-10,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,72
+SA-2601391,Hansa Pack AG,Anlage 14,Wartung,2026-06-10,2026-06-13,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,73
+SA-2601429,Elbe Papier AG,Anlage 4,Reparatur,2026-06-10,2026-06-12,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,74
+SA-2601509,Weber Kunststofftechnik,Anlage 7,Reparatur,2026-06-10,2026-06-13,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,75
+SA-2601372,Lippe Verpackung GmbH,Anlage 1,Reparatur,2026-06-11,2026-06-13,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,76
+SA-2601394,Lippe Verpackung GmbH,Anlage 8,Reparatur,2026-06-11,2026-06-12,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,77
+SA-2601411,Ostsee Fisch GmbH,Anlage 6,Reparatur,2026-06-11,2026-06-14,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,78
+SA-2601423,Hansa Pack AG,Anlage 16,Reparatur,2026-06-11,2026-06-12,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,79
+SA-2601458,Müller GmbH,Anlage 14,Wartung,2026-06-11,2026-06-12,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,80
+SA-2601512,Schreiner & Söhne,Anlage 4,Wartung,2026-06-11,2026-06-14,abgeschlossen,4.0,607.0,348.0,West,auftraege_2026-06.xlsx,Sheet,81
+SA-2601356,Hansa Pack AG,Anlage 3,Reparatur,2026-06-12,2026-06-15,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,82
+SA-2601455,Müller GmbH,Anlage 1,Reparatur,2026-06-12,2026-06-14,abgeschlossen,6.0,908.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,83
+SA-2601520,Rhein Chemie Service,Anlage 3,Inbetriebnahme,2026-06-12,2026-06-15,abgeschlossen,24.0,2280.0,1708.0,West,auftraege_2026-06.xlsx,Sheet,84
+SA-2601359,Nordmetall GmbH,Anlage 7,Reparatur,2026-06-13,2026-06-15,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,85
+SA-2601384,Lippe Verpackung GmbH,Anlage 7,Reparatur,2026-06-13,2026-06-15,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,86
+SA-2601401,Nordmetall GmbH,Anlage 6,Wartung,2026-06-13,2026-06-13,abgeschlossen,4.0,0.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,87
+SA-2601431,Elbe Papier AG,Anlage 4,Reparatur,2026-06-13,2026-06-16,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,88
+SA-2601457,Müller GmbH,Anlage 9,Reparatur,2026-06-13,2026-06-14,abgeschlossen,8.0,1164.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,89
+SA-2601490,Schreiner & Söhne,Anlage 2,Reparatur,2026-06-13,2026-06-16,abgeschlossen,6.0,863.0,484.0,West,auftraege_2026-06.xlsx,Sheet,90
+SA-2601379,Ostsee Fisch GmbH,Anlage 2,Reparatur,2026-06-14,2026-06-15,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,91
+SA-2601446,Fränkische Molkerei eG,Anlage 9,Wartung,2026-06-14,2026-06-16,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,92
+SA-2601452,Alpen Getränke AG,Anlage 9,Reparatur,2026-06-14,2026-06-16,abgeschlossen,6.0,908.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,93
+SA-2601466,Müller GmbH,Anlage 9,Reparatur,2026-06-14,2026-06-15,abgeschlossen,16.0,2188.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,94
+SA-2601488,Weber Kunststofftechnik,Anlage 3,Reparatur,2026-06-14,2026-06-16,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,95
+SA-2601489,Bergmann Pharma GmbH,Anlage 9,Reparatur,2026-06-14,2026-06-15,abgeschlossen,16.0,2143.0,1164.0,West,auftraege_2026-06.xlsx,Sheet,96
+SA-2601532,Weber Kunststofftechnik,Anlage 10,Reparatur,2026-06-14,2026-06-17,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,97
+SA-2601422,Elbe Papier AG,Anlage 8,Reparatur,2026-06-15,2026-06-17,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,98
+SA-2601435,Kessler Feinkost,Anlage 3,Wartung,2026-06-15,2026-06-18,abgeschlossen,8.0,1164.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,99
+SA-2601436,Fränkische Molkerei eG,Anlage 6,Reparatur,2026-06-15,2026-06-17,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,100
+SA-2601478,Müller GmbH,Anlage 3,Inbetriebnahme,2026-06-15,2026-06-18,abgeschlossen,32.0,3040.0,2288.0,Süd,auftraege_2026-06.xlsx,Sheet,101
+SA-2601495,Rhein Chemie Service,Anlage 6,Reparatur,2026-06-15,2026-06-18,abgeschlossen,16.0,2143.0,1164.0,West,auftraege_2026-06.xlsx,Sheet,102
+SA-2601502,Rhein Chemie Service,Anlage 1,Wartung,2026-06-15,2026-06-16,abgeschlossen,6.0,0.0,484.0,West,auftraege_2026-06.xlsx,Sheet,103
+SA-2601506,Schreiner & Söhne,Anlage 3,Reparatur,2026-06-15,2026-06-17,abgeschlossen,12.0,1631.0,892.0,West,auftraege_2026-06.xlsx,Sheet,104
+SA-2601519,Weber Kunststofftechnik,Anlage 5,Wartung,2026-06-15,2026-06-15,abgeschlossen,8.0,0.0,620.0,West,auftraege_2026-06.xlsx,Sheet,105
+SA-2601417,Hansa Pack AG,Anlage 7,Wartung,2026-06-16,2026-06-18,abgeschlossen,4.0,0.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,106
+SA-2601418,Hansa Pack AG,Anlage 10,Wartung,2026-06-16,2026-06-18,abgeschlossen,4.0,0.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,107
+SA-2601425,Lippe Verpackung GmbH,Anlage 4,Wartung,2026-06-16,2026-06-16,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,108
+SA-2601428,Elbe Papier AG,Anlage 9,Reparatur,2026-06-16,2026-06-18,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,109
+SA-2601462,Kessler Feinkost,Anlage 1,Wartung,2026-06-16,2026-06-17,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,110
+SA-2601497,Bergmann Pharma GmbH,Anlage 9,Wartung,2026-06-16,2026-06-19,abgeschlossen,4.0,607.0,348.0,West,auftraege_2026-06.xlsx,Sheet,111
+SA-2601508,Bergmann Pharma GmbH,Anlage 1,Inbetriebnahme,2026-06-16,2026-06-16,abgeschlossen,24.0,2280.0,1708.0,West,auftraege_2026-06.xlsx,Sheet,112
+SA-2601511,Weber Kunststofftechnik,Anlage 7,Wartung,2026-06-16,2026-06-16,abgeschlossen,6.0,0.0,484.0,West,auftraege_2026-06.xlsx,Sheet,113
+SA-2601516,Weber Kunststofftechnik,Anlage 12,Reparatur,2026-06-16,2026-06-19,abgeschlossen,3.0,479.0,280.0,West,auftraege_2026-06.xlsx,Sheet,114
+SA-2601419,Ostsee Fisch GmbH,Anlage 4,Reparatur,2026-06-17,2026-06-17,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,115
+SA-2601430,Ostsee Fisch GmbH,Anlage 3,Reparatur,2026-06-17,2026-06-18,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,116
+SA-2601439,Fränkische Molkerei eG,Anlage 1,Reparatur,2026-06-17,2026-06-19,abgeschlossen,16.0,2188.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,117
+SA-2601445,Kessler Feinkost,Anlage 3,Reparatur,2026-06-17,2026-06-17,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,118
+SA-2601479,Alpen Getränke AG,Anlage 5,Reparatur,2026-06-17,2026-06-19,abgeschlossen,8.0,1164.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,119
+SA-2601376,Hansa Pack AG,Anlage 12,Reparatur,2026-06-18,2026-06-19,abgeschlossen,12.0,1646.0,904.0,Nord,auftraege_2026-06.xlsx,Sheet,120
+SA-2601463,Fränkische Molkerei eG,Anlage 5,Reparatur,2026-06-18,2026-06-18,abgeschlossen,6.0,908.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,121
+SA-2601476,Fränkische Molkerei eG,Anlage 4,Reparatur,2026-06-18,2026-06-19,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,122
+SA-2601510,Rhein Chemie Service,Anlage 2,Reparatur,2026-06-18,2026-06-20,abgeschlossen,4.0,607.0,348.0,West,auftraege_2026-06.xlsx,Sheet,123
+SA-2601521,Rhein Chemie Service,Anlage 9,Wartung,2026-06-18,2026-06-21,abgeschlossen,8.0,0.0,620.0,West,auftraege_2026-06.xlsx,Sheet,124
+SA-2601377,Hansa Pack AG,Anlage 5,Reparatur,2026-06-19,2026-06-22,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,125
+SA-2601395,Nordmetall GmbH,Anlage 3,Wartung,2026-06-19,2026-06-19,abgeschlossen,4.0,0.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,126
+SA-2601397,Hansa Pack AG,Anlage 7,Inbetriebnahme,2026-06-19,2026-06-20,abgeschlossen,24.0,2280.0,1720.0,Nord,auftraege_2026-06.xlsx,Sheet,127
+SA-2601413,Ostsee Fisch GmbH,Anlage 3,Wartung,2026-06-19,2026-06-22,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,128
+SA-2601433,Alpen Getränke AG,Anlage 1,Retrofit,2026-06-19,2026-06-21,abgeschlossen,60.0,34657.34,25122.33,Süd,auftraege_2026-06.xlsx,Sheet,129
+SA-2601494,Weber Kunststofftechnik,Anlage 4,Reparatur,2026-06-19,2026-06-21,abgeschlossen,12.0,1631.0,892.0,West,auftraege_2026-06.xlsx,Sheet,130
+SA-2601524,Weber Kunststofftechnik,Anlage 6,Wartung,2026-06-19,2026-06-21,abgeschlossen,6.0,0.0,484.0,West,auftraege_2026-06.xlsx,Sheet,131
+SA-2601527,Schreiner & Söhne,Anlage 1,Reparatur,2026-06-19,2026-06-20,abgeschlossen,3.0,479.0,280.0,West,auftraege_2026-06.xlsx,Sheet,132
+SA-2601390,Hansa Pack AG,Anlage 13,Inbetriebnahme,2026-06-20,2026-06-22,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,133
+SA-2601396,Ostsee Fisch GmbH,Anlage 8,Wartung,2026-06-20,2026-06-21,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,134
+SA-2601409,Ostsee Fisch GmbH,Anlage 2,Reparatur,2026-06-20,2026-06-20,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,135
+SA-2601434,Bäckerei Kraus KG,Anlage 7,Reparatur,2026-06-20,2026-06-21,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,136
+SA-2601447,Alpen Getränke AG,Anlage 10,Reparatur,2026-06-20,2026-06-21,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,137
+SA-2601451,Müller GmbH,Anlage 12,Wartung,2026-06-20,2026-06-22,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,138
+SA-2601464,Müller GmbH,Anlage 4,Reparatur,2026-06-20,2026-06-20,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,139
+SA-2601469,Kessler Feinkost,Anlage 5,Reparatur,2026-06-20,2026-06-23,abgeschlossen,3.0,524.0,316.0,Süd,auftraege_2026-06.xlsx,Sheet,140
+SA-2601362,Hansa Pack AG,Anlage 2,Reparatur,2026-06-21,2026-06-24,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,141
+SA-2601461,Alpen Getränke AG,Anlage 6,Wartung,2026-06-21,2026-06-23,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,142
+SA-2601473,Bäckerei Kraus KG,Anlage 5,Wartung,2026-06-21,2026-06-21,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,143
+SA-2601477,Kessler Feinkost,Anlage 6,Reparatur,2026-06-21,2026-06-21,abgeschlossen,3.0,524.0,316.0,Süd,auftraege_2026-06.xlsx,Sheet,144
+SA-2601486,Müller GmbH,Anlage 11,Reparatur,2026-06-21,2026-06-24,abgeschlossen,4.0,652.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,145
+SA-2601491,Rhein Chemie Service,Anlage 3,Wartung,2026-06-21,2026-06-23,abgeschlossen,6.0,0.0,484.0,West,auftraege_2026-06.xlsx,Sheet,146
+SA-2601525,Rhein Chemie Service,Anlage 1,Wartung,2026-06-21,2026-06-24,abgeschlossen,4.0,0.0,348.0,West,auftraege_2026-06.xlsx,Sheet,147
+SA-2601406,Hansa Pack AG,Anlage 6,Reparatur,2026-06-22,2026-06-25,abgeschlossen,16.0,2158.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,148
+SA-2601426,Ostsee Fisch GmbH,Anlage 3,Reparatur,2026-06-22,2026-06-24,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,149
+SA-2601442,Bäckerei Kraus KG,Anlage 5,Reparatur,2026-06-22,2026-06-24,abgeschlossen,16.0,2188.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,150
+SA-2601448,Fränkische Molkerei eG,Anlage 9,Inbetriebnahme,2026-06-22,2026-06-23,abgeschlossen,24.0,2280.0,1744.0,Süd,auftraege_2026-06.xlsx,Sheet,151
+SA-2601480,Müller GmbH,Anlage 12,Reparatur,2026-06-22,2026-06-22,abgeschlossen,16.0,2188.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,152
+SA-2601515,Schreiner & Söhne,Anlage 2,Reparatur,2026-06-22,2026-06-22,abgeschlossen,3.0,479.0,280.0,West,auftraege_2026-06.xlsx,Sheet,153
+SA-2601355,Nordmetall GmbH,Anlage 4,Reparatur,2026-06-23,2026-06-24,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,154
+SA-2601370,Hansa Pack AG,Anlage 6,Reparatur,2026-06-23,2026-06-26,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,155
+SA-2601388,Hansa Pack AG,Anlage 4,Inbetriebnahme,2026-06-23,2026-06-23,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2026-06.xlsx,Sheet,156
+SA-2601392,Elbe Papier AG,Anlage 5,Reparatur,2026-06-23,2026-06-24,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,157
+SA-2601414,Elbe Papier AG,Anlage 3,Reparatur,2026-06-23,2026-06-24,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,158
+SA-2601420,Hansa Pack AG,Anlage 6,Reparatur,2026-06-23,2026-06-25,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,159
+SA-2601438,Fränkische Molkerei eG,Anlage 8,Inbetriebnahme,2026-06-23,2026-06-26,abgeschlossen,16.0,1520.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,160
+SA-2601450,Müller GmbH,Anlage 5,Reparatur,2026-06-23,2026-06-24,abgeschlossen,6.0,908.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,161
+SA-2601459,Bäckerei Kraus KG,Anlage 3,Wartung,2026-06-23,2026-06-26,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2026-06.xlsx,Sheet,162
+SA-2601531,Bergmann Pharma GmbH,Anlage 3,Reparatur,2026-06-23,2026-06-24,abgeschlossen,6.0,863.0,484.0,West,auftraege_2026-06.xlsx,Sheet,163
+SA-2601375,Lippe Verpackung GmbH,Anlage 4,Wartung,2026-06-24,2026-06-27,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,164
+SA-2601405,Ostsee Fisch GmbH,Anlage 5,Reparatur,2026-06-24,2026-06-25,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,165
+SA-2601454,Müller GmbH,Anlage 11,Reparatur,2026-06-24,2026-06-25,abgeschlossen,12.0,1676.0,928.0,Süd,auftraege_2026-06.xlsx,Sheet,166
+SA-2601465,Alpen Getränke AG,Anlage 4,Reparatur,2026-06-24,2026-06-24,abgeschlossen,16.0,2188.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,167
+SA-2601475,Fränkische Molkerei eG,Anlage 7,Inbetriebnahme,2026-06-24,2026-06-25,abgeschlossen,16.0,1520.0,1200.0,Süd,auftraege_2026-06.xlsx,Sheet,168
+SA-2601493,Rhein Chemie Service,Anlage 2,Wartung,2026-06-24,2026-06-26,abgeschlossen,8.0,0.0,620.0,West,auftraege_2026-06.xlsx,Sheet,169
+SA-2601528,Bergmann Pharma GmbH,Anlage 3,Reparatur,2026-06-24,2026-06-27,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,170
+SA-2601361,Hansa Pack AG,Anlage 10,Reparatur,2026-06-25,2026-06-27,abgeschlossen,3.0,494.0,292.0,Nord,auftraege_2026-06.xlsx,Sheet,171
+SA-2601365,Elbe Papier AG,Anlage 3,Wartung,2026-06-25,2026-06-25,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,172
+SA-2601366,Ostsee Fisch GmbH,Anlage 1,Reparatur,2026-06-25,2026-06-27,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,173
+SA-2601367,Elbe Papier AG,Anlage 7,Wartung,2026-06-25,2026-06-27,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,174
+SA-2601368,Ostsee Fisch GmbH,Anlage 3,Reparatur,2026-06-25,2026-06-25,abgeschlossen,4.0,622.0,360.0,Nord,auftraege_2026-06.xlsx,Sheet,175
+SA-2601378,Lippe Verpackung GmbH,Anlage 9,Reparatur,2026-06-25,2026-06-28,abgeschlossen,8.0,1134.0,632.0,Nord,auftraege_2026-06.xlsx,Sheet,176
+SA-2601410,Lippe Verpackung GmbH,Anlage 6,Reparatur,2026-06-25,2026-06-26,abgeschlossen,6.0,878.0,496.0,Nord,auftraege_2026-06.xlsx,Sheet,177
+SA-2601441,Alpen Getränke AG,Anlage 6,Wartung,2026-06-25,2026-06-25,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2026-06.xlsx,Sheet,178
+SA-2601444,Bäckerei Kraus KG,Anlage 6,Reparatur,2026-06-25,2026-06-28,abgeschlossen,8.0,1164.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,179
+SA-2601472,Müller GmbH,Anlage 13,Wartung,2026-06-25,2026-06-28,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2026-06.xlsx,Sheet,180
+SA-2601484,Bäckerei Kraus KG,Anlage 6,Inbetriebnahme,2026-06-25,2026-06-27,abgeschlossen,32.0,3040.0,2288.0,Süd,auftraege_2026-06.xlsx,Sheet,181
+SA-2601492,Rhein Chemie Service,Anlage 2,Reparatur,2026-06-25,2026-06-28,abgeschlossen,8.0,1119.0,620.0,West,auftraege_2026-06.xlsx,Sheet,182

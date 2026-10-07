@@ -8,7 +8,11 @@ if [ ! -f "$SLK_P/.claude-plugin/plugin.json" ]; then
   exit 1
 fi
 
-# baue leer|sauber|unordentlich: tree + settings (+ the dataset's inbox files)
+# baue leer|sauber|unordentlich|jahr|jahr-unordentlich: tree + settings (+ the dataset's files).
+# jahr = the onboarded sample company as the user's own workspace (Plan 3, D14): 07_Daten/ (twelve months, budget,
+# qualification), filled Unternehmen/ incl. vorlagen/, 04_Angebote/, 05_Projekte/, 06_Kunden/ and the mails (no
+# September exports: they are already in 07_Daten/). jahr-unordentlich adds the messy inbox documents: injection
+# mail, scanned offer (instead of the Hydraulik Nord mail) and the controlling report that contradicts 07_Daten/.
 baue() {
   cp -R "$SLK_P/vorlagen/arbeitsordner/." .
   mkdir -p 01_Vorgaenge/offen 01_Vorgaenge/erledigt 01_Vorgaenge/_zur-loeschung
@@ -24,6 +28,16 @@ baue() {
     sauber) cp "$SLK_P/beispiel/00_Eingang/"* 00_Eingang/ ;;
     unordentlich) cp "$SLK_P/beispiel-unordentlich/00_Eingang/"* 00_Eingang/ ;;
     leer) ;;
+    jahr|jahr-unordentlich)
+      for _d in 04_Angebote 05_Projekte 06_Kunden 07_Daten Unternehmen; do cp -R "$SLK_P/beispiel/$_d/." "$_d/"; done
+      cp "$SLK_P/beispiel/00_Eingang/"*.eml 00_Eingang/
+      if [ "$1" = jahr-unordentlich ]; then
+        rm -f 00_Eingang/2026-09-24_angebot-hydraulik-nord.eml
+        for _f in 2026-09-29_mail-preisanfrage.eml 2026-09-30_angebot-hydraulik-nord-scan.pdf \
+                  Controlling_Monatsbericht_2026-09.xlsx; do
+          cp "$SLK_P/beispiel-unordentlich/00_Eingang/$_f" 00_Eingang/
+        done
+      fi ;;
     *) echo "baue: unbekannt: $1" >&2; exit 1 ;;
   esac
 }

@@ -1,0 +1,10 @@
+﻿Team,Maschinentyp,Auftragsart,Qualifiziert_Anzahl,In_Schulung_Anzahl,Ausbilder_Anzahl,_quelle_datei,_quelle_blatt,_quelle_zeile
+Nord,MM-400,alle,6,0,1,qualifikation_2026-09.xlsx,Sheet,2
+Nord,MM-600,alle,5,0,1,qualifikation_2026-09.xlsx,Sheet,3
+Nord,MM-800,alle,3,0,0,qualifikation_2026-09.xlsx,Sheet,4
+Süd,MM-400,alle,4,0,1,qualifikation_2026-09.xlsx,Sheet,5
+Süd,MM-600,alle,4,0,1,qualifikation_2026-09.xlsx,Sheet,6
+Süd,MM-800,alle,1,1,0,qualifikation_2026-09.xlsx,Sheet,7
+West,MM-400,alle,4,0,1,qualifikation_2026-09.xlsx,Sheet,8
+West,MM-600,alle,2,1,0,qualifikation_2026-09.xlsx,Sheet,9
+West,MM-800,alle,2,1,0,qualifikation_2026-09.xlsx,Sheet,10

@@ -1,0 +1,162 @@
+﻿Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-2500190,Elbe Papier AG,Anlage 2,Reparatur,2025-11-01,2025-11-03,abgeschlossen,6.0,842.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,2
+SA-2500192,Elbe Papier AG,Anlage 8,Wartung,2025-11-01,2025-11-01,abgeschlossen,6.0,842.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,3
+SA-2500227,Hansa Pack AG,Anlage 11,Reparatur,2025-11-01,2025-11-01,abgeschlossen,3.0,476.0,292.0,Nord,auftraege_2025-11.xlsx,Sheet,4
+SA-2500259,Alpen Getränke AG,Anlage 5,Wartung,2025-11-01,2025-11-03,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,5
+SA-2500295,Fränkische Molkerei eG,Anlage 4,Reparatur,2025-11-01,2025-11-03,abgeschlossen,16.0,2092.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,6
+SA-2500322,Weber Kunststofftechnik,Anlage 7,Wartung,2025-11-01,2025-11-04,abgeschlossen,4.0,0.0,348.0,West,auftraege_2025-11.xlsx,Sheet,7
+SA-2500185,Hansa Pack AG,Anlage 8,Reparatur,2025-11-02,2025-11-05,abgeschlossen,3.0,476.0,292.0,Nord,auftraege_2025-11.xlsx,Sheet,8
+SA-2500207,Ostsee Fisch GmbH,Anlage 1,Wartung,2025-11-02,2025-11-05,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,9
+SA-2500216,Lippe Verpackung GmbH,Anlage 9,Reparatur,2025-11-02,2025-11-03,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,10
+SA-2500309,Weber Kunststofftechnik,Anlage 12,Wartung,2025-11-02,2025-11-05,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,11
+SA-2500239,Alpen Getränke AG,Anlage 11,Wartung,2025-11-03,2025-11-06,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,12
+SA-2500241,Bäckerei Kraus KG,Anlage 5,Wartung,2025-11-03,2025-11-03,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,13
+SA-2500263,Kessler Feinkost,Anlage 4,Wartung,2025-11-03,2025-11-05,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,14
+SA-2500265,Fränkische Molkerei eG,Anlage 10,Reparatur,2025-11-03,2025-11-03,abgeschlossen,12.0,1604.0,928.0,Süd,auftraege_2025-11.xlsx,Sheet,15
+SA-2500297,Bergmann Pharma GmbH,Anlage 8,Reparatur,2025-11-03,2025-11-06,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,16
+SA-2500307,Rhein Chemie Service,Anlage 1,Reparatur,2025-11-03,2025-11-04,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,17
+SA-2500318,Bergmann Pharma GmbH,Anlage 4,Wartung,2025-11-03,2025-11-04,abgeschlossen,6.0,827.0,484.0,West,auftraege_2025-11.xlsx,Sheet,18
+SA-2500338,Bergmann Pharma GmbH,Anlage 2,Wartung,2025-11-03,2025-11-05,abgeschlossen,6.0,827.0,484.0,West,auftraege_2025-11.xlsx,Sheet,19
+SA-2500191,Hansa Pack AG,Anlage 14,Reparatur,2025-11-04,2025-11-05,abgeschlossen,3.0,476.0,292.0,Nord,auftraege_2025-11.xlsx,Sheet,20
+SA-2500193,Hansa Pack AG,Anlage 11,Reparatur,2025-11-04,2025-11-04,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,21
+SA-2500196,Nordmetall GmbH,Anlage 3,Reparatur,2025-11-04,2025-11-05,abgeschlossen,12.0,1574.0,904.0,Nord,auftraege_2025-11.xlsx,Sheet,22
+SA-2500225,Hansa Pack AG,Anlage 6,Wartung,2025-11-04,2025-11-07,abgeschlossen,8.0,0.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,23
+SA-2500247,Bäckerei Kraus KG,Anlage 6,Reparatur,2025-11-04,2025-11-05,abgeschlossen,8.0,1116.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,24
+SA-2500288,Müller GmbH,Anlage 4,Inbetriebnahme,2025-11-04,2025-11-06,abgeschlossen,16.0,1520.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,25
+SA-2500199,Lippe Verpackung GmbH,Anlage 4,Wartung,2025-11-05,2025-11-08,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,26
+SA-2500204,Nordmetall GmbH,Anlage 1,Reparatur,2025-11-05,2025-11-07,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,27
+SA-2500237,Bäckerei Kraus KG,Anlage 4,Reparatur,2025-11-05,2025-11-05,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,28
+SA-2500329,Rhein Chemie Service,Anlage 5,Reparatur,2025-11-05,2025-11-05,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,29
+SA-2500229,Nordmetall GmbH,Anlage 4,Inbetriebnahme,2025-11-06,2025-11-07,abgeschlossen,32.0,3040.0,2264.0,Nord,auftraege_2025-11.xlsx,Sheet,30
+SA-2500233,Hansa Pack AG,Anlage 14,Reparatur,2025-11-06,2025-11-09,abgeschlossen,3.0,476.0,292.0,Nord,auftraege_2025-11.xlsx,Sheet,31
+SA-2500245,Fränkische Molkerei eG,Anlage 8,Wartung,2025-11-06,2025-11-07,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,32
+SA-2500293,Alpen Getränke AG,Anlage 5,Reparatur,2025-11-06,2025-11-07,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,33
+SA-2500323,Weber Kunststofftechnik,Anlage 8,Reparatur,2025-11-06,2025-11-07,abgeschlossen,6.0,827.0,484.0,West,auftraege_2025-11.xlsx,Sheet,34
+SA-2500184,Hansa Pack AG,Anlage 5,Reparatur,2025-11-07,2025-11-09,abgeschlossen,16.0,2062.0,1176.0,Nord,auftraege_2025-11.xlsx,Sheet,35
+SA-2500197,Lippe Verpackung GmbH,Anlage 9,Inbetriebnahme,2025-11-07,2025-11-07,abgeschlossen,24.0,2280.0,1720.0,Nord,auftraege_2025-11.xlsx,Sheet,36
+SA-2500231,Nordmetall GmbH,Anlage 2,Wartung,2025-11-07,2025-11-10,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,37
+SA-2500313,Bergmann Pharma GmbH,Anlage 7,Wartung,2025-11-07,2025-11-10,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,38
+SA-2500208,Hansa Pack AG,Anlage 6,Reparatur,2025-11-08,2025-11-08,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,39
+SA-2500255,Müller GmbH,Anlage 3,Wartung,2025-11-08,2025-11-11,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,40
+SA-2500286,Alpen Getränke AG,Anlage 5,Reparatur,2025-11-08,2025-11-10,abgeschlossen,16.0,2092.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,41
+SA-2500319,Rhein Chemie Service,Anlage 9,Wartung,2025-11-08,2025-11-10,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,42
+SA-2500321,Rhein Chemie Service,Anlage 8,Wartung,2025-11-08,2025-11-10,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,43
+SA-2500333,Bergmann Pharma GmbH,Anlage 8,Reparatur,2025-11-08,2025-11-08,abgeschlossen,16.0,2047.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,44
+SA-2500337,Bergmann Pharma GmbH,Anlage 6,Wartung,2025-11-08,2025-11-08,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,45
+SA-2500182,Hansa Pack AG,Anlage 14,Wartung,2025-11-09,2025-11-11,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,46
+SA-2500206,Nordmetall GmbH,Anlage 4,Reparatur,2025-11-09,2025-11-12,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,47
+SA-2500215,Nordmetall GmbH,Anlage 3,Wartung,2025-11-09,2025-11-11,abgeschlossen,8.0,0.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,48
+SA-2500249,Kessler Feinkost,Anlage 2,Wartung,2025-11-09,2025-11-09,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,49
+SA-2500256,Alpen Getränke AG,Anlage 3,Reparatur,2025-11-09,2025-11-10,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,50
+SA-2500292,Fränkische Molkerei eG,Anlage 13,Reparatur,2025-11-09,2025-11-11,abgeschlossen,8.0,1116.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,51
+SA-2500294,Fränkische Molkerei eG,Anlage 1,Reparatur,2025-11-09,2025-11-11,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,52
+SA-2500298,Bergmann Pharma GmbH,Anlage 6,Reparatur,2025-11-09,2025-11-12,abgeschlossen,12.0,1559.0,892.0,West,auftraege_2025-11.xlsx,Sheet,53
+SA-2500340,Weber Kunststofftechnik,Anlage 4,Reparatur,2025-11-09,2025-11-10,abgeschlossen,12.0,1559.0,892.0,West,auftraege_2025-11.xlsx,Sheet,54
+SA-2500202,Nordmetall GmbH,Anlage 8,Inbetriebnahme,2025-11-10,2025-11-13,abgeschlossen,24.0,2280.0,1720.0,Nord,auftraege_2025-11.xlsx,Sheet,55
+SA-2500235,Hansa Pack AG,Anlage 6,Wartung,2025-11-10,2025-11-11,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,56
+SA-2500236,Kessler Feinkost,Anlage 4,Retrofit,2025-11-10,2025-11-13,abgeschlossen,100.0,32157.31,22366.7,Süd,auftraege_2025-11.xlsx,Sheet,57
+SA-2500254,Alpen Getränke AG,Anlage 8,Reparatur,2025-11-10,2025-11-10,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,58
+SA-2500260,Kessler Feinkost,Anlage 1,Inbetriebnahme,2025-11-10,2025-11-13,abgeschlossen,24.0,2280.0,1744.0,Süd,auftraege_2025-11.xlsx,Sheet,59
+SA-2500267,Kessler Feinkost,Anlage 6,Wartung,2025-11-10,2025-11-11,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,60
+SA-2500280,Fränkische Molkerei eG,Anlage 10,Reparatur,2025-11-10,2025-11-10,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,61
+SA-2500324,Rhein Chemie Service,Anlage 8,Reparatur,2025-11-10,2025-11-12,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,62
+SA-2500217,Hansa Pack AG,Anlage 2,Reparatur,2025-11-11,2025-11-12,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,63
+SA-2500224,Elbe Papier AG,Anlage 4,Wartung,2025-11-11,2025-11-14,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,64
+SA-2500248,Müller GmbH,Anlage 8,Wartung,2025-11-11,2025-11-14,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,65
+SA-2500269,Fränkische Molkerei eG,Anlage 5,Reparatur,2025-11-11,2025-11-14,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,66
+SA-2500270,Fränkische Molkerei eG,Anlage 2,Reparatur,2025-11-11,2025-11-12,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,67
+SA-2500303,Bergmann Pharma GmbH,Anlage 6,Wartung,2025-11-11,2025-11-12,abgeschlossen,6.0,827.0,484.0,West,auftraege_2025-11.xlsx,Sheet,68
+SA-2500314,Weber Kunststofftechnik,Anlage 8,Reparatur,2025-11-11,2025-11-13,abgeschlossen,16.0,2047.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,69
+SA-2500315,Weber Kunststofftechnik,Anlage 4,Reparatur,2025-11-11,2025-11-13,abgeschlossen,3.0,461.0,280.0,West,auftraege_2025-11.xlsx,Sheet,70
+SA-2500339,Schreiner & Söhne,Anlage 2,Reparatur,2025-11-11,2025-11-12,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,71
+SA-2500189,Elbe Papier AG,Anlage 3,Wartung,2025-11-12,2025-11-15,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,72
+SA-2500198,Hansa Pack AG,Anlage 15,Reparatur,2025-11-12,2025-11-12,abgeschlossen,16.0,2062.0,1176.0,Nord,auftraege_2025-11.xlsx,Sheet,73
+SA-2500209,Elbe Papier AG,Anlage 10,Wartung,2025-11-12,2025-11-15,abgeschlossen,6.0,842.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,74
+SA-2500250,Müller GmbH,Anlage 8,Reparatur,2025-11-12,2025-11-15,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,75
+SA-2500261,Alpen Getränke AG,Anlage 5,Wartung,2025-11-12,2025-11-15,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,76
+SA-2500277,Fränkische Molkerei eG,Anlage 10,Reparatur,2025-11-12,2025-11-14,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,77
+SA-2500278,Bäckerei Kraus KG,Anlage 7,Wartung,2025-11-12,2025-11-14,abgeschlossen,8.0,1116.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,78
+SA-2500301,Schreiner & Söhne,Anlage 2,Inbetriebnahme,2025-11-12,2025-11-13,abgeschlossen,24.0,2280.0,1708.0,West,auftraege_2025-11.xlsx,Sheet,79
+SA-2500181,Elbe Papier AG,Anlage 2,Retrofit,2025-11-13,2025-11-15,abgeschlossen,140.0,36146.85,24392.14,Nord,auftraege_2025-11.xlsx,Sheet,80
+SA-2500183,Lippe Verpackung GmbH,Anlage 7,Reparatur,2025-11-13,2025-11-13,abgeschlossen,6.0,842.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,81
+SA-2500201,Ostsee Fisch GmbH,Anlage 7,Wartung,2025-11-13,2025-11-13,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,82
+SA-2500218,Ostsee Fisch GmbH,Anlage 2,Inbetriebnahme,2025-11-13,2025-11-16,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2025-11.xlsx,Sheet,83
+SA-2500219,Nordmetall GmbH,Anlage 6,Reparatur,2025-11-13,2025-11-15,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,84
+SA-2500246,Müller GmbH,Anlage 11,Inbetriebnahme,2025-11-13,2025-11-14,abgeschlossen,24.0,2280.0,1744.0,Süd,auftraege_2025-11.xlsx,Sheet,85
+SA-2500273,Kessler Feinkost,Anlage 2,Reparatur,2025-11-13,2025-11-15,abgeschlossen,12.0,1604.0,928.0,Süd,auftraege_2025-11.xlsx,Sheet,86
+SA-2500317,Schreiner & Söhne,Anlage 4,Reparatur,2025-11-13,2025-11-15,abgeschlossen,16.0,2047.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,87
+SA-2500328,Bergmann Pharma GmbH,Anlage 8,Reparatur,2025-11-13,2025-11-16,abgeschlossen,16.0,2047.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,88
+SA-2500332,Weber Kunststofftechnik,Anlage 2,Inbetriebnahme,2025-11-13,2025-11-15,abgeschlossen,32.0,3040.0,2252.0,West,auftraege_2025-11.xlsx,Sheet,89
+SA-2500211,Nordmetall GmbH,Anlage 6,Wartung,2025-11-14,2025-11-15,abgeschlossen,4.0,0.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,90
+SA-2500220,Hansa Pack AG,Anlage 6,Reparatur,2025-11-14,2025-11-14,abgeschlossen,12.0,1574.0,904.0,Nord,auftraege_2025-11.xlsx,Sheet,91
+SA-2500222,Elbe Papier AG,Anlage 4,Wartung,2025-11-14,2025-11-14,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,92
+SA-2500228,Elbe Papier AG,Anlage 8,Inbetriebnahme,2025-11-14,2025-11-16,abgeschlossen,16.0,1520.0,1176.0,Nord,auftraege_2025-11.xlsx,Sheet,93
+SA-2500232,Nordmetall GmbH,Anlage 2,Inbetriebnahme,2025-11-14,2025-11-16,abgeschlossen,24.0,2280.0,1720.0,Nord,auftraege_2025-11.xlsx,Sheet,94
+SA-2500240,Fränkische Molkerei eG,Anlage 1,Inbetriebnahme,2025-11-14,2025-11-15,abgeschlossen,16.0,1520.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,95
+SA-2500276,Fränkische Molkerei eG,Anlage 2,Reparatur,2025-11-14,2025-11-14,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,96
+SA-2500279,Alpen Getränke AG,Anlage 11,Reparatur,2025-11-14,2025-11-14,abgeschlossen,16.0,2092.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,97
+SA-2500287,Alpen Getränke AG,Anlage 3,Reparatur,2025-11-14,2025-11-17,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,98
+SA-2500336,Weber Kunststofftechnik,Anlage 10,Wartung,2025-11-14,2025-11-14,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,99
+SA-2500210,Nordmetall GmbH,Anlage 8,Wartung,2025-11-15,2025-11-15,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,100
+SA-2500271,Müller GmbH,Anlage 7,Wartung,2025-11-15,2025-11-15,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,101
+SA-2500283,Bäckerei Kraus KG,Anlage 4,Reparatur,2025-11-15,2025-11-18,abgeschlossen,16.0,2092.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,102
+SA-2500290,Kessler Feinkost,Anlage 2,Inbetriebnahme,2025-11-15,2025-11-18,abgeschlossen,24.0,2280.0,1744.0,Süd,auftraege_2025-11.xlsx,Sheet,103
+SA-2500310,Bergmann Pharma GmbH,Anlage 5,Reparatur,2025-11-15,2025-11-17,abgeschlossen,6.0,827.0,484.0,West,auftraege_2025-11.xlsx,Sheet,104
+SA-2500200,Hansa Pack AG,Anlage 14,Reparatur,2025-11-16,2025-11-19,abgeschlossen,12.0,1574.0,904.0,Nord,auftraege_2025-11.xlsx,Sheet,105
+SA-2500234,Lippe Verpackung GmbH,Anlage 2,Inbetriebnahme,2025-11-16,2025-11-17,abgeschlossen,24.0,2280.0,1720.0,Nord,auftraege_2025-11.xlsx,Sheet,106
+SA-2500299,Rhein Chemie Service,Anlage 8,Reparatur,2025-11-16,2025-11-18,abgeschlossen,12.0,1559.0,892.0,West,auftraege_2025-11.xlsx,Sheet,107
+SA-2500300,Weber Kunststofftechnik,Anlage 11,Wartung,2025-11-16,2025-11-16,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,108
+SA-2500302,Schreiner & Söhne,Anlage 5,Wartung,2025-11-16,2025-11-19,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,109
+SA-2500305,Rhein Chemie Service,Anlage 5,Reparatur,2025-11-16,2025-11-17,abgeschlossen,12.0,1559.0,892.0,West,auftraege_2025-11.xlsx,Sheet,110
+SA-2500311,Schreiner & Söhne,Anlage 1,Reparatur,2025-11-16,2025-11-16,abgeschlossen,3.0,461.0,280.0,West,auftraege_2025-11.xlsx,Sheet,111
+SA-2500316,Weber Kunststofftechnik,Anlage 4,Reparatur,2025-11-16,2025-11-17,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,112
+SA-2500334,Weber Kunststofftechnik,Anlage 2,Reparatur,2025-11-16,2025-11-18,abgeschlossen,3.0,461.0,280.0,West,auftraege_2025-11.xlsx,Sheet,113
+SA-2500212,Hansa Pack AG,Anlage 14,Reparatur,2025-11-17,2025-11-18,abgeschlossen,16.0,2062.0,1176.0,Nord,auftraege_2025-11.xlsx,Sheet,114
+SA-2500257,Bäckerei Kraus KG,Anlage 5,Reparatur,2025-11-17,2025-11-19,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,115
+SA-2500325,Rhein Chemie Service,Anlage 6,Inbetriebnahme,2025-11-17,2025-11-17,abgeschlossen,16.0,1520.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,116
+SA-2500213,Nordmetall GmbH,Anlage 9,Reparatur,2025-11-18,2025-11-18,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,117
+SA-2500221,Ostsee Fisch GmbH,Anlage 7,Reparatur,2025-11-18,2025-11-19,abgeschlossen,3.0,476.0,292.0,Nord,auftraege_2025-11.xlsx,Sheet,118
+SA-2500275,Müller GmbH,Anlage 1,Wartung,2025-11-18,2025-11-18,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,119
+SA-2500291,Bäckerei Kraus KG,Anlage 4,Wartung,2025-11-18,2025-11-19,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,120
+SA-2500335,Rhein Chemie Service,Anlage 10,Reparatur,2025-11-18,2025-11-20,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,121
+SA-2500238,Fränkische Molkerei eG,Anlage 3,Reparatur,2025-11-19,2025-11-20,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,122
+SA-2500242,Müller GmbH,Anlage 1,Wartung,2025-11-19,2025-11-19,abgeschlossen,6.0,0.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,123
+SA-2500251,Alpen Getränke AG,Anlage 3,Reparatur,2025-11-19,2025-11-21,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,124
+SA-2500264,Müller GmbH,Anlage 8,Reparatur,2025-11-19,2025-11-20,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,125
+SA-2500266,Müller GmbH,Anlage 8,Reparatur,2025-11-19,2025-11-19,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,126
+SA-2500272,Müller GmbH,Anlage 11,Wartung,2025-11-19,2025-11-19,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,127
+SA-2500284,Fränkische Molkerei eG,Anlage 10,Wartung,2025-11-19,2025-11-21,abgeschlossen,4.0,0.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,128
+SA-2500312,Schreiner & Söhne,Anlage 3,Reparatur,2025-11-19,2025-11-20,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,129
+SA-2500214,Hansa Pack AG,Anlage 1,Reparatur,2025-11-20,2025-11-23,abgeschlossen,12.0,1574.0,904.0,Nord,auftraege_2025-11.xlsx,Sheet,130
+SA-2500281,Bäckerei Kraus KG,Anlage 5,Inbetriebnahme,2025-11-20,2025-11-22,abgeschlossen,16.0,1520.0,1200.0,Süd,auftraege_2025-11.xlsx,Sheet,131
+SA-2500308,Rhein Chemie Service,Anlage 9,Wartung,2025-11-20,2025-11-23,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,132
+SA-2500187,Hansa Pack AG,Anlage 5,Wartung,2025-11-21,2025-11-22,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,133
+SA-2500188,Hansa Pack AG,Anlage 16,Reparatur,2025-11-21,2025-11-23,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,134
+SA-2500195,Elbe Papier AG,Anlage 6,Wartung,2025-11-21,2025-11-22,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,135
+SA-2500205,Hansa Pack AG,Anlage 5,Reparatur,2025-11-21,2025-11-24,abgeschlossen,12.0,1574.0,904.0,Nord,auftraege_2025-11.xlsx,Sheet,136
+SA-2500223,Elbe Papier AG,Anlage 5,Reparatur,2025-11-21,2025-11-24,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,137
+SA-2500253,Bäckerei Kraus KG,Anlage 5,Wartung,2025-11-21,2025-11-23,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,138
+SA-2500268,Müller GmbH,Anlage 3,Reparatur,2025-11-21,2025-11-24,abgeschlossen,12.0,1604.0,928.0,Süd,auftraege_2025-11.xlsx,Sheet,139
+SA-2500306,Schreiner & Söhne,Anlage 5,Wartung,2025-11-21,2025-11-22,abgeschlossen,4.0,583.0,348.0,West,auftraege_2025-11.xlsx,Sheet,140
+SA-2500330,Weber Kunststofftechnik,Anlage 10,Wartung,2025-11-21,2025-11-21,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,141
+SA-2500226,Ostsee Fisch GmbH,Anlage 2,Wartung,2025-11-22,2025-11-23,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,142
+SA-2500243,Müller GmbH,Anlage 13,Wartung,2025-11-22,2025-11-23,abgeschlossen,8.0,0.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,143
+SA-2500331,Rhein Chemie Service,Anlage 6,Reparatur,2025-11-22,2025-11-25,abgeschlossen,16.0,2047.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,144
+SA-2500194,Nordmetall GmbH,Anlage 8,Wartung,2025-11-23,2025-11-24,abgeschlossen,6.0,0.0,496.0,Nord,auftraege_2025-11.xlsx,Sheet,145
+SA-2500203,Elbe Papier AG,Anlage 1,Wartung,2025-11-23,2025-11-24,abgeschlossen,8.0,1086.0,632.0,Nord,auftraege_2025-11.xlsx,Sheet,146
+SA-2500230,Hansa Pack AG,Anlage 4,Reparatur,2025-11-23,2025-11-25,abgeschlossen,4.0,598.0,360.0,Nord,auftraege_2025-11.xlsx,Sheet,147
+SA-2500282,Müller GmbH,Anlage 4,Wartung,2025-11-23,2025-11-26,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,148
+SA-2500285,Kessler Feinkost,Anlage 3,Wartung,2025-11-23,2025-11-26,abgeschlossen,8.0,1116.0,656.0,Süd,auftraege_2025-11.xlsx,Sheet,149
+SA-2500326,Weber Kunststofftechnik,Anlage 9,Reparatur,2025-11-23,2025-11-26,abgeschlossen,6.0,827.0,484.0,West,auftraege_2025-11.xlsx,Sheet,150
+SA-2500186,Hansa Pack AG,Anlage 13,Reparatur,2025-11-24,2025-11-27,abgeschlossen,3.0,476.0,292.0,Nord,auftraege_2025-11.xlsx,Sheet,151
+SA-2500244,Fränkische Molkerei eG,Anlage 9,Reparatur,2025-11-24,2025-11-25,abgeschlossen,6.0,872.0,520.0,Süd,auftraege_2025-11.xlsx,Sheet,152
+SA-2500252,Müller GmbH,Anlage 11,Reparatur,2025-11-24,2025-11-24,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,153
+SA-2500262,Müller GmbH,Anlage 12,Reparatur,2025-11-24,2025-11-25,abgeschlossen,12.0,1604.0,928.0,Süd,auftraege_2025-11.xlsx,Sheet,154
+SA-2500274,Bäckerei Kraus KG,Anlage 3,Reparatur,2025-11-24,2025-11-26,abgeschlossen,4.0,628.0,384.0,Süd,auftraege_2025-11.xlsx,Sheet,155
+SA-2500289,Müller GmbH,Anlage 7,Reparatur,2025-11-24,2025-11-24,abgeschlossen,3.0,506.0,316.0,Süd,auftraege_2025-11.xlsx,Sheet,156
+SA-2500258,Fränkische Molkerei eG,Anlage 10,Reparatur,2025-11-25,2025-11-28,abgeschlossen,12.0,1604.0,928.0,Süd,auftraege_2025-11.xlsx,Sheet,157
+SA-2500296,Bergmann Pharma GmbH,Anlage 3,Reparatur,2025-11-25,2025-11-28,abgeschlossen,16.0,2047.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,158
+SA-2500304,Weber Kunststofftechnik,Anlage 7,Wartung,2025-11-25,2025-11-28,abgeschlossen,8.0,0.0,620.0,West,auftraege_2025-11.xlsx,Sheet,159
+SA-2500320,Rhein Chemie Service,Anlage 9,Reparatur,2025-11-25,2025-11-28,abgeschlossen,8.0,1071.0,620.0,West,auftraege_2025-11.xlsx,Sheet,160
+SA-2500327,Weber Kunststofftechnik,Anlage 9,Inbetriebnahme,2025-11-25,2025-11-27,abgeschlossen,16.0,1520.0,1164.0,West,auftraege_2025-11.xlsx,Sheet,161
+SA-2500341,Rhein Chemie Service,Anlage 4,Wartung,2025-11-25,2025-11-27,abgeschlossen,6.0,0.0,484.0,West,auftraege_2025-11.xlsx,Sheet,162

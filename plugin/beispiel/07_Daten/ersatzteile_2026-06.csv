@@ -1,0 +1,102 @@
+﻿Datum,Kunde,Teilenr,Menge,Stueckpreis_EUR,Lieferbar,Einstandspreis_EUR,Lieferant,_quelle_datei,_quelle_blatt,_quelle_zeile
+2026-06-01,Bäckerei Kraus KG,ET-13293,2.0,784.07,ja,407.72,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,2
+2026-06-02,Elbe Papier AG,ET-10148,2.0,574.42,ja,298.7,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,3
+2026-06-02,Hansa Pack AG,ET-12812,4.0,162.6,ja,84.55,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,4
+2026-06-03,Müller GmbH,ET-10037,1.0,799.2,ja,415.58,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,5
+2026-06-03,Rhein Chemie Service,ET-10370,2.0,669.16,ja,347.96,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,6
+2026-06-03,Bergmann Pharma GmbH,ET-12516,1.0,116.13,nein,60.39,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,7
+2026-06-04,Kessler Feinkost,ET-11850,2.0,131.85,ja,68.56,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,8
+2026-06-04,Nordmetall GmbH,ET-13478,2.0,868.74,ja,451.74,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,9
+2026-06-05,Weber Kunststofftechnik,ET-10037,2.0,799.2,nein,415.58,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,10
+2026-06-05,Alpen Getränke AG,ET-13108,2.0,492.2,ja,255.94,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,11
+2026-06-06,Bäckerei Kraus KG,ET-11221,1.0,4409.35,ja,2292.86,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,12
+2026-06-06,Fränkische Molkerei eG,ET-11258,1.0,97.76,ja,50.84,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,13
+2026-06-06,Müller GmbH,ET-11295,2.0,6428.46,ja,3342.8,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,14
+2026-06-06,Lippe Verpackung GmbH,ET-11998,1.0,34.97,ja,18.18,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,15
+2026-06-06,Hansa Pack AG,ET-12479,1.0,277.1,ja,144.09,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,16
+2026-06-07,Müller GmbH,ET-10185,1.0,733.04,ja,381.18,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,17
+2026-06-07,Alpen Getränke AG,ET-11665,1.0,100.26,ja,52.14,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,18
+2026-06-07,Nordmetall GmbH,ET-11702,4.0,774.84,ja,402.92,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,19
+2026-06-07,Lippe Verpackung GmbH,ET-11924,3.0,174.62,ja,90.8,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,20
+2026-06-07,Bäckerei Kraus KG,ET-11961,2.0,5617.66,nein,2921.18,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,21
+2026-06-07,Kessler Feinkost,ET-12331,4.0,637.49,ja,331.49,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,22
+2026-06-07,Ostsee Fisch GmbH,ET-12738,1.0,554.42,ja,288.3,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,23
+2026-06-07,Müller GmbH,ET-13404,3.0,1623.18,ja,844.05,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,24
+2026-06-08,Elbe Papier AG,ET-11739,1.0,581.64,ja,302.45,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,25
+2026-06-08,Elbe Papier AG,ET-11961,2.0,5617.66,ja,2921.18,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,26
+2026-06-08,Ostsee Fisch GmbH,ET-13996,4.0,662.69,ja,344.6,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,27
+2026-06-09,Lippe Verpackung GmbH,ET-11443,2.0,162.09,ja,84.29,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,28
+2026-06-09,Fränkische Molkerei eG,ET-13552,1.0,90.93,ja,47.28,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,29
+2026-06-10,Lippe Verpackung GmbH,ET-12220,3.0,148.03,ja,76.98,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,30
+2026-06-10,Bergmann Pharma GmbH,ET-14144,2.0,135.98,ja,70.71,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,31
+2026-06-11,Bäckerei Kraus KG,ET-13552,1.0,90.93,nein,47.28,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,32
+2026-06-11,Alpen Getränke AG,ET-13959,1.0,146.41,ja,76.13,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,33
+2026-06-11,Kessler Feinkost,ET-13996,1.0,662.69,ja,344.6,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,34
+2026-06-11,Bäckerei Kraus KG,ET-14366,1.0,726.56,ja,377.81,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,35
+2026-06-12,Bäckerei Kraus KG,ET-11147,6.0,518.43,ja,269.58,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,36
+2026-06-12,Bergmann Pharma GmbH,ET-12664,2.0,838.81,ja,436.18,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,37
+2026-06-12,Hansa Pack AG,ET-13108,1.0,492.2,ja,255.94,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,38
+2026-06-13,Schreiner & Söhne,ET-10370,1.0,669.16,ja,347.96,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,39
+2026-06-13,Nordmetall GmbH,ET-11628,1.0,167.83,ja,87.27,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,40
+2026-06-13,Müller GmbH,ET-12886,3.0,144.28,ja,75.03,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,41
+2026-06-13,Schreiner & Söhne,ET-13108,1.0,492.2,ja,255.94,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,42
+2026-06-13,Müller GmbH,ET-13330,2.0,141.98,ja,73.83,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,43
+2026-06-14,Hansa Pack AG,ET-10370,1.0,669.16,ja,347.96,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,44
+2026-06-14,Bergmann Pharma GmbH,ET-12553,1.0,5805.57,ja,3018.9,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,45
+2026-06-15,Alpen Getränke AG,ET-10703,1.0,441.75,ja,229.71,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,46
+2026-06-15,Alpen Getränke AG,ET-13330,3.0,141.98,ja,73.83,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,47
+2026-06-16,Ostsee Fisch GmbH,ET-10629,3.0,4842.26,ja,2517.98,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,48
+2026-06-16,Elbe Papier AG,ET-10888,1.0,167.1,ja,86.89,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,49
+2026-06-16,Lippe Verpackung GmbH,ET-11332,1.0,583.05,ja,303.19,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,50
+2026-06-16,Nordmetall GmbH,ET-12997,1.0,43.81,ja,22.78,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,51
+2026-06-16,Schreiner & Söhne,ET-13219,1.0,55.3,ja,28.76,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,52
+2026-06-16,Schreiner & Söhne,ET-13996,3.0,662.69,ja,344.6,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,53
+2026-06-16,Alpen Getränke AG,ET-14292,3.0,65.88,ja,34.26,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,54
+2026-06-16,Bäckerei Kraus KG,ET-14292,1.0,65.88,ja,34.26,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,55
+2026-06-17,Müller GmbH,ET-10185,1.0,733.04,ja,381.18,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,56
+2026-06-17,Rhein Chemie Service,ET-10925,2.0,90.09,ja,46.85,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,57
+2026-06-17,Kessler Feinkost,ET-12368,3.0,73.58,ja,38.26,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,58
+2026-06-17,Lippe Verpackung GmbH,ET-12405,6.0,734.06,nein,381.71,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,59
+2026-06-17,Schreiner & Söhne,ET-13034,1.0,4101.06,ja,2132.55,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,60
+2026-06-17,Bäckerei Kraus KG,ET-13441,1.0,745.49,nein,387.65,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,61
+2026-06-17,Hansa Pack AG,ET-14181,1.0,588.99,ja,306.27,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,62
+2026-06-18,Müller GmbH,ET-11258,3.0,97.76,ja,50.84,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,63
+2026-06-18,Kessler Feinkost,ET-13811,3.0,753.63,ja,391.89,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,64
+2026-06-18,Müller GmbH,ET-14292,1.0,65.88,ja,34.26,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,65
+2026-06-19,Nordmetall GmbH,ET-10407,1.0,63.98,nein,33.27,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,66
+2026-06-19,Nordmetall GmbH,ET-10555,2.0,111.4,ja,57.93,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,67
+2026-06-19,Ostsee Fisch GmbH,ET-11036,1.0,44.99,ja,23.39,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,68
+2026-06-19,Alpen Getränke AG,ET-12146,1.0,25.03,nein,13.02,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,69
+2026-06-19,Bäckerei Kraus KG,ET-14181,1.0,588.99,ja,306.27,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,70
+2026-06-20,Alpen Getränke AG,ET-11850,2.0,131.85,ja,68.56,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,71
+2026-06-21,Weber Kunststofftechnik,ET-11665,1.0,100.26,ja,52.14,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,72
+2026-06-21,Weber Kunststofftechnik,ET-12109,3.0,94.66,ja,49.22,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,73
+2026-06-21,Müller GmbH,ET-12590,1.0,240.79,nein,125.21,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,74
+2026-06-21,Rhein Chemie Service,ET-12923,2.0,104.11,ja,54.14,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,75
+2026-06-21,Lippe Verpackung GmbH,ET-13737,1.0,75.5,ja,39.26,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,76
+2026-06-22,Elbe Papier AG,ET-11739,1.0,581.64,ja,302.45,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,77
+2026-06-23,Bergmann Pharma GmbH,ET-11221,1.0,4409.35,ja,2292.86,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,78
+2026-06-23,Bergmann Pharma GmbH,ET-11480,2.0,70.63,nein,36.73,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,79
+2026-06-23,Hansa Pack AG,ET-12072,2.0,140.87,ja,73.25,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,80
+2026-06-23,Weber Kunststofftechnik,ET-12109,2.0,94.66,ja,49.22,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,81
+2026-06-23,Lippe Verpackung GmbH,ET-12220,1.0,148.03,ja,76.98,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,82
+2026-06-23,Rhein Chemie Service,ET-13515,1.0,155.88,nein,81.06,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,83
+2026-06-23,Kessler Feinkost,ET-13774,1.0,43.62,ja,22.68,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,84
+2026-06-24,Bergmann Pharma GmbH,ET-10999,1.0,198.27,ja,103.1,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,85
+2026-06-24,Fränkische Molkerei eG,ET-11998,2.0,34.97,ja,18.18,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,86
+2026-06-24,Müller GmbH,ET-13959,1.0,146.41,ja,76.13,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,87
+2026-06-25,Lippe Verpackung GmbH,ET-10925,2.0,90.09,ja,46.85,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,88
+2026-06-25,Kessler Feinkost,ET-12960,1.0,72.07,ja,37.48,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,89
+2026-06-26,Weber Kunststofftechnik,ET-13034,1.0,4101.06,ja,2132.55,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,90
+2026-06-26,Ostsee Fisch GmbH,ET-14366,2.0,726.56,ja,377.81,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,91
+2026-06-27,Schreiner & Söhne,ET-10222,3.0,602.3,ja,313.2,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,92
+2026-06-27,Elbe Papier AG,ET-10259,1.0,120.2,ja,62.5,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,93
+2026-06-27,Bäckerei Kraus KG,ET-11591,3.0,106.05,ja,55.15,Elektro Brandt KG,ersatzteile_2026-06.xlsx,Sheet,94
+2026-06-27,Elbe Papier AG,ET-12701,6.0,88.87,ja,46.21,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,95
+2026-06-27,Schreiner & Söhne,ET-12812,2.0,162.6,ja,84.55,Kugeltec GmbH,ersatzteile_2026-06.xlsx,Sheet,96
+2026-06-27,Fränkische Molkerei eG,ET-13034,4.0,4101.06,ja,2132.55,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,97
+2026-06-27,Müller GmbH,ET-13145,1.0,117.72,ja,61.21,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,98
+2026-06-28,Müller GmbH,ET-10962,2.0,3583.46,nein,1863.4,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,99
+2026-06-28,Fränkische Molkerei eG,ET-11295,2.0,6428.46,nein,3342.8,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,100
+2026-06-28,Fränkische Molkerei eG,ET-11850,1.0,131.85,ja,68.56,Hydraulik Nord GmbH,ersatzteile_2026-06.xlsx,Sheet,101
+2026-06-28,Nordmetall GmbH,ET-14292,2.0,65.88,ja,34.26,Filtra AG,ersatzteile_2026-06.xlsx,Sheet,102

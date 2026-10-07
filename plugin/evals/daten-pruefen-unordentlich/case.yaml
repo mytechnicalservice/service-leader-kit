@@ -17,7 +17,7 @@ graders:
     min: 1
   - name: summe
     type: regex
-    pattern: "89\\.139"
+    pattern: "207\\.719"
   - name: zweite-datei-bleibt
     type: file_exists
     path: "00_Eingang/auftraege_2026-09 (1).xlsx"

@@ -1,0 +1,4 @@
+﻿Monat,Team,Techniker_Anzahl,Soll_Stunden,Ist_Stunden,_quelle_datei,_quelle_blatt,_quelle_zeile
+2026-04,Nord,6.0,912.0,875.0,kapazitaet_2026-04.xlsx,Sheet,2
+2026-04,Süd,5.0,760.0,802.0,kapazitaet_2026-04.xlsx,Sheet,3
+2026-04,West,4.0,608.0,574.0,kapazitaet_2026-04.xlsx,Sheet,4

@@ -19,9 +19,9 @@ graders:
     path: 07_Daten/original/auftraege_2026-09__auftraege_2026-09.xlsx
   - name: summe
     type: regex
-    pattern: "89\\.139"
+    pattern: "207\\.719"
   - name: antwort
     type: llm
     criteria: >-
-      PASS if the answer is in German, names September 2026, 40 rows and the sum 89.139 (German number format), and
+      PASS if the answer is in German, names September 2026, 175 rows and the sum 207.719 (German number format), and
       says where the data was filed. FAIL if it states any number that is not in the script's output.

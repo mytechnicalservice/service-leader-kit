@@ -3,11 +3,58 @@
   "periode": { "spalte": "Datum" },
   "summe": null,
   "spalten": [
-    { "name": "Datum", "typ": "datum", "pflicht": true, "synonyme": ["Belegdatum", "Lieferdatum"] },
-    { "name": "Kunde", "typ": "text", "pflicht": true, "synonyme": ["Kundenname", "Debitor"] },
-    { "name": "Teilenr", "typ": "text", "pflicht": true, "synonyme": ["Artikel", "Artikelnummer", "Materialnummer"] },
-    { "name": "Menge", "typ": "zahl", "pflicht": true, "synonyme": ["Anzahl", "Stück"] },
-    { "name": "Stueckpreis_EUR", "typ": "zahl", "pflicht": true, "synonyme": ["Preis", "Einzelpreis"] },
-    { "name": "Lieferbar", "typ": "ja_nein", "pflicht": false, "synonyme": ["Verfügbar", "Lagernd"] }
+    {
+      "name": "Datum",
+      "typ": "datum",
+      "pflicht": true,
+      "synonyme": ["Belegdatum", "Lieferdatum"]
+    },
+    {
+      "name": "Kunde",
+      "typ": "text",
+      "pflicht": true,
+      "synonyme": ["Kundenname", "Debitor"]
+    },
+    {
+      "name": "Teilenr",
+      "typ": "text",
+      "pflicht": true,
+      "synonyme": ["Artikel", "Artikelnummer", "Materialnummer"]
+    },
+    {
+      "name": "Menge",
+      "typ": "zahl",
+      "pflicht": true,
+      "synonyme": ["Anzahl", "Stück"]
+    },
+    {
+      "name": "Stueckpreis_EUR",
+      "typ": "zahl",
+      "pflicht": true,
+      "synonyme": ["Preis", "Einzelpreis"]
+    },
+    {
+      "name": "Lieferbar",
+      "typ": "ja_nein",
+      "pflicht": false,
+      "synonyme": ["Verfügbar", "Lagernd"]
+    },
+    {
+      "name": "Einstandspreis_EUR",
+      "typ": "zahl",
+      "pflicht": false,
+      "synonyme": [
+        "Einkaufspreis",
+        "EK-Preis",
+        "Standardpreis",
+        "Einstandspreis"
+      ]
+    },
+    {
+      "name": "Lieferant",
+      "typ": "text",
+      "pflicht": false,
+      "synonyme": ["Kreditor", "Lieferantenname"]
+    }
   ]
 }

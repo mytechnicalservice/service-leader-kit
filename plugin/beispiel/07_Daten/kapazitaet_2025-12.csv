@@ -1,0 +1,4 @@
+﻿Monat,Team,Techniker_Anzahl,Soll_Stunden,Ist_Stunden,_quelle_datei,_quelle_blatt,_quelle_zeile
+2025-12,Nord,6.0,730.0,707.0,kapazitaet_2025-12.xlsx,Sheet,2
+2025-12,Süd,5.0,608.0,632.0,kapazitaet_2025-12.xlsx,Sheet,3
+2025-12,West,4.0,486.0,461.0,kapazitaet_2025-12.xlsx,Sheet,4
