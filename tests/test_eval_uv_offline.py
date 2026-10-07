@@ -31,6 +31,17 @@ def test_scaffold_writes_a_uv_config_without_index(tmp_path):
 
 
 @pytest.mark.skipif(not wheels_da(), reason=f"Wheel-Ordner fehlt ({WHEELS}) – bauen mit: sh tools/eval_wheels.sh")
+def test_wheels_are_copied_into_the_run_workspace(tmp_path):
+    # The eval sandbox lets a run read only its own workspace: a find-links path into the plugin is "Operation not
+    # permitted" (eval run 2026-10-07, key-account-review-sauber). The scaffold copies the wheels in and points there.
+    assert baue(tmp_path).returncode == 0
+    lokal = tmp_path / ".slk-wheels"
+    assert sorted(p.name for p in lokal.glob("*.whl")) == sorted(p.name for p in WHEELS.glob("*.whl"))
+    text = (tmp_path / "uv.toml").read_text(encoding="utf-8")
+    assert str(lokal.resolve()) in text or str(lokal) in text
+
+
+@pytest.mark.skipif(not wheels_da(), reason=f"Wheel-Ordner fehlt ({WHEELS}) – bauen mit: sh tools/eval_wheels.sh")
 @pytest.mark.skipif(not shutil.which("uv"), reason="uv nicht installiert")
 def test_kit_scripts_run_through_uv_offline_with_an_empty_cache(tmp_path):
     ws = tmp_path / "home" / "cwd"

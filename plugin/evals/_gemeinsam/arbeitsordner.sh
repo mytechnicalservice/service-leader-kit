@@ -22,8 +22,11 @@ baue() {
       "Bibliotheken laden. Vor dem Eval-Lauf im Kit-Repo bauen: sh tools/eval_wheels.sh" >&2
     exit 1
   fi
-  # uv reads uv.toml from the working directory: install only from the wheel folder, never from the index.
-  printf 'no-index = true\nfind-links = ["%s"]\n' "$SLK_WHEELS" > uv.toml
+  # The eval sandbox lets a run read only its own workspace, so the wheels are copied in (a find-links path into the
+  # plugin is "Operation not permitted"). uv reads uv.toml from the working directory: install only from that copy.
+  mkdir -p .slk-wheels
+  cp "$SLK_WHEELS"/*.whl .slk-wheels/
+  printf 'no-index = true\nfind-links = ["%s"]\n' "$(pwd)/.slk-wheels" > uv.toml
   cp -R "$SLK_P/vorlagen/arbeitsordner/." .
   mkdir -p 01_Vorgaenge/offen 01_Vorgaenge/erledigt 01_Vorgaenge/_zur-loeschung
   cp "$SLK_P/vorlagen/workspace.gitignore" .gitignore
