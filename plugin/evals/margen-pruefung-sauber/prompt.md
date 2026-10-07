@@ -1,0 +1,1 @@
+Finanzen soll die Marge im Angebot V-0901 prüfen: Listenpreis 50.000 EUR, kein Rabatt, Kosten laut Kalkulation 25.000 EUR – das sind alle direkten Kosten inklusive der Technikerstunden zum Vollkostensatz.

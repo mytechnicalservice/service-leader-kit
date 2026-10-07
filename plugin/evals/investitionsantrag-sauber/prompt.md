@@ -1,0 +1,1 @@
+Mach mir einen Investitionsantrag für einen mobilen Diagnose-Messplatz: Investition 120.000 EUR, zusätzlicher Deckungsbeitrag 38.000 EUR pro Jahr über 5 Jahre, kein Restwert. Quelle: Angebot des Lieferanten vom 2026-09-15.
