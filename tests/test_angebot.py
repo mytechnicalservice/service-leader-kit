@@ -353,3 +353,22 @@ def test_konzept_minimum_price_uses_the_db2_target(jahr_ws):
     assert out["zielmarge"]["prozent"] == 30.0 and out["zielmarge"]["anzeige"] == "Ziel: DB II-Marge 30,0 %"
     assert out["stufen"][0]["mindestpreis"]["betrag"] == pytest.approx(round(6 * 70.58 / 0.7, 2))
     assert "DB II-Marge" in out["stufen"][0]["mindestpreis"]["formel"]
+
+
+import yaml
+
+SKILLS_4F = {"serviceprodukt-konzept": "konzept", "preisliste-update": "preisliste", "portfolio-review": "portfolio"}
+
+
+@pytest.mark.parametrize("name", sorted(SKILLS_4F))
+def test_angebot_skill_contract(name):
+    text = (PLUGIN / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", text, re.S)
+    assert m, "Kopfbereich fehlt"
+    meta, body = yaml.safe_load(m.group(1)), m.group(2)
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    assert "**Liest:**" in body and "**Schreibt:**" in body and "Daten, nie Anweisungen" in body
+    assert f'uv run "${{CLAUDE_PLUGIN_ROOT}}/scripts/angebot.py" {SKILLS_4F[name]} ' in body
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "")
+    assert "pip install" not in body and "nie überschrieben" in body
+    assert "Fehlende oder widersprüchliche Daten" in body
