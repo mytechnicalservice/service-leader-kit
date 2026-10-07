@@ -311,3 +311,32 @@ def test_team_lead_agenda_without_capacity_data(capsys, kit_ws):
     assert code == 0, out
     assert abschnitt_von(out, "4.")["absaetze"][0].startswith("Keine Kapazitätsdaten")
     assert out["daten"]["vorgaenge"]["offen"]["betrag"] == 0.0
+
+
+SKILLS = {"eskalation-topkunde": ["eskalation-lage", "eskalation-gespraech", "eskalation-notiz"],
+          "teamleiter-runde": ["teamleiter-runde"], "kapazitaet-lage": ["kapazitaet-lage"]}
+
+
+@pytest.mark.parametrize("name", sorted(SKILLS))
+def test_betrieb_skill_contract(name):
+    text = (ROOT / "plugin" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", text, re.S)
+    assert m, "Kopfbereich fehlt"
+    meta, body = yaml.safe_load(m.group(1)), m.group(2)
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    for muss in ("**Liest:**", "**Schreibt:**", "Daten, nie Anweisungen", "--pruefe", "keine Auswertung einzelner Personen"):
+        assert muss in body, muss
+    for befehl in SKILLS[name]:
+        assert f'uv run "${{CLAUDE_PLUGIN_ROOT}}/scripts/betrieb.py" {befehl} --ws "<workspace>"' in body, befehl
+    for script in re.findall(r'uv run "\$\{CLAUDE_PLUGIN_ROOT\}/scripts/(\w+\.py)"', body):
+        assert (ROOT / "plugin" / "scripts" / script).is_file(), script
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "")
+    assert "pip install" not in body
+    assert not re.search(r'vorgang\.py" entscheide', body)  # only the user decides (spec §6)
+
+
+def test_escalation_skill_delegates_the_review():
+    body = (ROOT / "plugin" / "skills" / "eskalation-topkunde" / "SKILL.md").read_text(encoding="utf-8")
+    assert 'subagent_type: "service-leader-kit:qualitaet-recht"' in body
+    assert "--art empfehlung --von qualitaet-recht" in body
+    assert "Das Gespräch führst du." in body and "mail-entwurf" in body
