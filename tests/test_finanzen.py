@@ -645,3 +645,21 @@ def test_source_comparison_names_service_revenue_against_orders(fin_ws):
     v = {x["thema"]: x for x in out["quellenvergleich"]}
     assert v["Serviceumsatz"]["ergebnisrechnung"]["betrag"] == 89000 and v["Serviceumsatz"]["export"]["betrag"] == 3800
     assert v["Serviceumsatz"]["differenz"]["betrag"] == 85200
+
+
+@pytest.mark.parametrize("name", ["DB II-Marge", "DB2-Marge", "Deckungsbeitrag II", "DB II in %", "DBII-Marge"])
+def test_db2_target_names_that_match(name):
+    defs = {"kpi-ziele": {"kennzahlen": [{"name": name, "ziel": 32, "einheit": "%"}]}}
+    assert finanzen.db2_ziel(defs) == (32.0, False)
+
+
+@pytest.mark.parametrize("name", ["DB I in %", "Deckungsbeitrag I in %", "DB I Ist", "DB I-Marge", "DB III-Marge"])
+def test_db1_kpis_are_never_the_margin_target(name):
+    defs = {"kpi-ziele": {"kennzahlen": [{"name": name, "ziel": 68, "einheit": "%"}]}}
+    assert finanzen.db2_ziel(defs) == (finanzen.DB2_ZIEL_STANDARD, True)
+
+
+def test_db2_target_skips_a_db1_kpi_listed_first():
+    defs = {"kpi-ziele": {"kennzahlen": [{"name": "DB I in %", "ziel": 68, "einheit": "%"},
+                                         {"name": "DB II in %", "ziel": 32, "einheit": "%"}]}}
+    assert finanzen.db2_ziel(defs) == (32.0, False)

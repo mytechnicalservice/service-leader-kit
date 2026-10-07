@@ -231,8 +231,8 @@ def db2_ziel(defs: dict) -> tuple[float, bool]:
     for k in defs["kpi-ziele"].get("kennzahlen") or []:
         if not isinstance(k, dict):
             continue
-        name = re.sub(r"[^a-z0-9%]", "", str(k.get("name", "")).casefold())
-        if (re.search(r"(db|deckungsbeitrag)(ii|2)(?![i\d])", name) and str(k.get("einheit", "")).strip() == "%"
+        name = re.sub(r"[^a-z0-9%]+", " ", str(k.get("name", "")).casefold())  # keep word boundaries
+        if (re.search(r"\b(db|deckungsbeitrag)\s*(ii|2)\b", name) and str(k.get("einheit", "")).strip() == "%"
                 and k.get("ziel") not in (None, "")):
             return float(zahl(k["ziel"])), False
     return DB2_ZIEL_STANDARD, True
