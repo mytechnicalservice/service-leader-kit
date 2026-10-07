@@ -1,0 +1,17 @@
+{
+  "reklamation_mueller_auftrag": "SA-260901",
+  "reklamation_mueller_frist_bis": "2027-09-03",
+  "reklamation_mueller_basis_eur": 2380,
+  "reklamation_mueller_kulanz_k1_eur": 595,
+  "wiederholfehler_mm600_spindel_anzahl": 5,
+  "wiederholfehler_mm600_spindel_kosten_eur": 7690,
+  "wiederholfehler_mm600_spindel_umsatz_eur": 10850,
+  "wiederholfehler_weber_tage": 41,
+  "wiederholfehler_unordentlich_mm600_kosten_eur": 6570,
+  "vertrag_hansa_abweichungen": 1,
+  "vertrag_hansa_haftungsgrenze_eur": 72000,
+  "vertrag_nordmetall_abweichungen": 9,
+  "vertrag_nordmetall_kritisch": 4,
+  "audit_nachweise_sauber": 3,
+  "audit_nachweise_unordentlich": 2
+}

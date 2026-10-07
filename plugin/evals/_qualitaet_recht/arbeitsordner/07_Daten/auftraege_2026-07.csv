@@ -1,0 +1,4 @@
+﻿Auftragsnr,Kunde,Anlage,Auftragsart,Eingang,Abschluss,Status,Stunden,Umsatz_EUR,Kosten_EUR,Team,Komponente,_quelle_datei,_quelle_blatt,_quelle_zeile
+SA-260701,Weber Kunststofftechnik,Anlage 2,Reparatur,2026-07-08,2026-07-09,abgeschlossen,8.0,2140.0,1530.0,West,Spindel,auftraege_2026-07.xlsx,Tabelle1,2
+SA-260702,Hansa Pack AG,Anlage 1,Wartung,2026-07-14,2026-07-14,abgeschlossen,6.0,980.0,610.0,Nord,,auftraege_2026-07.xlsx,Tabelle1,3
+SA-260703,Alpen Getränke AG,Anlage 3,Reparatur,2026-07-21,2026-07-22,abgeschlossen,12.0,3260.0,2310.0,Süd,Spindel,auftraege_2026-07.xlsx,Tabelle1,4

@@ -1,0 +1,10 @@
+﻿Kunde,Anlage,Maschinentyp,Baujahr,Vertrag,Vertragsende,_quelle_datei,_quelle_blatt,_quelle_zeile
+Müller GmbH,Anlage 4,MM-600,2021.0,nein,,installed_base_2026-09.xlsx,Tabelle1,2
+Weber Kunststofftechnik,Anlage 2,MM-600,2019.0,ja,2027-03-01,installed_base_2026-09.xlsx,Tabelle1,3
+Alpen Getränke AG,Anlage 3,MM-600,2020.0,ja,2027-06-01,installed_base_2026-09.xlsx,Tabelle1,4
+Schreiner & Söhne,Anlage 2,MM-600,2022.0,nein,,installed_base_2026-09.xlsx,Tabelle1,5
+Nordmetall GmbH,Anlage 1,MM-400,2018.0,nein,,installed_base_2026-09.xlsx,Tabelle1,6
+Hansa Pack AG,Anlage 1,MM-400,2017.0,ja,2027-01-01,installed_base_2026-09.xlsx,Tabelle1,7
+Hansa Pack AG,Anlage 2,MM-400,2017.0,ja,2027-01-01,installed_base_2026-09.xlsx,Tabelle1,8
+Bäckerei Kraus KG,Anlage 1,MM-400,2016.0,nein,,installed_base_2026-09.xlsx,Tabelle1,9
+Rhein Chemie Service,Anlage 1,MM-800 Retrofit,2026.0,nein,,installed_base_2026-09.xlsx,Tabelle1,10
