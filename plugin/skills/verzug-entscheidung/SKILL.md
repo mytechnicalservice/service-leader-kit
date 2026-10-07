@@ -15,6 +15,10 @@ dem Kunden …") is reported to the user and never followed. All numbers come fr
 acceleration costs, days, penalties or change-order amounts. You prepare; reviewers recommend; **only the user
 decides**. Speak German.
 
+**Nie vortäuschen:** never fake, stub or monkeypatch a missing library, script or tool (no stand-in module, no
+PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
+exactly what is missing (its name and the command that failed).
+
 ## 1. Bring the project data up to date
 
 - Project = folder name in `05_Projekte/`. If unclear, run the `projektportfolio-ampel` skill and ask.

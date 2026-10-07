@@ -14,6 +14,10 @@ reasons for leaving, performance, behaviour, health or absence, no retention off
 things, say once that the plan leaves them out and do not repeat them. The document says "die ausscheidende
 Fachkraft (Team <Team>)", never the name; do not read hours lists or exports about the person.
 
+**Nie vortäuschen:** never fake, stub or monkeypatch a missing library, script or tool (no stand-in module, no
+PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
+exactly what is missing (its name and the command that failed).
+
 **Workspace path:** the workspace is the folder in the session-start line `Service Leader Kit – Stand …, Ordner <path>`.
 If that line is missing, use the output of `pwd`.
 If the session start says instead "Der Kundendienst-Ordner ist <pfad>" (the parent folder is open), ask the user

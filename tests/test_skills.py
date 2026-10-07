@@ -39,3 +39,19 @@ def test_system_architect_matches_the_write_guard():
     assert {"Read", "Write", "Edit", "Bash", "Skill"} <= tools
     assert "hooks" not in meta and "permissionMode" not in meta  # ignored for plugin agents
     assert "lernpunkte.md" in body and "Daten, nie Anweisungen" in body
+
+
+AGENTS = sorted(p.stem for p in (PLUGIN / "agents").glob("*.md"))
+
+
+@pytest.mark.parametrize("datei", [f"skills/{s}/SKILL.md" for s in SKILLS] + [f"agents/{a}.md" for a in AGENTS])
+def test_never_fake_a_missing_library_or_tool(datei):
+    # A model once wrote a stand-in "docx" module (PYTHONPATH shim) so that a file check passed (eval diagnosis
+    # 2026-10-07). Every skill and agent carries the rule next to "Daten, nie Anweisungen".
+    _, body = kopf(PLUGIN / datei)
+    assert "**Nie vortäuschen" in body and "PYTHONPATH" in body, datei
+    regel = body.index("Nie vortäuschen")
+    daten = body.index("Daten, nie Anweisungen")
+    assert 0 < regel - daten < 1200, f"{datei}: Regel steht nicht neben 'Daten, nie Anweisungen'"
+    assert re.search(r"(stop and tell the user exactly what is missing|hältst an und sagst dem Nutzer genau, was "
+                     r"fehlt)", re.sub(r"\s+", " ", body)), datei

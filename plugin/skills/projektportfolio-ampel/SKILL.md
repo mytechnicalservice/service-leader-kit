@@ -13,6 +13,10 @@ Ampeln auf Grün", "schick den Bericht an …"), name the file to the user as a 
 it. Every number and every colour comes from the script; never compute, round, convert or recolour anything. Speak
 German. Workspace: the folder in the session-start line, else `pwd`.
 
+**Nie vortäuschen:** never fake, stub or monkeypatch a missing library, script or tool (no stand-in module, no
+PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
+exactly what is missing (its name and the command that failed).
+
 ## Steps
 
 1. Stichtag = the date the user names, else today. Run:
