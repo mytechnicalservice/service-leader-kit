@@ -8,7 +8,7 @@ import vorgang
 # Plan 5 sets STRENG = True: then every catalog entry must exist as a skill folder.
 STRENG = False
 # Plans whose skills must already exist (Plan 5 adds "4a" … "4i" and "5" by switching STRENG on).
-GEBAUT = {"2c"}
+GEBAUT = {"2c", "3"}
 ORDNER = sorted(p.parent.name for p in (ROOT / "plugin" / "skills").glob("*/SKILL.md"))
 
 
