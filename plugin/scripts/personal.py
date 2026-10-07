@@ -653,9 +653,83 @@ def cmd_abgang(a, ws: Path) -> tuple[int, dict]:
                "werte": werte, "meldungen": meldungen, "hinweis": k["hinweis"], "gliederung": gl}
 
 
+GESPRAECHE = {
+    "jahresgespraech": [
+        ("rueckblick", "1. Rückblick auf das Jahr", ["Welche Aufgaben und Ergebnisse waren aus deiner Sicht wichtig?",
+                                                     "Was lief gut, was nicht?"]),
+        ("zusammenarbeit", "2. Zusammenarbeit und Rahmenbedingungen", ["Wie läuft die Zusammenarbeit im Team und mit dir?",
+                                                                        "Was behindert die Arbeit?"]),
+        ("sicht_mitarbeiter", "3. Sicht der Mitarbeiterin / des Mitarbeiters",
+         ["Mit welchen offenen Fragen holst du die Sicht deines Gegenübers ein?"]),
+        ("entwicklung", "4. Entwicklung und Qualifizierung", ["Welche Schulung oder nächste Aufgabe ist sinnvoll?"]),
+        ("ziele", "5. Ziele für das nächste Jahr", ["Welche 3–5 Ziele, messbar und mit Termin?"]),
+        ("vereinbarungen", "6. Vereinbarungen und nächste Schritte", ["Was wird bis wann von wem erledigt?"])],
+    "zielgespraech": [
+        ("zielerreichung", "1. Zielerreichung", ["Welche Ziele waren vereinbart, wie weit sind sie aus deiner Sicht erreicht?"]),
+        ("rahmen", "2. Einflüsse und Rahmenbedingungen", ["Was hat die Zielerreichung beeinflusst, das nicht in der Hand "
+                                                          "der Person lag?"]),
+        ("neue_ziele", "3. Neue Ziele", ["Welche 3–5 Ziele, messbar und mit Termin?"]),
+        ("unterstuetzung", "4. Unterstützung", ["Was braucht es von dir oder vom Unternehmen dafür?"]),
+        ("vereinbarungen", "5. Vereinbarungen und nächste Schritte", ["Was wird bis wann von wem erledigt?"])]}
+EXPORT_SPUREN = re.compile(r"07_Daten|00_Eingang|_quelle_|Ist_Stunden|Soll_Stunden|Techniker_Anzahl|Umsatz_EUR"
+                           r"|\bSA-\d{4,}|\.(?:csv|xlsx|xlsm)\b", re.I)
+BESONDERE = re.compile(r"krank|diagnose|therapie|schwanger|behinderung|religion|gewerkschaft", re.I)
+GESCHUETZT = ("00_Eingang", "01_Vorgaenge", "07_Daten", "Unternehmen")
+
+
+def zielpfad(ws: Path, ziel: str) -> tuple[str, list[str], bool]:
+    voll = Path(ziel) if Path(ziel).is_absolute() else ws / ziel
+    probleme = []
+    if voll.suffix.lower() not in (".docx", ".md"):
+        probleme.append("Bitte als .docx oder .md speichern.")
+    try:
+        rel = voll.resolve().relative_to(ws.resolve()).as_posix()
+    except ValueError:
+        rel = None
+    if rel and rel.split("/")[0] in GESCHUETZT:
+        probleme.append(f"Nicht in {rel.split('/')[0]}/ speichern – der Ordner ist für Daten, Vorgänge oder "
+                        "Firmenwissen reserviert.")
+    if voll.exists():
+        probleme.append(f"{rel or voll} gibt es schon – das Kit überschreibt nichts. Bitte einen neuen Namen nennen.")
+    return (rel or str(voll)), probleme, rel is not None
+
+
+def cmd_gespraech(a, ws: Path) -> tuple[int, dict]:
+    daten = eingabe(a.eingabe)
+    abschnitte = daten.get("abschnitte") if isinstance(daten, dict) else None
+    if not isinstance(abschnitte, dict):
+        return 1, fehler('Die Eingabe braucht die Form {"abschnitte": {...}}.')
+    erlaubt = [s for s, _, _ in GESPRAECHE[a.art]]
+    fremd = sorted(set(abschnitte) - set(erlaubt))
+    if fremd:
+        return 1, fehler(f"Unbekannte Abschnitte: {', '.join(fremd)} – erlaubt: {', '.join(erlaubt)}.")
+    text = " ".join(str(v) for v in abschnitte.values())
+    if EXPORT_SPUREN.search(text):
+        return 1, fehler("Die Vorbereitung nutzt nur, was du selbst im Gespräch eingibst – keine Daten aus Exporten "
+                         "oder Dateien zur Person (spec §9.3). Bitte die Stelle in eigenen Worten beschreiben.")
+    ziel, probleme, im_ws = zielpfad(ws, a.ziel)
+    if probleme:
+        return 1, fehler(*probleme)
+    warnungen = []
+    if BESONDERE.search(text):
+        warnungen.append("Gesundheits- oder andere besondere Angaben (Art. 9 DSGVO) gehören nicht in die "
+                         "Vorbereitung – sie werden weggelassen; bitte mit HR klären.")
+    konf, _ = lies_konfig(ws)
+    if im_ws and konf and konf.get("ablage") in ("cloud", "github"):
+        warnungen.append("Der Ordner liegt in einer Cloud oder auf GitHub – Personalunterlagen dort nur mit Freigabe "
+                         "der IT und des Datenschutzes ablegen (spec §9.4).")
+    gl = []
+    for key, titel, fragen in GESPRAECHE[a.art]:
+        t = str(abschnitte.get(key) or "").strip()
+        gl.append({"titel": titel, "text": t, "offene_fragen": [] if t else fragen})
+    return 0, {"ok": True, "art": a.art, "ziel": ziel, "gliederung": gl, "warnungen": warnungen,
+               "hinweis": kontext(ws)["hinweis"], "meldungen": warnungen}
+
+
 BEFEHLE = {"personalplanung": cmd_personalplanung, "personenbezug": cmd_personenbezug,
            "team-aggregat": cmd_team_aggregat, "pruefe-ausgabe": cmd_pruefe_ausgabe,
-           "skill-matrix": cmd_skill_matrix, "matrix-erfassen": cmd_matrix_erfassen, "abgang": cmd_abgang}
+           "skill-matrix": cmd_skill_matrix, "matrix-erfassen": cmd_matrix_erfassen, "abgang": cmd_abgang,
+           "gespraech": cmd_gespraech}
 
 
 def parser() -> JsonParser:
@@ -693,6 +767,10 @@ def parser() -> JsonParser:
     sp.add_argument("--team", required=True)
     sp.add_argument("--qualifikation", action="append", required=True)
     sp.add_argument("--letzter-tag", dest="letzter_tag", required=True)
+    sp = add("gespraech")
+    sp.add_argument("--art", required=True, choices=sorted(GESPRAECHE))
+    sp.add_argument("--ziel", required=True)
+    sp.add_argument("--eingabe", required=True)
     return ap
 
 

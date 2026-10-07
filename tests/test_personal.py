@@ -265,3 +265,62 @@ def test_abgang_doppelte_angabe_zaehlt_einmal(pws):
                   "--qualifikation", "MM-800 Retrofit|alle", "--letzter-tag", "2026-12-31", "--bis", "2026-09",
                   "--monate", 3)
     assert len(out["zellen"]) == 2
+
+
+def g_eingabe(tmp_path, abschnitte):
+    p = tmp_path / "g.json"
+    p.write_text(json.dumps({"abschnitte": abschnitte}, ensure_ascii=False), encoding="utf-8")
+    return p
+
+
+def test_gespraech_gliedert_nur_eingaben(kit_ws, tmp_path):
+    e = g_eingabe(tmp_path, {"rueckblick": "Umstellung Ticketsystem gut geführt.",
+                             "entwicklung": "Ausbildung zur Ausbilderin MM-600."})
+    code, out = lauf("gespraech", "--ws", kit_ws, "--art", "jahresgespraech", "--ziel", "Personal/JG.md",
+                     "--eingabe", e)
+    assert code == 0 and out["ziel"] == "Personal/JG.md"
+    assert [g["titel"] for g in out["gliederung"]] == [t for _, t, _ in personal_mod().GESPRAECHE["jahresgespraech"]]
+    assert out["gliederung"][0]["text"] == "Umstellung Ticketsystem gut geführt." and not out["gliederung"][0]["offene_fragen"]
+    assert out["gliederung"][4]["text"] == "" and out["gliederung"][4]["offene_fragen"]
+    assert "BetrVG" in out["hinweis"]
+
+
+def personal_mod():
+    import personal
+    return personal
+
+
+def test_gespraech_lehnt_exportdaten_ab(kit_ws, tmp_path):
+    e = g_eingabe(tmp_path, {"rueckblick": "Ist_Stunden laut 07_Daten/kapazitaet_2026-09.csv: 120"})
+    code, out = lauf("gespraech", "--ws", kit_ws, "--art", "jahresgespraech", "--ziel", "Personal/x.md", "--eingabe", e)
+    assert code == 1 and "nur, was du selbst" in out["fehler"][0]
+
+
+def test_gespraech_warnt_bei_gesundheitsdaten(kit_ws, tmp_path):
+    e = g_eingabe(tmp_path, {"rahmen": "War im Frühjahr lange krank."})
+    code, out = lauf("gespraech", "--ws", kit_ws, "--art", "zielgespraech", "--ziel", "Personal/z.md", "--eingabe", e)
+    assert code == 0 and any("Art. 9" in w for w in out["warnungen"])
+
+
+def test_gespraech_ziel_geschuetzt(kit_ws, tmp_path):
+    e = g_eingabe(tmp_path, {"ziele": "Erstlösungsquote halten."})
+    (kit_ws / "Personal").mkdir()
+    (kit_ws / "Personal" / "alt.md").write_text("alt", encoding="utf-8")
+    for ziel in ("07_Daten/x.md", "Unternehmen/x.md", "Personal/alt.md", "Personal/x.pdf"):
+        code, out = lauf("gespraech", "--ws", kit_ws, "--art", "jahresgespraech", "--ziel", ziel, "--eingabe", e)
+        assert code == 1, ziel
+    assert (kit_ws / "Personal" / "alt.md").read_text(encoding="utf-8") == "alt"
+
+
+def test_gespraech_unbekannter_abschnitt(kit_ws, tmp_path):
+    e = g_eingabe(tmp_path, {"leistung_in_prozent": "80"})
+    code, out = lauf("gespraech", "--ws", kit_ws, "--art", "jahresgespraech", "--ziel", "P/x.md", "--eingabe", e)
+    assert code == 1 and "erlaubt" in out["fehler"][0]
+
+
+def test_gespraech_warnt_bei_cloud_ablage(kit_ws, tmp_path):
+    k = kit_ws / "Unternehmen" / ".kit-config"
+    k.write_text(k.read_text(encoding="utf-8").replace("ablage=lokal", "ablage=cloud"), encoding="utf-8")
+    e = g_eingabe(tmp_path, {"ziele": "Zwei neue Kollegen einarbeiten."})
+    _, out = lauf("gespraech", "--ws", kit_ws, "--art", "jahresgespraech", "--ziel", "Personal/x.md", "--eingabe", e)
+    assert any("IT" in w for w in out["warnungen"])
