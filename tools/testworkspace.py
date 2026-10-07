@@ -28,7 +28,7 @@ def baue(ziel: Path, mit_vorgaengen: bool = True) -> None:
     ziel.mkdir(parents=True, exist_ok=True)
     ao.ergaenze(ziel)
     (ziel / "Unternehmen" / ".kit-config").write_text(KONFIG, encoding="utf-8")
-    (ziel / "Unternehmen" / ".kit-version").write_text("0.1.0\n", encoding="utf-8")
+    (ziel / "Unternehmen" / ".kit-version").write_text(ao.kit_version() + "\n", encoding="utf-8")
     (ziel / "Unternehmen" / "profil.md").write_text("# Profil\n\nTestfirma für den Schutztest.\n", encoding="utf-8")
     if mit_vorgaengen:
         for titel, kunde, faellig in VORGAENGE:

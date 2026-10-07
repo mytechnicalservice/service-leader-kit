@@ -5,6 +5,7 @@ import time
 
 import pytest
 
+import arbeitsordner as ao
 from conftest import KONFIG, ROOT
 from hookrun import HOOKS, run_hook, run_lib
 
@@ -64,7 +65,7 @@ def test_invalid_settings_fall_back_safely(shell, kit_ws):
 def test_newer_plugin_version_asks_for_health_check(shell, kit_ws):
     (kit_ws / "Unternehmen" / ".kit-version").write_text("0.0.9\n", encoding="utf-8")
     assert "gesundheitscheck" in start(shell, kit_ws)
-    (kit_ws / "Unternehmen" / ".kit-version").write_text("0.1.0\n", encoding="utf-8")
+    (kit_ws / "Unternehmen" / ".kit-version").write_text(ao.kit_version() + "\n", encoding="utf-8")
     assert "gesundheitscheck" not in start(shell, kit_ws)
 
 
@@ -136,7 +137,7 @@ def test_self_test_warns_when_a_hook_file_is_missing_or_broken(shell, kit_ws, tm
 def test_status_files_with_a_utf8_bom_are_read(shell, kit_ws):
     u = kit_ws / "Unternehmen"
     u.joinpath(".kit-status").write_bytes(b"\xef\xbb\xbftagesstart=" + dt.date.today().isoformat().encode() + b"\r\n")
-    u.joinpath(".kit-version").write_bytes(b"\xef\xbb\xbf0.1.0\r\n")
+    u.joinpath(".kit-version").write_bytes(b"\xef\xbb\xbf" + ao.kit_version().encode() + b"\r\n")
     out = start(shell, kit_ws)
     assert "tagesstart ist heute noch nicht gelaufen" not in out and "gesundheitscheck" not in out
 
