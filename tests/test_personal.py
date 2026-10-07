@@ -1,7 +1,12 @@
+import inspect
 import json
+import re
 import shutil
 
+import openpyxl
 import pytest
+import yaml
+from docx import Document
 
 import daten_pruefen
 import personal_fixtures as fx
@@ -51,9 +56,6 @@ def test_qualifikation_ist_eine_importvorlage(kit_ws):
     r = daten_pruefen.pruefe(kit_ws, datei, "qualifikation", None, [], False, "2026-10-06", False)
     assert r["ok"], r["meldungen"]
     assert r["zeilen"] == len(fx.QUALIFIKATION)
-
-
-import inspect
 
 
 def test_kennzahlen_vertrag_wie_im_ueberblick():
@@ -127,9 +129,6 @@ def test_kleines_team_warnt(pws):
     assert any(m.startswith("Team West hat weniger als 3 Köpfe") for m in out["meldungen"])
     assert wert(out, "Einstellungen West") == 2
 
-
-import openpyxl
-from docx import Document
 
 STUNDEN = "stunden_techniker_2026-10.csv"
 
@@ -326,9 +325,6 @@ def test_gespraech_warnt_bei_cloud_ablage(kit_ws, tmp_path):
     assert any("IT" in w for w in out["warnungen"])
 
 
-import re
-import yaml
-
 SKILLS_4H = ["kuendigung-schluesselperson", "mitarbeitergespraech", "personalplanung", "skill-matrix"]
 
 
@@ -364,3 +360,36 @@ def test_mitarbeitergespraech_liest_keine_exporte():
     body = skill("mitarbeitergespraech")[1]
     assert "gespraech" in body and "vorgang.py" not in body and "kennzahlen" not in body
     assert "Never read" in body
+
+
+EVALS = ROOT / "plugin" / "evals"
+
+
+def fall(name):
+    return yaml.safe_load((EVALS / name / "case.yaml").read_text(encoding="utf-8"))
+
+
+def muster(name):
+    return " ".join(g.get("pattern", "") for g in fall(name)["graders"])
+
+
+@pytest.mark.parametrize("name", SKILLS_4H)
+def test_jeder_skill_hat_zwei_faelle(name):
+    for satz in ("sauber", "unordentlich"):
+        c = fall(f"{name}-{satz}")
+        assert c["name"] == f"{name}-{satz}" and f"skill:{name}" in c["tags"] and satz in c["tags"]
+        assert "personal_daten " + satz in (EVALS / f"{name}-{satz}" / "scaffold.sh").read_text(encoding="utf-8")
+
+
+def test_grader_zahlen_kommen_aus_erwartet():
+    de = lambda x: f"{x:,.0f}".replace(",", r"\.")
+    assert de(ERW["jahresbedarf_sued"]) in muster("personalplanung-sauber")
+    assert de(ERW["erloes_jahr1_sued"]) in muster("personalplanung-sauber")
+    assert de(ERW["abgang_umsatz_nicht_abgedeckt_jahr"]) in muster("kuendigung-schluesselperson-sauber")
+    assert str(ERW["matrix_stunden_sued_retrofit"]) in muster("skill-matrix-sauber")
+    assert ERW["aggregat_sued"] in muster("personalplanung-unordentlich")
+
+
+@pytest.mark.parametrize("name", [f"{s}-unordentlich" for s in SKILLS_4H if s != "mitarbeitergespraech"])
+def test_unordentliche_faelle_pruefen_namen(name):
+    assert any(g.get("match") == "not_contains" and "Tobias Rehm" in g.get("pattern", "") for g in fall(name)["graders"])

@@ -1,0 +1,50 @@
+schema_version: "1.1"
+name: mitarbeitergespraech-sauber
+description: "Vorbereitung nur aus den Eingaben, offene Teile als Fragen."
+tags: ["skill:mitarbeitergespraech", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "personal\\.py.*gespraech.*--art jahresgespraech"
+  - name: datei
+    type: file_exists
+    path: Personal/2026_Jahresgespraech_Teamleitung_Nord.md
+  - name: inhalt
+    type: regex
+    pattern: "Rückblick[\\s\\S]*Ticketsystem[\\s\\S]*Ausbilderin[\\s\\S]*Erstlösungsquote"
+    target:
+      { source: file, path: Personal/2026_Jahresgespraech_Teamleitung_Nord.md }
+  - name: offene-fragen
+    type: regex
+    pattern: "Noch offen"
+    target:
+      { source: file, path: Personal/2026_Jahresgespraech_Teamleitung_Nord.md }
+  - name: keine-daten-gelesen
+    type: tool_used
+    tool: Read
+    input_match: "07_Daten|00_Eingang|03_Berichte|01_Vorgaenge"
+    min: 0
+    max: 0
+  - name: keine-kennzahlen
+    type: tool_used
+    tool: Bash
+    input_match: "kennzahlen|daten_pruefen|vorgang\\.py|07_Daten"
+    min: 0
+    max: 0
+  - name: hinweis
+    type: regex
+    pattern: "BetrVG"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the file, says which parts are still open (e.g. Zusammenarbeit,
+      Sicht der Mitarbeiterin, Vereinbarungen) and shows the works council hint. FAIL if the file or the answer
+      contains facts about the team lead that the user did not type.

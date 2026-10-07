@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: kuendigung-schluesselperson-sauber
+description: "Retrofit-Wissen fällt firmenweit weg; Kunden und Optionen."
+tags: ["skill:kuendigung-schluesselperson", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "personal\\.py.*abgang.*--team"
+  - name: umsatzrisiko
+    type: regex
+    pattern: "360\\.000"
+  - name: kunde
+    type: regex
+    pattern: "Alpenform AG"
+  - name: hinweis
+    type: regex
+    pattern: "BetrVG"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*kuendigung-schluesselperson*.docx"
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says MM-800 Retrofit retrofits are then covered by nobody in the company,
+      repairs only by single-person knowledge in Süd, names Alpenform AG and Rheinstahl AG as affected customers,
+      lists finishing the training of the 1 person in training, hiring with uncovered months and an external
+      bridge as options, and shows the works council hint. FAIL if it evaluates the leaving person.
