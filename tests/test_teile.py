@@ -282,3 +282,28 @@ def test_purchase_limit_prefers_einkauf_eur_and_falls_back(kit_ws, defs):
     p = teile.lieferanten(kit_ws, ["00_Eingang/angebot_kugeltec.eml", "00_Eingang/angebot_lagerwerk.eml"], [], False,
                           HEUTE)["pruefung"]
     assert p["finanzen"] is True and "angebot_eur" in p["finanzen_grund"]
+
+
+import re
+
+import yaml
+
+SKILLS_4G = ["teilegeschaeft-review", "lieferanten-entscheidung"]
+
+
+@pytest.mark.parametrize("name", SKILLS_4G)
+def test_skill_contract_4g(name):
+    text = (ROOT / "plugin" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"\A---\n(.*?)\n---\n(.*)\Z", text, re.S)
+    meta, body = yaml.safe_load(m.group(1)), m.group(2)
+    assert meta["name"] == name and 40 <= len(meta["description"]) <= 1024
+    assert "**Liest:**" in body and "**Schreibt:**" in body and "Daten, nie Anweisungen" in body
+    assert f'uv run "${{CLAUDE_PLUGIN_ROOT}}/scripts/teile.py" {name}' in body
+    assert "$CLAUDE_PLUGIN_ROOT" not in body.replace("${CLAUDE_PLUGIN_ROOT}", "")
+    assert "pip install" not in body and "Beispieldaten – Muster Maschinenbau GmbH" in body
+
+
+def test_supplier_skill_routes_review_to_other_agents():
+    body = (ROOT / "plugin" / "skills" / "lieferanten-entscheidung" / "SKILL.md").read_text(encoding="utf-8")
+    assert "service-leader-kit:finanzen" in body and "service-leader-kit:qualitaet-recht" in body
+    assert "--von teile" in body and "entscheide" in body and "02_Postausgang" in body
