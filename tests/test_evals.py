@@ -122,3 +122,14 @@ def test_jahr_unordentlich_adds_the_messy_documents(tmp_path, shell, jahr_scaffo
     assert {"2026-09-29_mail-preisanfrage.eml", "2026-09-30_angebot-hydraulik-nord-scan.pdf",
             "Controlling_Monatsbericht_2026-09.xlsx"} <= eingang
     assert "2026-09-24_angebot-hydraulik-nord.eml" not in eingang
+
+
+def test_plan_3_graders_use_the_generated_numbers():
+    erwartet = json.loads((EVALS / "erwartet" / "beispiel.json").read_text(encoding="utf-8"))
+    gesamt = f"{erwartet['umsatz_gesamt_2026-09']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    muster = {g["name"]: g.get("pattern", "") + g.get("criteria", "") for g in lade(EVALS / "praesentation-sauber")["graders"]}
+    assert gesamt[:6].replace(".", "\\.") in muster["datei-geprueft"] and gesamt in muster["antwort"]
+    konflikt = lade(EVALS / "praesentation-unordentlich")["graders"]
+    text = " ".join(g.get("criteria", "") for g in konflikt)
+    for k in ("konflikt_wert_daten", "konflikt_wert_controlling"):
+        assert f"{erwartet[k]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") in text

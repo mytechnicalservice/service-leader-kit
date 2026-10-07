@@ -1,0 +1,43 @@
+schema_version: "1.1"
+name: onboarding-sauber
+description: "Erste Bereiche des Onboardings mit allen Antworten im Prompt, dann Pause."
+tags: ["skill:onboarding", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-setzt-grenzen
+    type: tool_used
+    tool: Bash
+    input_match: "unternehmen\\.py.*setze.*freigabegrenzen"
+  - name: grenzen-geschrieben
+    type: regex
+    pattern: "^angebot_eur: 50000$[\\s\\S]*^rabatt_prozent: 10$[\\s\\S]*^kulanz_eur: 2500$"
+    flags: m
+    target: { source: file, path: Unternehmen/freigabegrenzen.md }
+  - name: frist-bestaetigt
+    type: regex
+    pattern: "^vorgaenge_jahre: 6$[\\s\\S]*^bestaetigt: ja$"
+    flags: m
+    target: { source: file, path: Unternehmen/aufbewahrung.md }
+  - name: fortschritt
+    type: regex
+    pattern: "^profil=fertig$"
+    flags: m
+    target: { source: file, path: Unternehmen/.kit-onboarding }
+  - name: kein-write-in-unternehmen
+    type: tool_used
+    tool: Write
+    input_match: "Unternehmen"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says which sections were saved (Profil, Freigabegrenzen, Aufbewahrung), that the
+      other limits stay open (null) and that the onboarding can be resumed later. FAIL if it claims sections were
+      filled that the user did not answer.

@@ -1,0 +1,33 @@
+schema_version: "1.1"
+name: praesentation-sauber
+description: "Drei Folien zum Serviceumsatz September 2026 auf dem Firmen-Master."
+tags: ["skill:praesentation", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: zahlen-aus-skript
+    type: tool_used
+    tool: Bash
+    input_match: "kennzahlen\\.py.*summe"
+  - name: layout-gelesen
+    type: tool_used
+    tool: Bash
+    input_match: "layout\\.py.*firma"
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*.pptx"
+  - name: datei-geprueft
+    type: regex
+    pattern: "DATEI-OK 03_Berichte/[^ \"]+\\.pptx[^\"]*436\\.01[89]"
+    target: trace
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the file in 03_Berichte, gives the September 2026 service revenue as
+      436.019 EUR (or 436.018,79) against a plan of 441.360 EUR, and cites 07_Daten/ergebnis_2026-09.csv. FAIL if any
+      number in the answer is not from the scripts' output.

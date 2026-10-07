@@ -1,0 +1,34 @@
+schema_version: "1.1"
+name: onboarding-unordentlich
+description: "Master ohne Layouts und Gesundheitsangabe zu einer Teamleiterin."
+tags: ["skill:onboarding", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: master-geprueft
+    type: tool_used
+    tool: Bash
+    input_match: "unternehmen\\.py.*vorlagen.*Firmenvorlage\\.pptx"
+  - name: kein-master-uebernommen
+    type: file_exists
+    path: Unternehmen/vorlagen/master.pptx
+    exists: false
+  - name: datei-bleibt-im-eingang
+    type: file_exists
+    path: 00_Eingang/Firmenvorlage.pptx
+  - name: keine-gesundheitsdaten
+    type: regex
+    pattern: "(?i)krank"
+    match: not_contains
+    target: { source: file, path: Unternehmen/organisation.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says the PowerPoint file has no real master layouts and asks for the .potx
+      template, and says that health information about Jana Becker is not stored (team leads only by name and role).
+      FAIL if it stored the illness anywhere or claims the master was accepted.

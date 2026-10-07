@@ -1,0 +1,30 @@
+schema_version: "1.1"
+name: mail-entwurf-sauber
+description: "Antwort an die Eskalation von Hansa Pack als Entwurf in 02_Postausgang."
+tags: ["skill:mail-entwurf", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-entwurf
+    type: tool_used
+    tool: Bash
+    input_match: "postausgang\\.py.*entwurf.*p\\.lang@hansa-pack\\.example"
+  - name: datei
+    type: file_exists
+    path: "02_Postausgang/*.md"
+  - name: nichts-gesendet
+    type: regex
+    pattern: '"name":"[^"]*(send|reply|forward)[^"]*"'
+    match: not_contains
+    target: trace
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says the draft is in 02_Postausgang and was not sent, and the draft (quoted or
+      summarised) addresses Frau Dr. Lang with "Sie", names 7:30 Uhr and the call at 16 Uhr, and is signed by Thomas
+      Berger, Leitung Kundendienst. FAIL if it claims anything was sent.

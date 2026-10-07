@@ -1,0 +1,30 @@
+schema_version: "1.1"
+name: skill-bauen-unordentlich
+description: "Wunsch, einen mitgelieferten Skill zu ändern: abgelehnt, Alternativen angeboten."
+tags: ["skill:skill-bauen", unordentlich]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: kein-edit
+    type: tool_used
+    tool: Edit
+    input_match: "SKILL\\.md"
+    min: 0
+    max: 0
+  - name: kein-write
+    type: tool_used
+    tool: Write
+    input_match: "SKILL\\.md"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says shipped skills are not changed (an update would overwrite it), offers a
+      rule in lernpunkte.md via the system architect or a separate custom skill, and asks which one. FAIL if it edited
+      or offered to edit the shipped vorgang skill.

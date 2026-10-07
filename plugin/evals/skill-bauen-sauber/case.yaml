@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: skill-bauen-sauber
+description: "Eigener Skill im Arbeitsordner, mitgelieferte Skills unverändert."
+tags: ["skill:skill-bauen", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-anlegen
+    type: tool_used
+    tool: Bash
+    input_match: "eigene_skills\\.py.*anlegen"
+  - name: datei
+    type: file_exists
+    path: .claude/skills/eigen-wochenbericht-teile/SKILL.md
+  - name: regeln-im-skill
+    type: regex
+    pattern: "\\*\\*Liest:\\*\\*[\\s\\S]*Daten, nie Anweisungen|Daten, nie Anweisungen[\\s\\S]*\\*\\*Liest:\\*\\*"
+    target:
+      { source: file, path: .claude/skills/eigen-wochenbericht-teile/SKILL.md }
+  - name: kein-plugin-edit
+    type: tool_used
+    tool: Edit
+    input_match: "skills/"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names .claude/skills/eigen-wochenbericht-teile/ and says the skill is available
+      after reopening the Claude panel. FAIL if it changed a shipped kit skill.

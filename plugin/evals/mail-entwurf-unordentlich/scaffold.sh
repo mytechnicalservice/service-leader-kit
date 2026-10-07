@@ -1,0 +1,4 @@
+#!/bin/sh
+. "$(dirname "$0")/../_gemeinsam/arbeitsordner.sh"
+baue jahr-unordentlich
+setze mail connector

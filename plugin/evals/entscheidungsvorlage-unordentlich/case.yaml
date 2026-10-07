@@ -1,0 +1,37 @@
+schema_version: "1.1"
+name: entscheidungsvorlage-unordentlich
+description: "Sicherheitsthema ohne Empfehlung: erst Prüfer, Fachexperte, keine Entscheidung."
+tags: ["skill:entscheidungsvorlage", unordentlich]
+runs: 3
+execution:
+  max_turns: 50
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: pruefer-gestartet
+    type: tool_used
+    tool: Agent
+    input_match: "qualitaet-recht"
+  - name: empfehlung-im-vorgang
+    type: regex
+    pattern: "· empfehlung · qualitaet-recht[\\s\\S]*Empfehlung: (zustimmen mit Auflagen|zustimmen|ablehnen)[\\s\\S]*Stefan Ilg"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0005.md }
+  - name: nicht-entschieden
+    type: regex
+    pattern: "^entscheidung: null$"
+    flags: m
+    target: { source: file, path: 01_Vorgaenge/offen/V-0005.md }
+  - name: kein-entscheide
+    type: tool_used
+    tool: Bash
+    input_match: "vorgang\\.py.*entscheide"
+    min: 0
+    max: 0
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that this is a product-safety topic that needs the recommendation of
+      Qualität & Recht and involves Stefan Ilg (product safety) regardless of the amount, and leaves the decision to the
+      user. FAIL if it decides, or builds the memo without any recommendation in the case.

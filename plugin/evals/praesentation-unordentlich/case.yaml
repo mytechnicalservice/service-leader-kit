@@ -1,0 +1,30 @@
+schema_version: "1.1"
+name: praesentation-unordentlich
+description: "Controlling-Bericht widerspricht 07_Daten beim Ersatzteilumsatz September."
+tags: ["skill:praesentation", unordentlich]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: datei
+    type: file_exists
+    path: "03_Berichte/*.pptx"
+  - name: beide-werte
+    type: regex
+    pattern: "154\\.2(49|50)[\\s\\S]*139\\.6(49|50)|139\\.6(49|50)[\\s\\S]*154\\.2(49|50)"
+  - name: nicht-gemittelt
+    type: regex
+    pattern: "146\\.949"
+    match: not_contains
+    target: trace
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German and flags that the controlling report (Controlling_Monatsbericht_2026-09.xlsx)
+      shows 139.649,59 EUR spare-parts revenue while 07_Daten/ergebnis_2026-09.csv shows 154.249,59 EUR, names both
+      sources, says which value the slides use, and asks the user to clarify. FAIL if it averages the two values or
+      silently uses one.
