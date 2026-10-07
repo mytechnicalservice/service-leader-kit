@@ -1,6 +1,6 @@
 ---
 name: eskalation-topkunde
-description: "Top-customer escalation for the head of service - situation summary (Lagebild) from the customer's mails, case history, order data and contract; recommendation by Qualität & Recht on liability and obligations; call preparation; after the call minutes, actions as cases with owners and a summary mail draft. Use when a key customer escalates ('Hansa Pack eskaliert', 'Stillstand beim Kunden', 'Beschwerde an die Geschäftsführung', 'bereite das Gespräch mit … vor', 'ich hatte das Gespräch mit …')."
+description: "Top-customer escalation for the head of service - situation summary (Lagebild) from the customer's mails, case history, order data and contract; recommendation by Qualität & Recht on liability and obligations; call preparation; after the call a Gesprächsnotiz on the escalation case, actions as cases with owners and a summary mail draft. Use when a key customer escalates ('Hansa Pack eskaliert', 'Stillstand beim Kunden', 'Beschwerde an die Geschäftsführung', 'bereite das Gespräch mit … vor', 'ich hatte das Gespräch mit …', 'mach die Gesprächsnotiz'). Not for minutes from meeting notes ('Protokoll', 'mach daraus das Protokoll'): that is besprechung."
 ---
 
 # Eskalation Top-Kunde (spec §5, §8 Workflow „Top-Kunden-Eskalation“)

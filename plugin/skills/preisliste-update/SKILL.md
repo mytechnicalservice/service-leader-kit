@@ -32,7 +32,8 @@ folder in VS Code (Datei → Ordner öffnen) and stop.
    - market notes per category (competitor prices, "wir sind zu billig")
 
    Turn each market note into percentage points per category (Stundensatz, Pauschale, Vertrag, Schulung,
-   Ersatzteil, Sonstiges) and confirm that translation with the user.
+   Ersatzteil, Sonstiges) and confirm that translation with the user. If the user already gives the points per
+   category (e.g. "Stundensatz −2 Prozentpunkte, Vertrag +6"), that is the confirmation; do not ask again.
 
 2. Dry run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/angebot.py" preisliste --ws "<workspace>" --jahr <Jahr> --lohn <%> --material <%> --allgemein <%>`
    Options: add `--markt "<Kategorie>=<Prozentpunkte>"` (repeatable) and `--datei "<Pfad>"` if the user names the

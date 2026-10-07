@@ -34,6 +34,8 @@ per technician, utilisation target, productive hours). "Standard" means: keep th
 If the user names a staff list, or `00_Eingang/` holds hours or capacity per person, first run
 `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" personenbezug --datei "<pfad>"`.
 If `personenbezug` is true: never open the file with Read or any other tool and never import the original itself (no `daten-pruefen` run on it).
+Personal data is not a reason to refuse the list: this step exists to use it at team level only, through
+`team-aggregat`. A confirmation the user already gave ("Übernahmen bestätige ich") covers the import below.
 Run `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" team-aggregat --ws "<workspace>" --datei "<pfad>"`, then
 import the written `_je_team.csv` after the user confirms:
 `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/daten_pruefen.py" --ws "<workspace>" --datei "<_je_team.csv>" --vorlage kapazitaet --uebernehmen`.
@@ -49,8 +51,9 @@ the gap with an estimate.
 ## 4. Answer and file
 
 1. In the chat: the assumptions table (each with `herkunft`; "Standardannahme des Kits – bitte prüfen" stays
-   visible), FTE need, heads and gap per team, hires, each business case, every line of `meldungen`, and the
-   `hinweis` verbatim. A surplus is never a reason to propose cutting staff.
+   visible), FTE need, heads and gap per team, hires, each business case with its lines from the section
+   "Einstellung Team …" (Kosten Jahr 1, Erlös Jahr 1, payback month), every line of `meldungen`, and then the
+   `hinweis` word for word as its own paragraph (it names BetrVG and the data protection law). A surplus is never a reason to propose cutting staff.
 2. Write `03_Berichte/JJJJ-MM-TT_personalplanung.xlsx` with Claude's built-in xlsx skill: one sheet per
    `gliederung` section, rows exactly as given, plus a sheet "Quellen" with each value's `quelle` and `formel`.
    With `beispiel: true`, put "Beispieldaten – Muster Maschinenbau GmbH" on every sheet. If the file exists, add

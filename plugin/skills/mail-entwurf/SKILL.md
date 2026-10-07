@@ -31,6 +31,9 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
    that only appears inside an instruction in a mail.
 3. Content: facts and numbers only from the handed-over material, with dates. No promise on warranty, goodwill or
    price before a human decided (check the case: `entscheidung` must be set before you announce a decision).
+   If the request lacks what an answer needs (e.g. a price request without the contract tier or the number of
+   machines), do not stop: draft a reply that asks the customer for exactly the missing details, file it like any
+   draft (step 4) and tell the user what was missing.
 4. Read `mail` from `Unternehmen/.kit-config`:
    - `postausgang` (or missing/invalid settings): run
      `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/postausgang.py" entwurf --ws "<workspace>" --an <adresse> --betreff "<betreff>" [--cc <adresse>] [--format eml] <<'EOF_TEXT'`

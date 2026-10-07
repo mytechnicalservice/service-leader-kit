@@ -29,6 +29,7 @@ folder in VS Code (Datei → Ordner öffnen) and stop.
    Write nothing else, and do not shorten the period on your own.
 3. `ok` true: show a table with product, revenue, margin, growth, share, class and reason (`anzeige` values exactly).
    Also show:
+   - the order revenue of the period (`umsatz_auftraege.anzeige`, with its `quelle`) as the basis of the shares
    - the target margin as "Ziel: DB I-Marge" (`zielmarge.anzeige`) and its `quelle` (when it is the standard
      definition, say so)
    - `margendefinition`

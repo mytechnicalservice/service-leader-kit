@@ -39,7 +39,8 @@ one of `umsatz, material, fremdleistung, personal, gewaehrleistung, sonstige`.
 3. Prices/portfolio (same condition): Agent tool, `service-leader-kit:angebot`: "Preis- und Portfolioannahmen <Jahr>
    für die Umsatzarten in %, mit Begründung." Use each line as `<Art oder Position>|+<x> %|<Begründung>|angebot`.
 4. If an agent is unavailable or gives no number, ask the user. A user's "ohne Annahmen" means no `--annahme`.
-5. Contracts ending in the budget year (`vertragsbasis.auslaufend`) are named and asked about; never assumed.
+5. Contracts ending in the budget year (`vertragsbasis.auslaufend`) are named and asked about, unless the user
+   already said how to treat them (then use that with Quelle "Vorgabe <Nutzer>"); never assumed.
 
 Run the step-1 command again with all `--annahme` flags.
 
