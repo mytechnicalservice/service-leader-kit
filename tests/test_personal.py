@@ -204,3 +204,64 @@ def test_pruefe_ausgabe_mit_genanntem_namen(tmp_path):
     md.write_text("# Abdeckung\n\nÜbergabe durch tobias rehm\n", encoding="utf-8")
     out = lauf("pruefe-ausgabe", "--datei", md, "--name", "Tobias Rehm")[1]
     assert out["treffer"] == 1 and out["fundstellen"] == ["Zeile 3"]
+
+
+def test_skill_matrix_stufen_und_schulungsbedarf(pws):
+    code, out = lauf("skill-matrix", "--ws", pws, "--bis", "2026-09", "--monate", 3)
+    assert code == 0, out
+    bedarf = [(s["team"], s["maschinentyp"], s["auftragsart"], s["fehlend"]) for s in out["schulungsbedarf"]]
+    assert bedarf == [("Süd", "MM-800 Retrofit", "Retrofit", 1), ("West", "MM-800 Retrofit", "Reparatur", 1)]
+    assert wert(out, "Auftragsstunden Süd · MM-800 Retrofit · Retrofit") == ERW["matrix_stunden_sued_retrofit"]
+    assert wert(out, "Auftragsstunden West · MM-800 Retrofit · Reparatur") == ERW["matrix_stunden_west_reparatur"]
+    assert wert(out, "Zellen Stufe C") == ERW["matrix_stufe_c"]
+    nord = next(z for z in out["matrix"] if z["team"] == "Nord" and z["maschinentyp"] == "MM-400")
+    assert nord["qualifiziert"] == 4 and nord["stufe"].startswith("A")
+    leer_ = next(z for z in out["matrix"] if z["team"] == "Nord" and z["maschinentyp"] == "MM-800 Retrofit")
+    assert leer_["stunden"] == 0 and leer_["stufe"].startswith("D")
+    assert out["ohne_abdeckung"] == []
+    assert "BetrVG" in out["hinweis"]
+
+
+def test_matrix_erfassen_zaehlt_anonyme_stufen(kit_ws, tmp_path):
+    e = tmp_path / "e.json"
+    e.write_text(json.dumps([{"team": "West", "maschinentyp": "MM-800 Retrofit", "auftragsart": "Reparatur",
+                              "stufe": s} for s in (2, 2, 1, 0)]), encoding="utf-8")
+    code, out = lauf("matrix-erfassen", "--ws", kit_ws, "--eingabe", e, "--heute", "2026-10-06")
+    assert code == 0 and out["zeilen"] == [{"team": "West", "maschinentyp": "MM-800 Retrofit",
+                                            "auftragsart": "Reparatur", "qualifiziert": 2, "in_schulung": 1,
+                                            "ausbilder": 0}]
+    assert "West,MM-800 Retrofit,Reparatur,2,1,0" in (kit_ws / out["datei"]).read_text(encoding="utf-8-sig")
+    r = daten_pruefen.pruefe(kit_ws, kit_ws / out["datei"], "qualifikation", None, [], False, "2026-10-06", False)
+    assert r["ok"], r["meldungen"]
+
+
+def test_matrix_erfassen_lehnt_namen_ab(kit_ws, tmp_path):
+    e = tmp_path / "e.json"
+    e.write_text(json.dumps([{"team": "West", "maschinentyp": "MM-400", "auftragsart": "alle", "stufe": 2,
+                              "name": "Mia Krause"}]), encoding="utf-8")
+    code, out = lauf("matrix-erfassen", "--ws", kit_ws, "--eingabe", e)
+    assert code == 1 and "keine Namen" in out["fehler"][0] and "Mia" not in json.dumps(out, ensure_ascii=False)
+    assert not list((kit_ws / "00_Eingang").glob("qualifikation_erfasst_*"))
+
+
+def test_abgang_schluesselperson(pws):
+    code, out = lauf("abgang", "--ws", pws, "--team", "Süd", "--qualifikation", "MM-800 Retrofit|alle",
+                     "--letzter-tag", "31.12.2026", "--bis", "2026-09", "--monate", 3, "--heute", "2026-10-06")
+    assert code == 0, out
+    zellen = {(z["auftragsart"], z["team_vorher"], z["team_nachher"], z["firma_nachher"]) for z in out["zellen"]}
+    assert zellen == {("Retrofit", 1, 0, 0), ("Reparatur", 2, 1, 2)}
+    assert wert(out, "Umsatzrisiko nicht abgedeckt (Jahr)") == ERW["abgang_umsatz_nicht_abgedeckt_jahr"]
+    assert wert(out, "Umsatzrisiko Einzelwissen (Jahr)") == ERW["abgang_umsatz_einzelwissen_jahr"]
+    assert wert(out, "Betroffene Anlagen") == ERW["abgang_anlagen"] == wert(out, "Anlagen mit Vertrag")
+    assert [k["kunde"] for k in out["kunden"]] == ["Alpenform AG", "Rheinstahl AG"]
+    o = out["optionen"]
+    assert o["abordnung"] == []
+    assert o["in_schulung"] == [{"maschinentyp": "MM-800 Retrofit", "auftragsart": "Retrofit", "anzahl": 1}]
+    assert o["einstellung"] == {"bereit_ab": "2027-06", "luecke_monate": 5}
+
+
+def test_abgang_doppelte_angabe_zaehlt_einmal(pws):
+    _, out = lauf("abgang", "--ws", pws, "--team", "Süd", "--qualifikation", "MM-800 Retrofit|Retrofit",
+                  "--qualifikation", "MM-800 Retrofit|alle", "--letzter-tag", "2026-12-31", "--bis", "2026-09",
+                  "--monate", 3)
+    assert len(out["zellen"]) == 2

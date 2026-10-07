@@ -427,8 +427,235 @@ def cmd_pruefe_ausgabe(a, ws) -> tuple[int, dict]:
     return (1 if funde else 0), {"ok": not funde, "treffer": len(funde), "fundstellen": funde, "meldungen": m}
 
 
+STUFEN = ((3, "A – robust (3 und mehr)"), (2, "B – abgedeckt (2)"), (1, "C – Einzelwissen (1)"),
+          (0, "D – nicht abgedeckt (0)"))
+FELDER = {"team", "maschinentyp", "auftragsart", "qualifiziert", "in_schulung", "ausbilder", "stufe"}
+WISSENSTRANSFER = ["Anlagenwissen je Kunde dokumentieren (Besonderheiten, Störungshistorie, Einstellwerte)",
+                   "Begleitung bei Einsätzen: Nachfolge oder Schulungsteilnehmende fahren mit",
+                   "Kundenkontakte übergeben (Ansprechpartner, offene Zusagen)",
+                   "Zugänge, Werkzeuge, Software und Messmittel übergeben"]
+
+
+def stufe(q: int) -> str:
+    return next(t for g, t in STUFEN if q >= g)
+
+
+def anzahl(r: dict | None, spalte: str) -> int:
+    return 0 if r is None or leer(r.get(spalte)) else int(zahl(r[spalte]))
+
+
+def matrixdaten(ws: Path, perioden: list[str]):
+    auf = kz.lade(ws, "auftraege", perioden)
+    ib, qual = neueste(lade_optional(ws, "installed_base")), neueste(lade_optional(ws, "qualifikation"))
+    typ = {(r["Kunde"], r.get("Anlage")): r["Maschinentyp"] for r in ib}
+    zellen, ohne = {}, []
+    for r in auf:
+        mt = typ.get((r["Kunde"], r.get("Anlage")))
+        if leer(r.get("Team")) or mt is None:
+            ohne.append(r)
+        else:
+            zellen.setdefault((str(r["Team"]), mt, str(r["Auftragsart"])), []).append(r)
+    return zellen, ohne, ib, qual
+
+
+def quali(qual: list[dict], team: str, mt: str, art: str) -> dict | None:
+    passend = [r for r in qual if r["Team"] == team and r["Maschinentyp"] == mt]
+    return (next((r for r in passend if r["Auftragsart"] == art), None)
+            or next((r for r in passend if str(r["Auftragsart"]).casefold() == "alle"), None))
+
+
+def ohne_matrix() -> tuple[int, dict]:
+    return 1, fehler("Noch keine Qualifikationsmatrix in 07_Daten/ – bitte zuerst mit der Skill-Matrix erfassen "
+                     "(Anzahlen je Team).")
+
+
+def cmd_skill_matrix(a, ws: Path) -> tuple[int, dict]:
+    k = kontext(ws)
+    bis = monat(a.bis) if a.bis else letzter_monat(k["ordner"], "auftraege")
+    zellen, ohne, ib, qual = matrixdaten(ws, fenster(bis, a.monate))
+    if not qual:
+        return ohne_matrix()
+    mind, werte, matrix, bedarf = STANDARD["min_qualifiziert"], [], [], []
+    for (t, mt, art), rows in sorted(zellen.items()):
+        w = summe(rows, "Stunden", f"Auftragsstunden {t} · {mt} · {art}", "Std")
+        r = quali(qual, t, mt, art)
+        q = anzahl(r, "Qualifiziert_Anzahl")
+        z = {"team": t, "maschinentyp": mt, "auftragsart": art, "stunden": w["betrag"], "qualifiziert": q,
+             "in_schulung": anzahl(r, "In_Schulung_Anzahl"), "ausbilder": anzahl(r, "Ausbilder_Anzahl"),
+             "stufe": stufe(q), "quelle": w["quelle"] + (zeilen_text([r]) if r else ["nicht in der Matrix"])}
+        werte.append(w)
+        matrix.append(z)
+        if q < mind:
+            bedarf.append(z | {"fehlend": mind - q})
+    mit_auftraegen = {(z["team"], z["maschinentyp"]) for z in matrix}
+    for r in qual:
+        if (r["Team"], r["Maschinentyp"]) not in mit_auftraegen:
+            q = anzahl(r, "Qualifiziert_Anzahl")
+            matrix.append({"team": r["Team"], "maschinentyp": r["Maschinentyp"], "auftragsart": r["Auftragsart"],
+                           "stunden": 0.0, "qualifiziert": q, "in_schulung": anzahl(r, "In_Schulung_Anzahl"),
+                           "ausbilder": anzahl(r, "Ausbilder_Anzahl"), "stufe": stufe(q), "quelle": zeilen_text([r])})
+    bedarf.sort(key=lambda z: -z["stunden"])
+    gedeckt = {r["Maschinentyp"] for r in qual if anzahl(r, "Qualifiziert_Anzahl") > 0}
+    ohne_abdeckung = sorted({r["Maschinentyp"] for r in ib} - gedeckt)
+    werte += [kz.wert("Zellen Stufe C", float(sum(1 for z in matrix if z["stunden"] > 0 and z["qualifiziert"] == 1)),
+                      zeilen_text(qual), "Zellen mit Aufträgen und genau 1 qualifizierten Person", "Zellen"),
+              kz.wert("Fehlende Qualifizierungen", float(sum(z["fehlend"] for z in bedarf)), zeilen_text(qual),
+                      f"Summe (mindestens {mind} − qualifiziert) über Zellen mit Aufträgen", "Anzahl")]
+    meldungen = kleine_teams(lade_optional(ws, "kapazitaet", [bis]))
+    if ohne:
+        meldungen.append(f"{len(ohne)} Aufträge ohne Team oder ohne Maschinentyp in der Installed Base – nicht in "
+                         "der Matrix.")
+    meldungen += [f"Maschinentyp {m}: in keinem Team jemand qualifiziert." for m in ohne_abdeckung]
+    gl = kopf(k) + [
+        abschnitt(f"Skill-Matrix je Team – Aufträge {fenster(bis, a.monate)[0]} bis {bis}",
+                  [f"{z['team']} · {z['maschinentyp']} · {z['auftragsart']}: {z['stufe']}, {z['in_schulung']} in "
+                   f"Schulung, {z['ausbilder']} Ausbilder, {kz.deutsch(z['stunden'])} Auftragsstunden – Quelle: "
+                   + "; ".join(z["quelle"]) for z in matrix]),
+        abschnitt("Schulungsbedarf (unter 2 qualifiziert, nach Auftragsstunden)",
+                  [f"{z['team']} · {z['maschinentyp']} · {z['auftragsart']}: {z['fehlend']} fehlt, "
+                   f"{z['in_schulung']} in Schulung, {kz.deutsch(z['stunden'])} Std" for z in bedarf]),
+        abschnitt("Kennzahlen", werte[-2:]), abschnitt("Hinweise", meldungen + [k["hinweis"]])]
+    return 0, {"ok": True, "beispiel": k["beispiel"], "matrix": matrix, "schulungsbedarf": bedarf,
+               "ohne_abdeckung": ohne_abdeckung, "werte": werte, "meldungen": meldungen, "hinweis": k["hinweis"],
+               "gliederung": gl}
+
+
+def eingabe(quelle: str):
+    text = sys.stdin.read() if quelle == "-" else Path(quelle).read_text(encoding="utf-8")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Die Eingabe ist kein gültiges JSON.") from exc
+
+
+def cmd_matrix_erfassen(a, ws: Path) -> tuple[int, dict]:
+    eintraege = eingabe(a.eingabe)
+    if not isinstance(eintraege, list) or not eintraege:
+        return 1, fehler("Die Eingabe muss eine Liste von Zeilen sein.")
+    summen: dict[tuple, dict] = {}
+    for nr, e in enumerate(eintraege, 1):
+        fremd = sorted(set(e) - FELDER) if isinstance(e, dict) else ["?"]
+        if fremd:
+            return 1, fehler(f"Eintrag {nr}: Feld {', '.join(fremd)} wird nicht angenommen. Die Skill-Matrix speichert "
+                             "nur Anzahlen je Team – keine Namen und keine Einzelbewertungen.")
+        if any(leer(e.get(f)) for f in ("team", "maschinentyp", "auftragsart")):
+            return 1, fehler(f"Eintrag {nr}: Team, Maschinentyp und Auftragsart sind Pflicht.")
+        s = summen.setdefault((str(e["team"]).strip(), str(e["maschinentyp"]).strip(), str(e["auftragsart"]).strip()),
+                              {"qualifiziert": 0, "in_schulung": 0, "ausbilder": 0})
+        if "stufe" in e:
+            st = e["stufe"]
+            if isinstance(st, bool) or st not in (0, 1, 2, 3):
+                return 1, fehler(f"Eintrag {nr}: Stufe muss 0, 1, 2 oder 3 sein.")
+            s["qualifiziert"] += int(st >= 2)
+            s["in_schulung"] += int(st == 1)
+            s["ausbilder"] += int(st == 3)
+            continue
+        for f in ("qualifiziert", "in_schulung", "ausbilder"):
+            v = e.get(f, 0)
+            if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+                return 1, fehler(f"Eintrag {nr}: {f} muss eine ganze Zahl ab 0 sein.")
+            s[f] += v
+    ziel = ws / "00_Eingang" / f"qualifikation_erfasst_{a.heute}.csv"
+    rel = ziel.relative_to(ws).as_posix()
+    if ziel.exists():
+        return 1, fehler(f"{rel} gibt es schon – das Kit überschreibt nichts. Bitte zuerst übernehmen.")
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow(["Team", "Maschinentyp", "Auftragsart", "Qualifiziert_Anzahl", "In_Schulung_Anzahl", "Ausbilder_Anzahl"])
+    zeilen = [{"team": t, "maschinentyp": m, "auftragsart": x, **s} for (t, m, x), s in sorted(summen.items())]
+    for z in zeilen:
+        w.writerow([csv_sicher(z["team"]), csv_sicher(z["maschinentyp"]), csv_sicher(z["auftragsart"]),
+                    z["qualifiziert"], z["in_schulung"], z["ausbilder"]])
+    write_atomic(ziel, buf.getvalue(), encoding="utf-8-sig")
+    return 0, {"ok": True, "datei": rel, "zeilen": zeilen,
+               "meldungen": [f"Gespeichert sind nur Anzahlen je Team ({rel}). Jetzt mit daten-pruefen als Vorlage "
+                             "'qualifikation' übernehmen."]}
+
+
+def cmd_abgang(a, ws: Path) -> tuple[int, dict]:
+    k = kontext(ws)
+    bis = monat(a.bis) if a.bis else letzter_monat(k["ordner"], "auftraege")
+    letzter = datum(a.letzter_tag).isoformat()
+    zellen, _, ib, qual = matrixdaten(ws, fenster(bis, a.monate))
+    if not qual:
+        return ohne_matrix()
+    mind, faktor = STANDARD["min_qualifiziert"], 12 / a.monate
+    ziele: set[tuple] = set()
+    for eintrag in a.qualifikation:
+        mt, _, art = (s.strip() for s in eintrag.partition("|"))
+        art = art or "alle"
+        kandidaten = {c for c in zellen if c[0] == a.team and c[1] == mt} | {
+            (r["Team"], r["Maschinentyp"], r["Auftragsart"]) for r in qual
+            if r["Team"] == a.team and r["Maschinentyp"] == mt and str(r["Auftragsart"]).casefold() != "alle"}
+        ziele |= {c for c in kandidaten if art.casefold() == "alle" or c[2] == art} or (
+            {(a.team, mt, art)} if art.casefold() != "alle" else set())
+    if not ziele:
+        return 1, fehler(f"Für Team {a.team} gibt es weder Aufträge noch Matrixzeilen zu {', '.join(a.qualifikation)}.")
+    andere = sorted({str(r["Team"]) for r in qual} - {a.team})
+    out_z, rows0, rows1, typen, schulung, abordnung, meldungen = [], [], [], set(), [], [], []
+    for t, mt, art in sorted(ziele):
+        r = quali(qual, t, mt, art)
+        vor = anzahl(r, "Qualifiziert_Anzahl")
+        nach = max(vor - 1, 0)
+        if vor == 0:
+            meldungen.append(f"{mt} · {art}: laut Matrix ist in Team {t} niemand qualifiziert – Matrix aktualisieren.")
+        firma = vor + sum(anzahl(quali(qual, o, mt, art), "Qualifiziert_Anzahl") for o in andere)
+        rows = zellen.get((t, mt, art), [])
+        out_z.append({"maschinentyp": mt, "auftragsart": art, "team_vorher": vor, "team_nachher": nach,
+                      "firma_nachher": firma - (vor - nach), "stufe_nachher": stufe(nach)})
+        if nach < mind:
+            (rows0 if nach == 0 else rows1).extend(rows)
+            typen.add(mt)
+        if anzahl(r, "In_Schulung_Anzahl"):
+            schulung.append({"maschinentyp": mt, "auftragsart": art, "anzahl": anzahl(r, "In_Schulung_Anzahl")})
+        abordnung += [{"team": o, "maschinentyp": mt, "auftragsart": art, "qualifiziert": q} for o in andere
+                      if (q := anzahl(quali(qual, o, mt, art), "Qualifiziert_Anzahl")) >= mind + 1]
+    werte = []
+    for rows, art_text in ((rows0, "nicht abgedeckt"), (rows1, "Einzelwissen")):
+        u = summe(rows, "Umsatz_EUR", f"Umsatz {art_text} (Zeitraum)", "EUR")
+        s = summe(rows, "Stunden", f"Stunden {art_text} (Zeitraum)", "Std")
+        werte += [u, s, kz.wert(f"Umsatzrisiko {art_text} (Jahr)", round(u["betrag"] * faktor, 2), u["quelle"],
+                                f"Umsatz im Zeitraum × 12/{a.monate}"),
+                  kz.wert(f"Stunden {art_text} (Jahr)", round(s["betrag"] * faktor, 1), s["quelle"],
+                          f"Stunden im Zeitraum × 12/{a.monate}", "Std")]
+    betroffen = [r for r in ib if r["Maschinentyp"] in typen]
+    kunden = [{"kunde": kd, "anlagen": sum(r["Kunde"] == kd for r in betroffen),
+               "mit_vertrag": sum(r["Kunde"] == kd and str(r.get("Vertrag")).casefold() == "ja" for r in betroffen),
+               "vertragsende_frueh": min((str(r["Vertragsende"]) for r in betroffen if r["Kunde"] == kd
+                                          and not leer(r.get("Vertragsende"))), default=None)}
+              for kd in sorted({r["Kunde"] for r in betroffen})]
+    qib = zeilen_text(betroffen) if betroffen else ["keine passenden Anlagen"]
+    werte += [kz.wert("Betroffene Anlagen", float(len(betroffen)), qib, "Anlagen der betroffenen Maschinentypen", "Anlagen"),
+              kz.wert("Anlagen mit Vertrag", float(sum(x["mit_vertrag"] for x in kunden)), qib, "Vertrag = ja", "Anlagen"),
+              kz.wert("Betroffene Kunden", float(len(kunden)), qib, "verschiedene Kunden", "Kunden")]
+    bereit = monat_plus(a.heute[:7], STANDARD["vorlauf_monate"] + STANDARD["einarbeitung_monate"])
+    lm = monat(letzter[:7])
+    luecke = max(0, (int(bereit[:4]) * 12 + int(bereit[5:])) - (int(lm[:4]) * 12 + int(lm[5:])) - 1)
+    optionen = {"in_schulung": schulung, "abordnung": abordnung,
+                "einstellung": {"bereit_ab": bereit, "luecke_monate": luecke}}
+    gl = kopf(k) + [
+        abschnitt(f"Abgang einer Fachkraft – Team {a.team}, letzter Arbeitstag {letzter}",
+                  [f"{z['maschinentyp']} · {z['auftragsart']}: Team {z['team_vorher']} → {z['team_nachher']} "
+                   f"({z['stufe_nachher']}), Firma danach {z['firma_nachher']}" for z in out_z]),
+        abschnitt("Auswirkung", werte),
+        abschnitt("Kunden mit betroffenen Maschinentypen",
+                  [f"{x['kunde']}: {x['anlagen']} Anlagen, {x['mit_vertrag']} mit Vertrag"
+                   + (f", frühestes Vertragsende {x['vertragsende_frueh']}" if x["vertragsende_frueh"] else "")
+                   for x in kunden]),
+        abschnitt("Optionen", [f"Schulung abschließen: {s['anzahl']} in Schulung ({s['maschinentyp']} · {s['auftragsart']})"
+                               for s in schulung]
+                  + [f"Abordnung aus Team {o['team']} ({o['qualifiziert']} qualifiziert)" for o in abordnung]
+                  + [f"Einstellung: einsatzbereit frühestens {bereit} – {luecke} Monate ohne Abdeckung",
+                     "Überbrückung durch Herstellerservice oder Fremdleistung"]),
+        abschnitt(f"Wissenstransfer bis {letzter}", WISSENSTRANSFER),
+        abschnitt("Hinweise", meldungen + kleine_teams(lade_optional(ws, "kapazitaet", [bis])) + [k["hinweis"]])]
+    return 0, {"ok": True, "beispiel": k["beispiel"], "zellen": out_z, "kunden": kunden, "optionen": optionen,
+               "werte": werte, "meldungen": meldungen, "hinweis": k["hinweis"], "gliederung": gl}
+
+
 BEFEHLE = {"personalplanung": cmd_personalplanung, "personenbezug": cmd_personenbezug,
-           "team-aggregat": cmd_team_aggregat, "pruefe-ausgabe": cmd_pruefe_ausgabe}
+           "team-aggregat": cmd_team_aggregat, "pruefe-ausgabe": cmd_pruefe_ausgabe,
+           "skill-matrix": cmd_skill_matrix, "matrix-erfassen": cmd_matrix_erfassen, "abgang": cmd_abgang}
 
 
 def parser() -> JsonParser:
@@ -459,6 +686,13 @@ def parser() -> JsonParser:
     sp.add_argument("--datei", required=True)
     sp.add_argument("--name", action="append", default=[])
     sp.add_argument("--namen-aus", dest="namen_aus", action="append", default=[])
+    add("skill-matrix", fenster_args=True)
+    sp = add("matrix-erfassen")
+    sp.add_argument("--eingabe", required=True)
+    sp = add("abgang", fenster_args=True)
+    sp.add_argument("--team", required=True)
+    sp.add_argument("--qualifikation", action="append", required=True)
+    sp.add_argument("--letzter-tag", dest="letzter_tag", required=True)
     return ap
 
 
