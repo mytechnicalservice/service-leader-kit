@@ -1,0 +1,5 @@
+Kunde,Anlage,Maschinentyp,Baujahr,Vertrag,Vertragsende,_quelle_datei,_quelle_blatt,_quelle_zeile
+Hansa Pack AG,Anlage 1,MM-600,2019.0,ja,2027-02-28,installed_base_2026-09.xlsx,Tabelle1,2
+Hansa Pack AG,Anlage 2,MM-800 Retrofit,2016.0,ja,2027-02-28,installed_base_2026-09.xlsx,Tabelle1,3
+Hansa Pack AG,Anlage 3,MM-400,2012.0,nein,,installed_base_2026-09.xlsx,Tabelle1,4
+Müller GmbH,Anlage 4,MM-600,2021.0,nein,,installed_base_2026-09.xlsx,Tabelle1,5
