@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import re
 import shutil
 
 import pytest
@@ -350,6 +351,37 @@ def test_stufe_premium_selects_that_level(vws, capsys):
             "--heute", HEUTE]
     assert vertrieb.main(base + ["--stufe", "Premium"]) == 0
     assert json.loads(capsys.readouterr().out)["werte"]["angebotswert"]["betrag"] == 75240
+
+
+LEISTUNGEN = ("# Leistungen\n\n<!-- antworten -->\n\n| Leistung | Inhalt | Berechnung |\n|---|---|---|\n"
+              "| Wartungsvertrag Basis | 1 Wartung pro Jahr, Hotline werktags 8–17 Uhr, Reaktionszeit 72 h | 4.800 EUR |\n"
+              "| Wartungsvertrag Premium | 2 Wartungen, Reaktionszeit 24 h, 10 % auf Ersatzteile | 13.200 EUR |\n"
+              "<!-- /antworten -->\n\n## Fragen\n\n- Welche Vertragsstufen gibt es?\n")
+
+
+def test_contract_clauses_follow_the_level_in_leistungen_md(vws):
+    # grossangebot-sauber (eval 0.2.2): the fixed clauses promised 2 visits, 48 h and 10 % on parts for "Basis",
+    # while leistungen.md says 1 visit, 72 h, no discount – the model stopped instead of writing the draft.
+    stufen_preisliste(vws)
+    datei(vws / "Unternehmen" / "leistungen.md", LEISTUNGEN)
+
+    def klauseln(stufe):
+        r = vertrieb.grossangebot(vws, "Nordmetall GmbH", "MM-400", 2, stufe=stufe, heute=HEUTE)
+        return {k["titel"]: k["text"] for k in r["klauseln"]}, r
+
+    k, r = klauseln("Basis")
+    assert len(k) == 10
+    assert "1 Wartung pro Jahr, Hotline werktags 8–17 Uhr, Reaktionszeit 72 h" in k["Leistungsumfang"]
+    assert "Unternehmen/leistungen.md" in k["Leistungsumfang"]
+    alles = " ".join(k.values()) + " " + " ".join(r["gliederung"])
+    for falsch in ("48 Stunden", "10 % Rabatt", "2 planmäßige", "2 Wartungsbesuche"):
+        assert falsch not in alles, falsch
+    assert not any("leistungen.md" in m for m in r["meldungen"])
+    k, _ = klauseln("Premium")
+    assert "Reaktionszeit 24 h, 10 % auf Ersatzteile" in k["Leistungsumfang"]
+    k, r = klauseln("Standard")  # no row in leistungen.md: no invented numbers, a message instead
+    assert "nicht gefunden" in k["Leistungsumfang"] and not re.search(r"\d+\s*(h\b|Stunden|%|Wartung)", " ".join(k[t] for t in ("Leistungsumfang", "Reaktionszeit", "Ersatzteile")))
+    assert any("Wartungsvertrag Standard MM-400" in m and "leistungen.md" in m for m in r["meldungen"])
 
 
 def test_one_matching_row_is_used_without_stufe(vws):

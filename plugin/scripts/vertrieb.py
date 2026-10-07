@@ -526,7 +526,7 @@ def key_account_review(ws: Path, kunde: str | None = None, top: int | None = Non
 
 GLIEDERUNG = [
     "Anschreiben mit Bezug auf die Anfrage (Datum, Absender)",
-    "Leistungsumfang je Anlage: 2 Wartungsbesuche pro Jahr, Verschleißteilsatz, Prüfprotokoll",
+    "Leistungsumfang je Anlage (Klausel „Leistungsumfang“)",
     "Anlagenliste: Kunde, Anlage, Maschinentyp, Baujahr",
     "Preise: Preis je Anlage und Jahr, Anzahl, Jahreswert vor Rabatt, Rabatt, Jahreswert, Angebotswert über die Laufzeit",
     "Vertragsbedingungen (Rahmenvertrag, siehe Klauseln)",
@@ -536,9 +536,10 @@ GLIEDERUNG = [
 ]
 KLAUSELN = [
     {"titel": "Vertragsgegenstand", "text": "Wartung der in der Anlagenliste genannten Maschinen."},
-    {"titel": "Leistungsumfang", "text": "2 planmäßige Wartungsbesuche pro Jahr inkl. Verschleißteilsatz und Prüfprotokoll."},
-    {"titel": "Reaktionszeit", "text": "48 Stunden an Werktagen (Premium 24 Stunden, falls in leistungen.md angeboten)."},
-    {"titel": "Ersatzteile", "text": "10 % Rabatt auf Ersatzteile für Vertragsanlagen."},
+    # Leistungsumfang, Reaktionszeit and Ersatzteile depend on the contract level: filled by stufenklauseln()
+    {"titel": "Leistungsumfang", "text": ""},
+    {"titel": "Reaktionszeit", "text": ""},
+    {"titel": "Ersatzteile", "text": ""},
     {"titel": "Preisanpassung", "text": "Jährlich, höchstens 5 %, mit 3 Monaten Ankündigung."},
     {"titel": "Laufzeit und Kündigung", "text": "3 Jahre, danach Verlängerung um je 12 Monate; Kündigung 3 Monate vor Ablauf."},
     {"titel": "Zahlung", "text": "Jährlich im Voraus, 30 Tage netto."},
@@ -546,6 +547,53 @@ KLAUSELN = [
     {"titel": "Haftung", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen; im Entwurf keine Abweichung."},
     {"titel": "Gerichtsstand und AGB", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen."},
 ]
+
+
+LEISTUNGEN = "Unternehmen/leistungen.md"
+
+
+def leistung(ws: Path, position: str | None, typ: str) -> dict | None:
+    """The row of Unternehmen/leistungen.md for the quoted level: price-list position 'Wartungsvertrag Basis MM-400'
+    → row 'Wartungsvertrag Basis'. Only the level word is matched; no level word or no row → None."""
+    if not position:
+        return None
+    stufe = re.sub(r"\s+", " ", position.casefold().replace("wartungsvertrag", "").replace(typ.casefold(), "")).strip()
+    try:
+        text = (ws / LEISTUNGEN).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    text = text.split("<!-- antworten -->", 1)[-1].split("<!-- /antworten -->", 1)[0]
+    for zeile in text.splitlines():
+        zellen = [z.strip() for z in zeile.strip().strip("|").split("|")]
+        if len(zellen) < 2 or not stufe:
+            continue
+        name = zellen[0].casefold()
+        if "wartungsvertrag" in name and re.search(rf"\b{re.escape(stufe)}\b", name):
+            return {"leistung": zellen[0], "inhalt": zellen[1]}
+    return None
+
+
+def stufenklauseln(ws: Path, position: str | None, typ: str, meldungen: list[str]) -> list[dict]:
+    """KLAUSELN with the level-dependent clauses taken word for word from leistungen.md (never fixed numbers that
+    could contradict the company's own levels)."""
+    zeile = leistung(ws, position, typ)
+    if zeile:
+        q = f"({LEISTUNGEN}, {zeile['leistung']})"
+        texte = {"Leistungsumfang": f"{zeile['inhalt']} {q}.",
+                 "Reaktionszeit": f"Wie im Leistungsumfang {q}.",
+                 "Ersatzteile": f"Wie im Leistungsumfang {q}; ist dort nichts genannt, gibt es keinen Rabatt auf "
+                                "Ersatzteile."}
+    elif position is None:  # no price-list row: the price was calculated from visits per year
+        texte = {"Leistungsumfang": f"{BESUCHE_JE_JAHR} planmäßige Wartungsbesuche pro Jahr (Annahme der "
+                                    "Kalkulation).",
+                 "Reaktionszeit": f"Laut {LEISTUNGEN} – vor dem Versand ergänzen.",
+                 "Ersatzteile": f"Laut {LEISTUNGEN} – vor dem Versand ergänzen."}
+    else:
+        luecke = f"Laut {LEISTUNGEN} für „{position}“ – dort nicht gefunden, vor dem Versand ergänzen."
+        texte = dict.fromkeys(("Leistungsumfang", "Reaktionszeit", "Ersatzteile"), luecke)
+        meldungen.append(f"„{position}“ steht nicht in {LEISTUNGEN}: Leistungsumfang, Reaktionszeit und "
+                         "Ersatzteil-Konditionen im Entwurf vor dem Versand ergänzen.")
+    return [k | {"text": texte[k["titel"]]} if k["titel"] in texte else k for k in KLAUSELN]
 
 
 def grenzen(ws: Path) -> dict:
@@ -690,7 +738,7 @@ def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | No
         "werte": {"preis_je_anlage": je, "jahreswert_vor_rabatt": brutto, "rabatt": nachlass, "jahreswert": jahr,
                   "angebotswert": gesamt},
         "rabatt_prozent": rabatt, "laufzeit_jahre": laufzeit, "gueltig_bis": gueltig.isoformat(), "anlagen": anlagen,
-        "gliederung": GLIEDERUNG, "klauseln": KLAUSELN, "pruefung": pr, "aufruf": aufruf, "annahmen": annahmen,
+        "gliederung": GLIEDERUNG, "klauseln": stufenklauseln(ws, position, typ, meldungen), "pruefung": pr, "aufruf": aufruf, "annahmen": annahmen,
         "meldungen": meldungen,
         "ziel": f"04_Angebote/{ordnername(kunde)}/{tag_heute.isoformat()}_angebot-wartungsvertrag.docx"}, zeilen)
 

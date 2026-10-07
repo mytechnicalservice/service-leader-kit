@@ -1,6 +1,6 @@
 ---
 name: grossangebot
-description: Drafts a large service quote or maintenance/framework contract from a customer request (e.g. "Wartungsvertrag für zwei MM-400"), opens the quote case and runs the large-quote workflow - Finanzen margin check, Qualität & Recht terms check, decision memo - up to the human decision. Use for "Großangebot", "Rahmenvertrag", "Wartungsvertrag anbieten", "Preisanfrage bearbeiten".
+description: Drafts a large service quote or maintenance/framework contract from a customer request (e.g. "Wartungsvertrag für zwei MM-400"), opens the quote case and runs the large-quote workflow - Finanzen margin check, Qualität & Recht terms check, decision memo - up to the human decision. Use for "Großangebot", "Rahmenvertrag", "Wartungsvertrag anbieten", "Preisanfrage bearbeiten" with a quote. To only answer a request mail ("beantworte die Preisanfrage") use mail-entwurf.
 ---
 
 # Großangebot (spec §5, §8 Workflow „Großangebot / Vertrag")
@@ -35,6 +35,11 @@ Read the request and `Unternehmen/lernpunkte.md`. Find the customer (the exact n
 deviates from our terms (liability, penalties, response time, payment, term). Ask only if customer, type or count is
 missing. For several machine types, make one quote per type.
 
+**Open points never hold back a draft the user asked for.** Which machines exactly, a name that differs from
+`Unternehmen/organisation.md`, a `meldungen` line: write the draft anyway, put each open point into it as
+"Zu klären: …", and list them in the answer. Stop and ask before writing only when customer, machine type, count
+or contract level is missing.
+
 ## 2. Calculate
 
 Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vertrieb.py" grossangebot --ws "<workspace>" --kunde "<Kunde>" --typ "<Maschinentyp>" --anzahl <n>`
@@ -56,8 +61,8 @@ Create the file `ziel` (.docx) with the built-in Word document skill:
 
 - Layout: `Unternehmen/vorlagen/briefkopf.docx` if it exists; tone from `Unternehmen/tonalitaet.md`.
 - Sections in the order of `gliederung`; machine list from `anlagen`; price table from `werte` (name, amount, formula).
-- Contract terms from `klauseln`. Where `Unternehmen/leistungen.md` words a clause differently, use its wording,
-  never other numbers.
+- Contract terms from `klauseln` (the level's scope, response time and parts terms come from
+  `Unternehmen/leistungen.md`; a clause that says "vor dem Versand ergänzen" stays visible as "Zu klären").
 - A last section "Quellen" with every `quelle`, `annahmen` and `meldungen`.
 - Header line "Entwurf – nicht versendet". If `beispiel` is true, also "Beispieldaten – Muster Maschinenbau GmbH".
 

@@ -72,3 +72,26 @@ def test_given_assumptions_are_not_asked_again():
     assert "unless the user already said how to treat them" in budget
     _, preise = skill("preisliste-update")
     assert "already gives the points per category" in preise
+
+
+# --- eval run 0.2.2 (2026-10-07 evening) ------------------------------------------------------------------------
+
+
+def test_a_quote_draft_is_not_held_back_by_open_points():
+    # grossangebot-sauber: the model asked three questions (machines, a name, the clauses) instead of the draft.
+    _, body = skill("grossangebot")
+    assert "Open points never hold back a draft the user asked for" in body and "Zu klären: …" in body
+
+
+def test_answering_a_price_request_is_a_mail_draft():
+    # mail-entwurf-unordentlich: "Beantworte bitte die Preisanfrage" went to the quote, which stopped for the level.
+    mail, _ = skill("mail-entwurf")
+    angebot, _ = skill("grossangebot")
+    assert "beantworte die Mail / die Preisanfrage" in mail
+    assert '("beantworte die Preisanfrage") use mail-entwurf' in angebot
+
+
+def test_mail_draft_answer_shows_the_signature():
+    # mail-entwurf-sauber: the answer showed two lines, so nobody could see whose name is under the mail.
+    _, body = skill("mail-entwurf")
+    assert "the signature it ends with (name and role)" in body

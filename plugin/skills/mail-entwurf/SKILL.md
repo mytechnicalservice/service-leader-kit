@@ -1,6 +1,6 @@
 ---
 name: mail-entwurf
-description: "Writes a mail draft in the company's tone: into 02_Postausgang/ (mail=postausgang) or as a draft in the linked mailbox (mail=connector). Never sends. Use for 'schreib eine Mail', 'Antwort an …', 'Entwurf an den Kunden', and when another skill hands over recipient, subject and content."
+description: "Writes a mail draft in the company's tone: into 02_Postausgang/ (mail=postausgang) or as a draft in the linked mailbox (mail=connector). Never sends. Use for 'schreib eine Mail', 'Antwort an …', 'beantworte die Mail / die Preisanfrage', 'Entwurf an den Kunden', and when another skill hands over recipient, subject and content. A full quote document is grossangebot."
 ---
 
 # Mail-Entwurf (spec §8 Regel 5)
@@ -42,4 +42,5 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
    - `connector`: if a mail connector tool that creates drafts is available (a tool name containing "draft" or
      "entwurf"), create exactly one draft with it. If none is available, fall back to `postausgang` and say so.
 5. If a case is involved: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" eintrag --ws "<workspace>" --nr V-… --art entwurf --von <agent> --text "Mail-Entwurf: <datei oder 'Postfach-Entwurf'> an <adresse>"`.
-6. Answer in German: where the draft is, that it was **not sent**, and the first two lines of the text.
+6. Answer in German: where the draft is, that it was **not sent**, the first two lines of the text and the
+   signature it ends with (name and role).
