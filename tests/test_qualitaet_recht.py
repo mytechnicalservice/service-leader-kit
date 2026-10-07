@@ -163,3 +163,70 @@ def test_recommendation_never_sets_the_decision_and_mail_waits_for_it(qws, capsy
                   "06_Kunden/Müller GmbH/2026-09-28_reklamation-V-0001.docx", "--entscheidung", "freigegeben"])
     capsys.readouterr()
     assert qr.reklamation(qws, "V-0001")["mail_erlaubt"] is True
+
+
+import csv  # noqa: E402
+
+
+def ohne_komponente_und_schreiner(ws):
+    for p in (ws / "07_Daten").glob("auftraege_*.csv"):
+        with p.open(encoding="utf-8-sig", newline="") as fh:
+            rows = [{k: v for k, v in r.items() if k != "Komponente"} for r in csv.DictReader(fh)]
+        with p.open("w", encoding="utf-8-sig", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(rows[0]), lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows)
+    ib = ws / "07_Daten" / "installed_base_2026-09.csv"
+    ib.write_text("".join(z for z in ib.read_text(encoding="utf-8-sig").splitlines(keepends=True)
+                          if not z.startswith("Schreiner")), encoding="utf-8-sig")
+
+
+def test_recurring_fault_by_type_and_component(qws):
+    out = qr.wiederholfehler(qws)
+    assert (out["zeitraum"], out["reparaturen"], out["schwelle"]) == ("2025-10 bis 2026-09", 7, 3)
+    b = out["befunde"][0]
+    assert (b["maschinentyp"], b["komponente"], b["anzahl"], b["kunden"], b["stufe"]) == \
+        ("MM-600", "Spindel", ERWARTET["wiederholfehler_mm600_spindel_anzahl"], 4, "Wiederholfehler")
+    assert b["kosten"]["betrag"] == ERWARTET["wiederholfehler_mm600_spindel_kosten_eur"]
+    assert b["umsatz"]["betrag"] == ERWARTET["wiederholfehler_mm600_spindel_umsatz_eur"]
+    assert b["auftraege"] == ["SA-260701", "SA-260703", "SA-260802", "SA-260901", "SA-260904"]
+    assert (out["befunde"][1]["maschinentyp"], out["befunde"][1]["anzahl"], out["befunde"][1]["stufe"]) == \
+        ("MM-400", 2, "beobachten")
+    assert out["wiederholt_gleiche_anlage"] == [{
+        "kunde": "Weber Kunststofftechnik", "anlage": "Anlage 2", "auftraege": ["SA-260701", "SA-260802"],
+        "tage": ERWARTET["wiederholfehler_weber_tage"],
+        "quelle": ["07_Daten/auftraege_2026-07.csv Zeile 1", "07_Daten/auftraege_2026-08.csv Zeile 2"]}]
+    assert [r["nr"] for r in out["reklamationen_offen"]] == ["V-0001"]
+    assert any("2025-10" in m and "2026-06" in m for m in out["meldungen"])  # missing months are said
+
+
+def test_without_component_column_groups_by_type_and_never_guesses(qws):
+    ohne_komponente_und_schreiner(qws)
+    out = qr.wiederholfehler(qws)
+    b = out["befunde"][0]
+    assert (b["maschinentyp"], b["komponente"], b["anzahl"]) == ("MM-600", "–", 4)
+    assert b["kosten"]["betrag"] == ERWARTET["wiederholfehler_unordentlich_mm600_kosten_eur"]
+    assert [x["auftrag"] for x in out["nicht_zugeordnet"]] == ["SA-260904"]
+    assert any("Spalte 'Komponente' fehlt" in m for m in out["meldungen"])
+
+
+def test_window_end_and_own_threshold(qws):
+    assert qr.wiederholfehler(qws, bis="2026-08")["befunde"][0]["anzahl"] == 3
+    (qws / "Unternehmen" / "freigabegrenzen.md").write_text(
+        (qws / "Unternehmen" / "freigabegrenzen.md").read_text(encoding="utf-8").replace(
+            "kulanz_eur: 1000", "kulanz_eur: 1000\nwiederholfehler_schwelle: 6"), encoding="utf-8")
+    out = qr.wiederholfehler(qws)
+    assert out["schwelle"] == 6 and out["befunde"][0]["stufe"] == "beobachten"
+    assert not any("Schwelle" in h for h in out["hinweise"])
+
+
+def test_damaged_case_is_named_and_skipped(qws):
+    shutil.copy(EVALS / "_gemeinsam" / "vorgaenge" / "V-0003.md", qws / "01_Vorgaenge" / "offen" / "V-0003.md")
+    out = qr.wiederholfehler(qws)
+    assert [r["nr"] for r in out["reklamationen_offen"]] == ["V-0001"]
+    assert "01_Vorgaenge/offen/V-0003.md ist beschädigt und wurde übersprungen." in out["meldungen"]
+
+
+def test_no_order_data_is_an_error(kit_ws):
+    with pytest.raises(qr.QRFehler, match="Keine Auftragsdaten"):
+        qr.wiederholfehler(kit_ws)

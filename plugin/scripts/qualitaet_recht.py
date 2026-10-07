@@ -289,3 +289,82 @@ def reklamation(ws: Path, nr: str, ursache: str = "unklar", ausschluss: str = "k
             "gliederung": ["Sachverhalt", "Bezugsauftrag und Fristen", "Bewertung nach Entscheidungsbaum", "Wer zahlt",
                            "Empfehlung", "Fachexperten", "Quellen", "Hinweis: keine Rechtsberatung"],
             "hinweise": f["hinweise"], "meldungen": f["meldungen"], "rechtshinweis": KEIN_RAT}
+
+
+# ---------- wiederholfehler ----------
+
+def _wiederholt(rep: list[dict]) -> list[dict]:
+    nach_anlage: dict[tuple, list] = {}
+    for z in rep:
+        nach_anlage.setdefault((z["Kunde"], z["Anlage"]), []).append(z)
+    out = []
+    for (kunde, anlage), zs in sorted(nach_anlage.items()):
+        zs.sort(key=lambda z: datum(z["Eingang"]))
+        for a, b in zip(zs, zs[1:]):
+            tage = (datum(b["Eingang"]) - datum(a["Eingang"])).days
+            if tage <= WF_TAGE:
+                out.append({"kunde": kunde, "anlage": anlage, "auftraege": [a["Auftragsnr"], b["Auftragsnr"]],
+                            "tage": tage, "quelle": [fundstelle(a), fundstelle(b)]})
+    return out
+
+
+def offene_reklamationen(ws: Path, meldungen: list[str]) -> list[dict]:
+    out = []
+    for p in sorted((vorgang.base(ws) / "offen").glob("V-*.md")):
+        errs, meta, _ = vorgang.datei_fehler(ws, p)
+        if errs:
+            meldungen.append(f"{vorgang.rel(ws, p)} ist beschädigt und wurde übersprungen.")
+        elif meta["typ"] == "reklamation":
+            out.append({"nr": meta["nr"], "kunde": meta["kunde"], "titel": meta["titel"], "faellig": meta["faellig"]})
+    return out
+
+
+def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12) -> dict:
+    ordner, hinweise = quelle(ws)
+    meldungen: list[str] = []
+    schwelle = teil(kz.definitionen(ordner), "freigabegrenzen").get("wiederholfehler_schwelle")
+    if schwelle is None:
+        schwelle = WF_SCHWELLE
+        hinweise.append(f"Schwelle Wiederholfehler {WF_SCHWELLE} Reparaturen in {monate} Monaten: {STANDARD}")
+    schwelle = int(zahl(schwelle))
+    auftraege = [z for z in lade_sicher(ordner, "auftraege", meldungen) if datum(z.get("Eingang"))]
+    if not auftraege:
+        raise QRFehler("Keine Auftragsdaten in 07_Daten – bitte zuerst die Auftragsliste importieren (daten-pruefen).")
+    vorhanden = sorted({str(z["Eingang"])[:7] for z in auftraege})
+    fenster = monatsfolge(bis or vorhanden[-1], monate)
+    fehlend = [m for m in fenster if m not in vorhanden]
+    if fehlend:
+        meldungen.append("Keine Auftragsdaten für " + ", ".join(fehlend) + " – ausgewertet sind nur die übrigen Monate.")
+    typ_von = {(b["Kunde"], b["Anlage"]): b["Maschinentyp"] for b in lade_sicher(ordner, "installed_base", meldungen)}
+    rep = [z for z in auftraege if str(z["Eingang"])[:7] in fenster and REPARATUR.search(z.get("Auftragsart") or "")]
+    mit_komponente = any("Komponente" in z for z in rep)
+    if rep and not mit_komponente:
+        meldungen.append("Spalte 'Komponente' fehlt in den Auftragsdaten – ausgewertet nur nach Maschinentyp.")
+    gruppen: dict[tuple, list] = {}
+    unzugeordnet = []
+    for z in rep:
+        typ = typ_von.get((z["Kunde"], z["Anlage"]))
+        if not typ:
+            unzugeordnet.append({"auftrag": z["Auftragsnr"], "quelle": fundstelle(z)})
+            continue
+        komp = ((z.get("Komponente") or "").strip() or "nicht angegeben") if mit_komponente else "–"
+        gruppen.setdefault((typ, komp), []).append(z)
+    if unzugeordnet:
+        meldungen.append(f"{len(unzugeordnet)} Reparatur(en) an Anlagen ohne Eintrag in der Installed Base – nicht "
+                         "zugeordnet.")
+    befunde = [{"maschinentyp": typ, "komponente": komp, "anzahl": len(zs), "kunden": len({z["Kunde"] for z in zs}),
+                "auftraege": [z["Auftragsnr"] for z in zs],
+                "kosten": kz.summe(zs, "Kosten_EUR", f"Kosten Reparaturen {typ} {komp}"),
+                "umsatz": kz.summe(zs, "Umsatz_EUR", f"Umsatz Reparaturen {typ} {komp}"),
+                "stufe": "Wiederholfehler" if len(zs) >= schwelle else "beobachten"}
+               for (typ, komp), zs in gruppen.items()]
+    befunde.sort(key=lambda b: (-b["anzahl"], b["maschinentyp"], b["komponente"]))
+    return {"ok": True, "zeitraum": f"{fenster[0]} bis {fenster[-1]}", "schwelle": schwelle, "reparaturen": len(rep),
+            "befunde": befunde, "wiederholt_gleiche_anlage": _wiederholt(rep), "nicht_zugeordnet": unzugeordnet,
+            "reklamationen_offen": offene_reklamationen(ws, meldungen),
+            "auffaellige_anweisungen": eingang_anweisungen(ws),
+            "ausgabe_datei": f"03_Berichte/{dt.date.today().isoformat()}_wiederholfehler-bericht.docx",
+            "gliederung": ["Zusammenfassung für die Konstruktion", "Wiederholfehler nach Maschinentyp und Komponente",
+                           "Gleiche Anlage erneut repariert", "Offene Reklamationen", "Datenlage und Quellen",
+                           "Bitte an die Konstruktion"],
+            "hinweise": hinweise, "meldungen": meldungen}
