@@ -1,0 +1,58 @@
+schema_version: "1.1"
+name: verzug-entscheidung-sauber
+description: "Verzug mit Vertragsstrafe, Beschleunigung beziffert, keine Freigabegrenze hinterlegt."
+tags: ["skill:verzug-entscheidung", sauber]
+runs: 3
+execution:
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: prognose-erfasst
+    type: regex
+    pattern: '"name": "Abnahme", "plan": "2026-10-15", "prognose": "2026-11-05"'
+    target:
+      {
+        source: file,
+        path: "05_Projekte/Retrofit Linie 2 Hansa Pack/projekt.md",
+      }
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "projekte\\.py.*verzug(?=.*--beschleunigung-eur 6\\.?500)(?=.*--beschleunigung-tage 14)"
+  - name: strafe
+    type: regex
+    pattern: "3\\.600"
+  - name: belastungen
+    type: regex
+    pattern: "17\\.600[\\s\\S]*21\\.700|21\\.700[\\s\\S]*17\\.600"
+  - name: vorlage
+    type: file_exists
+    path: "05_Projekte/Retrofit Linie 2 Hansa Pack/*_verzug-entscheidung.docx"
+  - name: vorlage-geprueft
+    type: tool_used
+    tool: Bash
+    input_match: "projekte\\.py.*pruefe-datei"
+  - name: empfehlung-finanzen
+    type: regex
+    pattern: "· empfehlung · finanzen"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: empfehlung-recht
+    type: regex
+    pattern: "· empfehlung · qualitaet-recht"
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: nicht-entschieden
+    type: regex
+    pattern: "^entscheidung: null$"
+    flags: m
+    target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the German answer lists options A (keep going), B (second installer), C (new date with the customer
+      waiving the penalty, only with written consent) and D (change order, open), each with cost and customer
+      impact, names the penalty 3.600 EUR, proposes A as lowest impact, reports both reviewers' recommendations,
+      says no legal expert is named, and leaves the decision to the user. FAIL if it claims a decision was made
+      or anything was sent.
