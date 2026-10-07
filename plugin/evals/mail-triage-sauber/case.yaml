@@ -1,0 +1,71 @@
+schema_version: "1.1"
+name: mail-triage-sauber
+description: "Zwei Mails ablegen, dann Vorgänge mit Quelle am Zielort."
+tags: ["skill:mail-triage", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: triage,
+      type: tool_used,
+      tool: Bash,
+      input_match: "assistenz\\.py.*mail-triage",
+    }
+  - {
+      name: ablegen,
+      type: tool_used,
+      tool: Bash,
+      input_match: "assistenz\\.py.*ablegen",
+      min: 2,
+    }
+  - {
+      name: reklamation-abgelegt,
+      type: file_exists,
+      path: "06_Kunden/*/2026-09-28_mail-reklamation.eml",
+    }
+  - {
+      name: eskalation-abgelegt,
+      type: file_exists,
+      path: "06_Kunden/*/2026-09-29_mail-eskalation.eml",
+    }
+  - {
+      name: eingang-leer,
+      type: file_exists,
+      path: 00_Eingang/2026-09-28_mail-reklamation.eml,
+      exists: false,
+    }
+  - {
+      name: export-bleibt,
+      type: file_exists,
+      path: 00_Eingang/auftraege_2026-09.xlsx,
+    }
+  - {
+      name: quelle-1,
+      type: regex,
+      pattern: "Quelle: 06_Kunden/",
+      target: { source: file, path: 01_Vorgaenge/offen/V-0001.md },
+    }
+  - {
+      name: quelle-2,
+      type: regex,
+      pattern: "Quelle: 06_Kunden/",
+      target: { source: file, path: 01_Vorgaenge/offen/V-0002.md },
+    }
+  - {
+      name: kein-mv,
+      type: tool_used,
+      tool: Bash,
+      input_match: "(^|[;&|]\\s*)mv\\s",
+      min: 0,
+      max: 0,
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says where each mail was filed, names the two new cases, and points the
+      export files to the data check (daten-pruefen) instead of moving them.

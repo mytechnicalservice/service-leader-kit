@@ -1,0 +1,51 @@
+schema_version: "1.1"
+name: morgen-briefing-sauber
+description: "Briefing mit Überfälligem, Eskalation und Freigaben."
+tags: ["skill:morgen-briefing", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "assistenz\\.py.*morgen-briefing.*2026-10-07",
+    }
+  - {
+      name: datei,
+      type: file_exists,
+      path: 03_Berichte/2026-10-07_morgen-briefing.md,
+    }
+  - name: ueberfaellig
+    type: regex
+    pattern: "V-0001[^\\n]*überfällig seit 02\\.10\\.2026"
+    target: { source: file, path: 03_Berichte/2026-10-07_morgen-briefing.md }
+  - {
+      name: summe,
+      type: regex,
+      pattern: "17\\.300 €",
+      target: { source: file, path: 03_Berichte/2026-10-07_morgen-briefing.md },
+    }
+  - {
+      name: kalender,
+      type: regex,
+      pattern: "Kein Kalender verbunden",
+      target: { source: file, path: 03_Berichte/2026-10-07_morgen-briefing.md },
+    }
+  - {
+      name: nachfassen,
+      type: regex,
+      pattern: "V-0002[^\\n]*nachfassen",
+      target: { source: file, path: 03_Berichte/2026-10-07_morgen-briefing.md },
+    }
+  - { name: kein-write, type: tool_used, tool: Write, min: 0, max: 0 }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names V-0001 as overdue, V-0002 as an open escalation and V-0004 as due
+      today, reports two open decisions totalling 17.300 €, and claims no decision, sending or deletion.

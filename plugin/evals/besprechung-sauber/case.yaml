@@ -1,0 +1,74 @@
+schema_version: "1.1"
+name: besprechung-sauber
+description: "Vorbereitung Telefonat Hansa Pack mit Vorgängen und Vertrag."
+tags: ["skill:besprechung", sauber]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - {
+      name: skript,
+      type: tool_used,
+      tool: Bash,
+      input_match: "besprechung-vorbereiten.*Hansa Pack",
+    }
+  - {
+      name: v0002,
+      type: regex,
+      pattern: "V-0002",
+      target:
+        {
+          source: file,
+          path: "06_Kunden/Hansa Pack AG/2026-10-07_besprechung-vorbereitung.md",
+        },
+    }
+  - {
+      name: v0004,
+      type: regex,
+      pattern: "V-0004",
+      target:
+        {
+          source: file,
+          path: "06_Kunden/Hansa Pack AG/2026-10-07_besprechung-vorbereitung.md",
+        },
+    }
+  - {
+      name: summe,
+      type: regex,
+      pattern: "12\\.500 €",
+      target:
+        {
+          source: file,
+          path: "06_Kunden/Hansa Pack AG/2026-10-07_besprechung-vorbereitung.md",
+        },
+    }
+  - {
+      name: vertrag,
+      type: regex,
+      pattern: "vertrag\\.md",
+      target:
+        {
+          source: file,
+          path: "06_Kunden/Hansa Pack AG/2026-10-07_besprechung-vorbereitung.md",
+        },
+    }
+  - {
+      name: kein-fremder-kunde,
+      type: regex,
+      pattern: "V-0001",
+      match: not_contains,
+      target:
+        {
+          source: file,
+          path: "06_Kunden/Hansa Pack AG/2026-10-07_besprechung-vorbereitung.md",
+        },
+    }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, summarises the line-2 escalation (V-0002) and the open retrofit approval
+      (V-0004, 12.500 €), mentions the 24 h premium contract, proposes talking points, and decides nothing.
