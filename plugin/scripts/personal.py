@@ -273,7 +273,162 @@ def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
                "gliederung": gl}
 
 
-BEFEHLE = {"personalplanung": cmd_personalplanung}
+PERSON = re.compile(r"^(?:(?:vor|nach|mitarbeiter|techniker|monteur|bearbeiter)?name|mitarbeiter(?:in)?|mitarbeitende"
+                    r"|techniker(?:in)?|monteur(?:in)?|bearbeiter(?:in)?|person|(?:personal|pers|ma)[\s._-]*(?:nr|nummer))\.?$")
+SP = {"team": ("team", "gruppe", "region"), "monat": ("monat", "periode"),
+      "soll": ("soll", "soll_stunden", "soll-stunden", "sollstunden", "soll stunden", "kapazität"),
+      "ist": ("ist", "ist_stunden", "ist-stunden", "iststunden", "ist stunden", "geleistet")}
+
+
+def _ist_zahl(v) -> bool:
+    try:
+        zahl(v)
+        return True
+    except ValueError:
+        return False
+
+
+def tabellen(datei: Path) -> list[tuple[list[str], list[list], int]]:
+    out = []
+    for _, rows in lese(datei):
+        for i, r in enumerate(rows[:10]):
+            if sum(not leer(c) for c in r) >= 2:
+                out.append(([("" if leer(c) else str(c).strip()) for c in r], rows[i + 1:], i + 2))
+                break
+    return out
+
+
+def personen_spalten(kopf: list[str], rows: list[list]) -> list[str]:
+    out = []
+    for i, h in enumerate(kopf):
+        if not PERSON.match(h.casefold()):
+            continue
+        werte = [r[i] for r in rows if i < len(r) and not leer(r[i])]
+        if h.casefold().startswith(("techniker", "monteur")) and werte and all(_ist_zahl(v) for v in werte):
+            continue  # a head count, not a person
+        out.append(h)
+    return out
+
+
+def personen_werte(datei: Path) -> set[str]:
+    namen = set()
+    for kopf, rows, _ in tabellen(datei):
+        for s in personen_spalten(kopf, rows):
+            i = kopf.index(s)
+            namen |= {str(r[i]).strip() for r in rows if i < len(r) and not leer(r[i]) and len(str(r[i]).strip()) >= 4}
+    return namen
+
+
+def text_aus(datei: Path) -> list[tuple[str, str]]:
+    e = datei.suffix.lower()
+    if e in (".md", ".txt", ".csv"):
+        return [(f"Zeile {i}", z) for i, z in enumerate(datei.read_text(encoding="utf-8-sig").splitlines(), 1)]
+    if e == ".docx":
+        from docx import Document
+        d = Document(str(datei))
+        out = [(f"Absatz {i}", p.text) for i, p in enumerate(d.paragraphs, 1)]
+        return out + [(f"Tabelle {t}", c.text) for t, tab in enumerate(d.tables, 1) for r in tab.rows for c in r.cells]
+    if e == ".xlsx":
+        from openpyxl import load_workbook
+        wb = load_workbook(datei, data_only=True)
+        return [(f"{sh.title}!{c.coordinate}", str(c.value)) for sh in wb.worksheets for row in sh.iter_rows()
+                for c in row if c.value is not None]
+    if e == ".pptx":
+        from pptx import Presentation
+        out = []
+        for i, s in enumerate(Presentation(str(datei)).slides, 1):
+            for sh in s.shapes:
+                if sh.has_text_frame:
+                    out.append((f"Folie {i}", sh.text_frame.text))
+                if getattr(sh, "has_table", False):
+                    out += [(f"Folie {i}", c.text) for r in sh.table.rows for c in r.cells]
+        return out
+    raise ImportFehler(f"{datei.name}: nur .md, .docx, .xlsx oder .pptx können geprüft werden.")
+
+
+def cmd_personenbezug(a, ws) -> tuple[int, dict]:
+    spalten, zeilen = [], 0
+    for kopf, rows, _ in tabellen(Path(a.datei)):
+        sp = personen_spalten(kopf, rows)
+        if sp:
+            spalten += sp
+            zeilen += sum(1 for r in rows if any(not leer(c) for c in r))
+    m = ([f"Die Datei enthält Personenbezug (Spalten: {', '.join(spalten)}). Nur über team-aggregat verwenden."]
+         if spalten else [])
+    return 0, {"ok": True, "personenbezug": bool(spalten), "spalten": spalten, "zeilen": zeilen, "meldungen": m}
+
+
+def cmd_team_aggregat(a, ws: Path) -> tuple[int, dict]:
+    datei = Path(a.datei)
+    tabs = [(k_, r_, s_) for k_, r_, s_ in tabellen(datei) if personen_spalten(k_, r_)]
+    if not tabs:
+        return 1, fehler(f"{datei.name} enthält keine Spalte mit Namen oder Personalnummern – bitte direkt mit "
+                         "daten-pruefen übernehmen.")
+    kopf, rows, start = tabs[0]
+    low = [h.casefold() for h in kopf]
+    idx = {key: next((i for i, h in enumerate(low) if h in namen), None) for key, namen in SP.items()}
+    fehlt = [key for key, i in idx.items() if i is None]
+    if fehlt:
+        return 1, fehler(f"Spalten fehlen: {', '.join(fehlt)} (vorhanden: {', '.join(h for h in kopf if h)})")
+    pers = personen_spalten(kopf, rows)
+    pid = kopf.index(next((s for s in pers if re.search(r"nr|nummer", s.casefold())), pers[0]))
+    teams, monate = {}, set()
+    for n, r in enumerate(rows, start=start):
+        if all(leer(c) for c in r):
+            continue
+        try:
+            m, soll, ist = monat(r[idx["monat"]]), zahl(r[idx["soll"]]), zahl(r[idx["ist"]])
+        except (ValueError, IndexError):
+            return 1, fehler(f"Zeile {n}: Monat, Soll oder Ist ist nicht lesbar.")
+        if leer(r[idx["team"]]):
+            return 1, fehler(f"Zeile {n}: Team fehlt.")
+        e = teams.setdefault(str(r[idx["team"]]).strip(), {"personen": set(), "soll": 0.0, "ist": 0.0, "zeilen": []})
+        e["personen"].add(str(r[pid]).strip())
+        e["soll"], e["ist"] = e["soll"] + soll, e["ist"] + ist
+        e["zeilen"].append(n)
+        monate.add(m)
+    if len(monate) != 1:
+        return 1, fehler("Datei enthält mehrere Monate: " + ", ".join(sorted(monate)))
+    m = monate.pop()
+    ziel = ws / "00_Eingang" / f"{datei.stem}_je_team.csv"
+    rel = ziel.relative_to(ws).as_posix()
+    if ziel.exists():
+        return 1, fehler(f"{rel} gibt es schon – das Kit überschreibt nichts.")
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow(["Monat", "Team", "Techniker_Anzahl", "Soll_Stunden", "Ist_Stunden"])
+    werte, meldungen = [], []
+    for t in sorted(teams):
+        e, z = teams[t], (lambda x: int(x) if float(x).is_integer() else x)
+        w.writerow([m, csv_sicher(t), len(e["personen"]), z(e["soll"]), z(e["ist"])])
+        q = [f"{datei.name} Zeilen {bereiche(e['zeilen'])}"]
+        werte += [kz.wert(f"Köpfe {t} ({m})", float(len(e["personen"])), q, "verschiedene Personen im Team", "Köpfe"),
+                  kz.wert(f"Ist-Stunden {t} ({m})", e["ist"], q, "Summe je Team", "Std")]
+        if len(e["personen"]) < STANDARD["min_teamgroesse"]:
+            meldungen.append(f"Team {t} hat weniger als {STANDARD['min_teamgroesse']} Köpfe – Zahlen dieses Teams "
+                             "lassen Rückschlüsse auf Einzelne zu.")
+    write_atomic(ziel, buf.getvalue(), encoding="utf-8-sig")
+    meldungen.insert(0, f"{datei.name} enthält Namen oder Personalnummern. Übernommen werden nur Teamwerte ({rel}); "
+                        "die Originaldatei bleibt in 00_Eingang – ob sie gelöscht wird, entscheidest du.")
+    return 0, {"ok": True, "datei": rel, "monat": m, "werte": werte, "meldungen": meldungen,
+               "hinweis": kontext(ws)["hinweis"]}
+
+
+def cmd_pruefe_ausgabe(a, ws) -> tuple[int, dict]:
+    namen = {n.strip() for n in a.name if len(n.strip()) >= 4}
+    for q in a.namen_aus:
+        namen |= personen_werte(Path(q))
+    if not namen:
+        return 1, fehler("Keine Namen zum Prüfen – --name oder --namen-aus angeben.")
+    muster = [re.compile(rf"(?<!\w){re.escape(n)}(?!\w)", re.I) for n in namen]
+    funde = [stelle for stelle, text in text_aus(Path(a.datei)) if any(m.search(text) for m in muster)]
+    m = [] if not funde else [f"Das Dokument nennt Personen ({len(funde)} Stellen: {', '.join(funde)}). Bitte dort nur "
+                              "Teamwerte schreiben und erneut prüfen."]
+    return (1 if funde else 0), {"ok": not funde, "treffer": len(funde), "fundstellen": funde, "meldungen": m}
+
+
+BEFEHLE = {"personalplanung": cmd_personalplanung, "personenbezug": cmd_personenbezug,
+           "team-aggregat": cmd_team_aggregat, "pruefe-ausgabe": cmd_pruefe_ausgabe}
 
 
 def parser() -> JsonParser:
@@ -296,6 +451,14 @@ def parser() -> JsonParser:
     sp.add_argument("--abgang", action="append", default=[])
     for f in ("netto-stunden", "auslastung-prozent", "vollkosten-eur", "einmalkosten-eur"):
         sp.add_argument(f"--{f}", dest=f.replace("-", "_"), type=float)
+    sp = add("personenbezug", ws=False)
+    sp.add_argument("--datei", required=True)
+    sp = add("team-aggregat")
+    sp.add_argument("--datei", required=True)
+    sp = add("pruefe-ausgabe", ws=False)
+    sp.add_argument("--datei", required=True)
+    sp.add_argument("--name", action="append", default=[])
+    sp.add_argument("--namen-aus", dest="namen_aus", action="append", default=[])
     return ap
 
 

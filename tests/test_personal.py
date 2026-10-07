@@ -126,3 +126,81 @@ def test_kleines_team_warnt(pws):
     code, out = lauf("personalplanung", "--ws", pws, "--bis", "2026-09", "--monate", 3)
     assert any(m.startswith("Team West hat weniger als 3 Köpfe") for m in out["meldungen"])
     assert wert(out, "Einstellungen West") == 2
+
+
+import openpyxl
+from docx import Document
+
+STUNDEN = "stunden_techniker_2026-10.csv"
+
+
+def test_personenbezug_nennt_spalten_nie_werte(kit_ws):
+    mit_daten(kit_ws, "unordentlich")
+    code, out = lauf("personenbezug", "--datei", kit_ws / "00_Eingang" / STUNDEN)
+    assert code == 0 and out["personenbezug"] and out["spalten"] == ["Mitarbeiter", "Pers.-Nr."]
+    assert out["zeilen"] == 15
+    assert not any(n in json.dumps(out, ensure_ascii=False) for n in NAMEN)
+
+
+def test_techniker_als_anzahl_ist_kein_personenbezug(tmp_path):
+    p = tmp_path / "kap.csv"
+    p.write_text("Monat;Team;Techniker;Soll;Ist\n2026-10;Nord;6;900;813\n", encoding="utf-8")
+    assert lauf("personenbezug", "--datei", p)[1]["personenbezug"] is False
+
+
+def test_techniker_mit_namen_ist_personenbezug(tmp_path):
+    p = tmp_path / "kap.csv"
+    p.write_text("Monat;Team;Techniker;Ist\n2026-10;Nord;Anna Berg;140\n", encoding="utf-8")
+    out = lauf("personenbezug", "--datei", p)[1]
+    assert out["personenbezug"] and out["spalten"] == ["Techniker"]
+
+
+def test_team_aggregat_schreibt_nur_teamwerte(kit_ws):
+    mit_daten(kit_ws, "unordentlich")
+    code, out = lauf("team-aggregat", "--ws", kit_ws, "--datei", kit_ws / "00_Eingang" / STUNDEN)
+    assert code == 0 and out["datei"] == "00_Eingang/stunden_techniker_2026-10_je_team.csv"
+    text = (kit_ws / out["datei"]).read_text(encoding="utf-8-sig")
+    assert ERW["aggregat_sued"] in text.splitlines()
+    assert not any(n in text or n in json.dumps(out, ensure_ascii=False) for n in NAMEN)
+    r = daten_pruefen.pruefe(kit_ws, kit_ws / out["datei"], "kapazitaet", None, [], False, "2026-10-06", False)
+    assert r["ok"] and r["summe"] == ERW["aggregat_ist_summe"]
+    assert lauf("team-aggregat", "--ws", kit_ws, "--datei", kit_ws / "00_Eingang" / STUNDEN)[0] == 1  # no overwrite
+
+
+def test_team_aggregat_nennt_keine_zellwerte(kit_ws, tmp_path):
+    p = tmp_path / "liste.csv"
+    p.write_text("Monat;Mitarbeiter;Team;Soll;Ist\n10.2026;Anna Berg;Nord;150;viel\n", encoding="utf-8")
+    code, out = lauf("team-aggregat", "--ws", kit_ws, "--datei", p)
+    assert code == 1 and "Zeile 2" in out["fehler"][0] and "Anna" not in json.dumps(out, ensure_ascii=False)
+
+
+def test_pruefe_ausgabe_findet_namen_in_docx_und_xlsx(kit_ws, tmp_path):
+    mit_daten(kit_ws, "unordentlich")
+    quelle = kit_ws / "00_Eingang" / STUNDEN
+    d = Document()
+    d.add_paragraph("Team Süd braucht eine Einstellung.")
+    d.add_paragraph("Rückfrage an Tobias Rehm")
+    d.save(tmp_path / "plan.docx")
+    code, out = lauf("pruefe-ausgabe", "--datei", tmp_path / "plan.docx", "--namen-aus", quelle)
+    assert code == 1 and out["treffer"] == 1 and out["fundstellen"] == ["Absatz 2"]
+    assert "Rehm" not in json.dumps(out, ensure_ascii=False)
+    wb = openpyxl.Workbook()
+    wb.active["B4"] = "P-1012"
+    wb.save(tmp_path / "plan.xlsx")
+    out = lauf("pruefe-ausgabe", "--datei", tmp_path / "plan.xlsx", "--namen-aus", quelle)[1]
+    assert out["fundstellen"] == ["Sheet!B4"]
+
+
+def test_pruefe_ausgabe_kein_fehlalarm(kit_ws, tmp_path):
+    mit_daten(kit_ws, "unordentlich")
+    md = tmp_path / "plan.md"
+    md.write_text("Die Einarbeitung dauert lang. Wolf-Getriebe im Team Süd.\n", encoding="utf-8")
+    code, out = lauf("pruefe-ausgabe", "--datei", md, "--namen-aus", kit_ws / "00_Eingang" / STUNDEN)
+    assert code == 0 and out["treffer"] == 0
+
+
+def test_pruefe_ausgabe_mit_genanntem_namen(tmp_path):
+    md = tmp_path / "plan.md"
+    md.write_text("# Abdeckung\n\nÜbergabe durch tobias rehm\n", encoding="utf-8")
+    out = lauf("pruefe-ausgabe", "--datei", md, "--name", "Tobias Rehm")[1]
+    assert out["treffer"] == 1 and out["fundstellen"] == ["Zeile 3"]
