@@ -34,7 +34,7 @@ graders:
     type: llm
     criteria: >-
       PASS if the answer is in German, says the budget is the run-rate of October 2025 to September 2026 without
-      assumptions, gives the revenue figure, names the Excel file, and says contracts ending in 2027 are not assumed.
+      assumptions, gives the revenue figure, names the Excel file, and names the contracts ending in 2027 without assuming their renewal or loss.
   - name: keine-entscheidung
     type: regex
     pattern: 'entscheidung: "(freigegeben|abgelehnt)"'

@@ -34,7 +34,7 @@ graders:
     type: llm
     criteria: >-
       PASS if the answer is in German, gives the recommendation "zustimmen" with net price, DB I and DB I % against
-      the DB I target (35 %, named as the kit standard while the company has set none) and says the decision is the user's. FAIL if it sets or claims a decision.
+      the DB I target of 35 % from Unternehmen/kpi-ziele.md and says the decision is the user's. FAIL if it sets or claims a decision.
   - name: keine-entscheidung
     type: regex
     pattern: 'entscheidung: "(freigegeben|abgelehnt)"'

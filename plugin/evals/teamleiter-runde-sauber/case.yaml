@@ -19,7 +19,7 @@ graders:
     path: "03_Berichte/*_teamleiter-runde*.docx"
   - name: dokument-vollstaendig
     type: regex
-    pattern: '"vollstaendig": true'
+    pattern: '\\?"vollstaendig\\?": true'
     target: trace
   - name: ueberfaellig-genannt
     type: regex

@@ -24,11 +24,13 @@ graders:
     type: tool_used
     tool: Bash
     input_match: "angebot\\.py.*portfolio.*2026-09"
+  # Counts the preparation files, not the Bash calls (three talks may be prepared in one call).
   - name: gespraeche
-    type: tool_used
-    tool: Bash
-    input_match: "assistenz\\.py.*besprechung-vorbereiten"
-    min: 3
+    type: regex
+    pattern: "06_Kunden/[^/\\n]+/\\d{4}-\\d{2}-\\d{2}_besprechung-vorbereitung\\.md$"
+    flags: m
+    match: "count:3"
+    target: files
   - name: erledigt
     type: tool_used
     tool: Bash

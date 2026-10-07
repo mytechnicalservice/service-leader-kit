@@ -19,7 +19,7 @@ graders:
     path: "06_Kunden/*/*_eskalation-lagebild*.docx"
   - name: dokument-vollstaendig
     type: regex
-    pattern: '"vollstaendig": true'
+    pattern: '\\?"vollstaendig\\?": true'
     target: trace
   - name: umsatz
     type: regex
@@ -27,7 +27,7 @@ graders:
     target: trace
   - name: reaktionszeit
     type: regex
-    pattern: '24\s*(h|Std)'
+    pattern: '(?<!\d)24\s*(h\b|Std|Stunden)'
     target: last_message
   - name: vorgang
     type: tool_used

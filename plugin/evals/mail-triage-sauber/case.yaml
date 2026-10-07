@@ -16,12 +16,12 @@ graders:
       tool: Bash,
       input_match: "assistenz\\.py.*mail-triage",
     }
+  # Filing is graded by the two filed mails below; several files may be filed in one Bash call.
   - {
       name: ablegen,
       type: tool_used,
       tool: Bash,
       input_match: "assistenz\\.py.*ablegen",
-      min: 2,
     }
   - {
       name: reklamation-abgelegt,

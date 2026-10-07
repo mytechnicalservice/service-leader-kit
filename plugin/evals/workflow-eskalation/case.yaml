@@ -24,7 +24,7 @@ graders:
     input_match: "betrieb\\.py.*eskalation-gespraech"
   - name: empfehlung-vor-gespraech
     type: regex
-    pattern: '"empfehlung_qualitaet_recht": \{'
+    pattern: '\\?"empfehlung_qualitaet_recht\\?": \{'
     target: trace
   - name: empfehlung-im-vorgang
     type: regex

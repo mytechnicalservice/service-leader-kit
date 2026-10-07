@@ -249,3 +249,55 @@ def test_file_checks_never_target_scaffold_files(case, tmp_path):
     treffer = [(g["name"], g["path"]) for g in lade(case)["graders"]
                if g["type"] == "file_exists" and list(tmp_path.glob(g["path"]))]
     assert treffer == []
+
+
+# --- eval run 0.2.2 (2026-10-07 evening) ------------------------------------------------------------------------
+
+
+def test_trace_patterns_match_the_json_escaped_script_output():
+    # The trace stores a tool result as a JSON string, so the script's '"vollstaendig": true' arrives as
+    # '\"vollstaendig\": true' (eskalation-topkunde-sauber, kapazitaet-lage-sauber never passed).
+    import re
+    ausgabe = json.dumps({"content": json.dumps({"dokument": {"vollstaendig": True},
+                                                 "daten": {"empfehlung_qualitaet_recht": {"text": "x"}}})})
+    for c, g in _graders():
+        if g.get("target") == "trace" and re.search(r'"\w+": ', g.get("pattern", "")):
+            assert re.search(g["pattern"], ausgabe), (c, g["name"])
+
+
+def test_tool_used_does_not_count_calls_for_results():
+    # Several script runs fit into one Bash call (mail-triage-sauber filed five mails in one call, quartal-sauber
+    # prepared three talks in one). Results are graded on files or the answer; tool_used only checks the call exists.
+    assert [(c, g["name"]) for c, g in _graders() if g["type"] == "tool_used" and g.get("min", 1) > 1] == []
+
+
+def test_three_prepared_talks_are_counted_as_files():
+    import re
+    g = next(x for x in lade(EVALS / "quartal-sauber")["graders"] if x["name"] == "gespraeche")
+    assert g["target"] == "files" and g["match"] == "count:3"
+    dateien = "\n".join(["06_Kunden/Hansa Pack AG/2026-10-01_besprechung-vorbereitung.md",
+                         "06_Kunden/Elbe Papier AG/2026-10-01_besprechung-vorbereitung.md",
+                         "06_Kunden/Nordmetall GmbH/2026-10-01_besprechung-vorbereitung.md",
+                         "03_Berichte/2026-10-01_key-account-review.docx"])
+    assert len(re.findall(g["pattern"], dateien, re.M)) == 3
+
+
+def test_response_time_check_accepts_the_written_out_unit():
+    import re
+    g = next(x for x in lade(EVALS / "eskalation-topkunde-sauber")["graders"] if x["name"] == "reaktionszeit")
+    for text in ("24 Stunden ab Störungsmeldung", "24 h", "24 Std.", "24h"):
+        assert re.search(g["pattern"], text), text
+    assert not re.search(g["pattern"], "240 Stunden")
+
+
+def test_margin_check_criterion_matches_the_scaffolded_target():
+    # margen-pruefung-sauber runs on "baue jahr", whose kpi-ziele.md sets DB I 35 %: it is the company's target.
+    assert '"ziel": 35' in (ROOT / "plugin" / "beispiel" / "Unternehmen" / "kpi-ziele.md").read_text(encoding="utf-8")
+    kriterium = next(g for g in lade(EVALS / "margen-pruefung-sauber")["graders"] if g["name"] == "antwort")["criteria"]
+    assert "kpi-ziele.md" in kriterium and "kit standard" not in kriterium
+
+
+def test_onboarding_prompt_answers_every_profile_question():
+    # onboarding-sauber: "profil=fertig" was graded, but the prompt left the industries and the revenue split open.
+    prompt = (EVALS / "onboarding-sauber" / "prompt.md").read_text(encoding="utf-8")
+    assert "Lebensmittel" in prompt and "Ersatzteile" in prompt and "Schulungen" in prompt

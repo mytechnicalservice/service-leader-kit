@@ -10,11 +10,11 @@ execution:
 context:
   scaffold_script: scaffold.sh
 graders:
+  # Both scenarios are graded by szenario-a/-b below; the two runs may share one Bash call.
   - name: zwei-laeufe
     type: tool_used
     tool: Bash
     input_match: "finanzen\\.py.*investitionsantrag"
-    min: 2
   - name: szenario-a
     type: regex
     pattern: '(?<![\d.,])51\.176(?!\d)'

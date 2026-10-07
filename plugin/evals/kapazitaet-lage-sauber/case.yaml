@@ -23,7 +23,7 @@ graders:
     input_match: "betrieb\\.py.*kapazitaet-lage.*--pruefe"
   - name: dokument-vollstaendig
     type: regex
-    pattern: '"vollstaendig": true'
+    pattern: '\\?"vollstaendig\\?": true'
     target: trace
   - name: auslastung-gesamt
     type: regex
