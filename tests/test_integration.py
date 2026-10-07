@@ -23,3 +23,12 @@ def test_finanzen_reads_the_sample_margin_target_and_band():
     assert (ziel, standard) == (32.0, False)
     spanne, standard = finanzen.zusatzwert(BEISPIEL, "margen_auflagen_spanne_pp")
     assert (spanne, standard) == (5.0, False)
+
+
+def test_new_service_product_uses_the_company_level_names_first():
+    pfad = ROOT / "plugin" / "skills" / "serviceprodukt-konzept" / "SKILL.md"
+    if not pfad.is_file():
+        pytest.skip("Lane 4f ist nicht gelandet")
+    abschnitt = pfad.read_text(encoding="utf-8").split("## Default levels (Vorschlag)")[1]
+    assert "Unternehmen/leistungen.md" in abschnitt and "Basis / Standard / Premium" in abschnitt
+    assert "Basis" in (BEISPIEL / "Unternehmen" / "leistungen.md").read_text(encoding="utf-8")

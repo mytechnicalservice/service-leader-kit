@@ -57,6 +57,11 @@ folder in VS Code (Datei → Ordner öffnen) and stop.
 
 ## Default levels (Vorschlag)
 
+First check `Unternehmen/leistungen.md`: if the company already names contract levels (the sample company:
+Basis / Standard / Premium), use those names when the new product extends a level, and name new levels so that they
+cannot be mistaken for them (e.g. "Verfügbarkeitspaket Standard"). The three levels below are only the proposal for
+a company without levels of its own, and only when the user names none.
+
 - **Basic:** 1 planned maintenance per year, hotline during business hours, response 48 h on working days, parts at
   list price.
 - **Plus:** 2 maintenance visits, remote diagnosis, response 24 h, 10 % off parts.
