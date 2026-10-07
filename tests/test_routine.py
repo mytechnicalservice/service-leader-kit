@@ -157,3 +157,14 @@ def test_eskalationen_sorted_with_reviewers_and_damaged_files(kit_ws, capsys):
     assert zweite["kunde"] == "Hansa Pack AG" and zweite["status"] == "wartet" and zweite["empfehlungen"] == []
     assert out["anzahl"]["betrag"] == 2 and out["anzahl"]["einheit"] == "Vorgänge"
     assert [d.split(":")[0] for d in out["defekt"]] == ["01_Vorgaenge/offen/V-0003.md"]
+
+
+def test_kpi_target_from_the_kit_standard_list_is_labelled():
+    """D19 labelling rule: a target from the kit's standard KPI list (e.g. DB I-Marge 35 %) is never shown as the
+    company's own target from Unternehmen/kpi-ziele.md."""
+    w = routine.kennzahlen.wert("DB I-Marge", 38.5, ["07_Daten/ergebnis_2026-09.csv Zeilen 1–10"], None, "%")
+    std = {"kpi-ziele": {"kennzahlen": [{"name": "DB I-Marge", "ziel": 35, "einheit": "%"}],
+                         "standard_felder": ["kennzahlen"]}}
+    assert routine.mit_anzeige(w, std)["ziel_quelle"] == routine.kennzahlen.STANDARD_HINWEIS
+    eigen = {"kpi-ziele": {"kennzahlen": [{"name": "DB I-Marge", "ziel": 35, "einheit": "%"}], "standard_felder": []}}
+    assert routine.mit_anzeige(w, eigen)["ziel_quelle"] == "Unternehmen/kpi-ziele.md"
