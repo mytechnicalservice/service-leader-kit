@@ -58,9 +58,12 @@ resume ("weiter mit dem Onboarding").
   `entscheidungsrechte` (für preise, kulanz, personal, investition: bis zu welchem Betrag entscheidet der Nutzer
   allein, wer sonst), `geschaeftsjahr_beginn_monat`, `kalkulationszins_prozent`, `personal`
   (`{"vollkosten_techniker_eur": …, "netto_stunden": …}`). Offer the kit standard from
-  `kennzahlen.py definitionen` as the proposal and say it is one.
+  `kennzahlen.py definitionen` as the proposal and say it is one (DB I = Umsatz − Material − Fremdleistung −
+  Personalkosten, DB II = DB I − Gewährleistung, Ergebnis = DB II − Gemeinkostenumlage; warranty is deducted only
+  when `gewaehrleistung_traeger` is service).
 - **kpi-ziele** (fields): `kennzahlen` (Liste: name, formel, quelle = Importvorlage, ziel, einheit, richtung hoch|niedrig;
-  propose the kit standard list from `kennzahlen.py definitionen` and ask for the targets),
+  propose the kit standard list from `kennzahlen.py definitionen` and ask for the targets – "DB I-Marge" 35 % is the
+  kit's proposal, not the company's target until the user confirms or changes it),
   `abweichung_kommentar_prozent`, `abweichung_kommentar_eur`, `abweichung_massnahme_prozent`,
   `abweichung_massnahme_eur`, optional `projektampel`.
 - **freigabegrenzen** (fields): `angebot_eur`, `rabatt_prozent`, `kulanz_eur`, `einkauf_eur`,
