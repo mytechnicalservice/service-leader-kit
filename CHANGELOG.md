@@ -2,6 +2,44 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.3 – 2026-10-07
+
+Korrekturen aus dem Eval-Lauf 0.2.2.
+
+### Behoben
+
+- **Dokumente entstehen auch ohne Claudes Dokument-Skill.** Fehlt Claudes docx-, xlsx- oder pptx-Skill, schreibt jeder
+  Skill dieselbe Datei über den Python-Weg des Kits (`uv run` mit python-docx, openpyxl oder python-pptx) statt
+  anzuhalten – auch Skill-Matrix, Personalplanung, Kündigung einer Schlüsselperson und Margenanalyse. Ein Briefkopf
+  wird dafür vorher in den Temp-Ordner kopiert. Scheitert `uv run`, gilt weiter „Nie vortäuschen“: Claude hält an und
+  sagt, was fehlt. Die Kündigung einer Schlüsselperson hält nicht mehr an, nur weil kein Briefkopf hinterlegt ist.
+- **Großangebot:** Leistungsumfang, Reaktionszeit und Ersatzteil-Konditionen im Vertrag kommen jetzt wörtlich aus der
+  gewählten Stufe in `Unternehmen/leistungen.md` (vorher standen für jede Stufe „2 Wartungen, 48 h, 10 %“ drin, was
+  der Stufe Basis widersprach). Offene Punkte (welche Anlagen, ein abweichender Name) halten den Entwurf nicht mehr
+  auf: Sie stehen als „Zu klären“ im Entwurf und in der Antwort.
+- **„Beantworte die Preisanfrage“** führt zum Mail-Entwurf (mit Rückfrage, wenn Angaben fehlen), nicht zum
+  Großangebot. Die Antwort zum Mail-Entwurf zeigt auch die Signatur.
+- **„Bereite das Telefonat mit … vor“** führt zur Besprechungsvorbereitung, auch wenn der Kunde gerade eskaliert;
+  die Eskalation wird dort angeboten.
+- **Personalplanung:** Eine Stundenliste je Techniker wird über die Teamsumme genutzt, nicht abgelehnt; der Hinweis
+  zu Betriebsrat und Datenschutz steht unverändert in der Antwort; der Jahresbedarf in Stunden je Team wird genannt.
+- **Mitarbeitergespräch:** Auch wenn Claude Daten aus Dateien ablehnt, kommt der Hinweis zu Betriebsrat und
+  Datenschutz.
+- **Kündigung einer Schlüsselperson:** Persönliche Bemerkungen zur Person werden nur allgemein ausgeklammert, nie
+  wiederholt.
+- **Eskalation:** Widersprechen sich zwei Werte (z. B. Reaktionszeit laut Mail und Vertrag), nennt Claude beide, mittelt
+  nicht und entscheidet sich für keinen.
+- **Eingang sortieren:** Exporte werden ausdrücklich der Datenprüfung (`daten-pruefen`) zugewiesen.
+
+### Evals (für Entwickler)
+
+- Jeder Fall hat ein Scaffold; `einrichtung-sauber` bekommt nur die Offline-Einstellungen für uv (`uv_offline`), ohne
+  Arbeitsordner. Die uv-Einstellungen gelten im Eval-Lauf auch für Skripte, die außerhalb des Arbeitsordners starten
+  (Benutzer-Konfiguration im Lauf-HOME).
+- Grader: Trace-Muster vertragen das JSON-escapte Anführungszeichen; Grader zählen Ergebnisse (Dateien) statt
+  Bash-Aufrufe; „24 Stunden“ zählt als Reaktionszeit; Kriterien von margen-pruefung-sauber und budgetplanung-sauber an
+  die Daten bzw. die Skill-Regel angeglichen; der Prompt von onboarding-sauber beantwortet alle Profilfragen.
+
 ## 0.2.2 – 2026-10-07
 
 Korrekturen aus der Eval-Diagnose von 0.2.1.
