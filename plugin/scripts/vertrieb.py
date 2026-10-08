@@ -59,6 +59,16 @@ def gleich(a, b) -> bool:
     return text(a).casefold() == text(b).casefold()
 
 
+def kunde_aufloesen(bekannt: list[str], kunde: str) -> str | None:
+    """Exakter Name (ohne Groß/klein) oder eindeutig der Name ohne Rechtsform ("Nordmetall" -> "Nordmetall GmbH")."""
+    exakt = [k for k in bekannt if gleich(k, kunde)]
+    if exakt:
+        return exakt[0]
+    kurz = text(kunde).casefold()
+    passend = [k for k in bekannt if kurz and k.casefold().startswith(kurz + " ")]
+    return passend[0] if len(passend) == 1 else None
+
+
 def betrag(v) -> float:
     return 0.0 if text(v).casefold() in LEER else zahl(v)
 
@@ -484,11 +494,15 @@ def key_account_review(ws: Path, kunde: str | None = None, top: int | None = Non
         meldungen.append(f"{exc} Anlagen, Verträge, Verlängerungen und Potenziale fehlen im Review.")
     bekannt = sorted({text(z.get("Kunde")) for z in auf + et + anlagen} - {""})
     if kunde:
-        treffer = [k for k in bekannt if gleich(k, kunde)]
+        treffer = kunde_aufloesen(bekannt, kunde)
         if not treffer:
             raise VertriebFehler(f"Kunde '{kunde.strip()}' kommt in Aufträgen, Ersatzteilen und Installed Base nicht "
-                                 f"vor – Schreibweise prüfen. Bekannte Kunden: {', '.join(bekannt)}")
-        auswahl = treffer[:1]
+                                 f"(oder nicht eindeutig) vor – Schreibweise prüfen. Bekannte Kunden: "
+                                 f"{', '.join(bekannt)}")
+        if not gleich(treffer, kunde):
+            meldungen.append(f"Kunde '{kunde.strip()}' als '{treffer}' gelesen (einziger bekannter Kunde mit diesem "
+                             f"Namen) – bei anderem Kunden bitte den vollen Namen nennen.")
+        auswahl = [treffer]
     else:
         if top is None:
             top = TOP_N

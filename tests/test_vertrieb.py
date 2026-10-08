@@ -233,6 +233,19 @@ def test_missing_month_is_named_not_extrapolated(vws):
     assert any("März 2026" in m and "nicht hochgerechnet" in m for m in r["meldungen"])
 
 
+def test_name_without_legal_form_resolves_to_the_one_known_customer(vws):
+    r = vertrieb.key_account_review(vws, kunde="nordmetall", heute=HEUTE)
+    assert [k["kunde"] for k in r["konten"]] == ["Nordmetall GmbH"]
+    assert r["ziel"] == "06_Kunden/Nordmetall GmbH/2026-10-06_key-account-review.docx"
+    assert any("'nordmetall' als 'Nordmetall GmbH' gelesen" in m for m in r["meldungen"])
+
+
+def test_ambiguous_short_name_is_asked_not_guessed():
+    assert vertrieb.kunde_aufloesen(["Nordmetall GmbH", "Nordmetall Service AG"], "Nordmetall") is None
+    assert vertrieb.kunde_aufloesen(["Nordmetall GmbH"], "Nordmet") is None
+    assert vertrieb.kunde_aufloesen(["Nordmetall GmbH"], "NORDMETALL GMBH") == "Nordmetall GmbH"
+
+
 def test_unknown_customer_is_said_not_zero_filled(vws):
     with pytest.raises(vertrieb.VertriebFehler, match="Schreibweise prüfen.*Hansa Pack AG"):
         vertrieb.key_account_review(vws, kunde="Unbekannt AG", heute=HEUTE)
