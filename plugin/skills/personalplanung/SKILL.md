@@ -58,15 +58,14 @@ the gap with an estimate.
 
 ## 4. Answer and file
 
-1. In the chat: the assumptions table (each with `herkunft`; "Standardannahme des Kits – bitte prüfen" stays
-   visible), the annual demand in hours (`Jahresbedarf Stunden`), FTE need, heads and gap per team, hires, each business case with its lines from the section
-   "Einstellung Team …" (Kosten Jahr 1, Erlös Jahr 1, payback month), every line of `meldungen`, and then the
-   `hinweis` as its own paragraph: copy `hinweis` unchanged (it names § 87, § 94, § 98 BetrVG, DSGVO and BDSG) and
-   never shorten or reword it. A surplus is never a reason to propose cutting staff. Use this team table (plain
-   language never replaces a column):
-   `| Team | Jahresbedarf Stunden | Bedarf FTE | Köpfe | Lücke | Einstellungen |`
-   and close the results (before any offer from step 5) with this paragraph, character for character:
-   `Hinweis: <hinweis>`.
+1. In the chat: first copy `antwort` into the chat unchanged — it is the team table with the annual demand in
+   hours (`Jahresbedarf Stunden`), FTE need, heads, gap and hires, every hiring case (Kosten Jahr 1, Erlös Jahr 1,
+   Amortisation) and the closing `Hinweis:` paragraph, all rendered by the script. Never re-head, recompute or
+   replace any part of it (no Deckungsbeitrag in place of Erlös). The note is `hinweis`: copy `hinweis` unchanged
+   (it names § 87, § 94, § 98 BetrVG, DSGVO and BDSG) and never shorten or reword it. Before the block, one
+   sentence with the result; after it, the assumptions table (each with `herkunft`; "Standardannahme des Kits –
+   bitte prüfen" stays visible) and every line of `meldungen`. A surplus is never a reason to propose cutting
+   staff.
 2. Write `03_Berichte/JJJJ-MM-TT_personalplanung.xlsx` with Claude's built-in xlsx skill: one sheet per
    `gliederung` section, rows exactly as given, plus a sheet "Quellen" with each value's `quelle` and `formel`.
    With `beispiel: true`, put "Beispieldaten – Muster Maschinenbau GmbH" on every sheet. If the file exists, add

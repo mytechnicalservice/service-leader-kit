@@ -18,9 +18,11 @@ def test_large_quote_hands_the_users_direct_costs_to_finanzen():
 
 def test_staffing_answer_has_a_fixed_table_and_the_verbatim_note():
     # personalplanung-sauber: the answer dropped the annual hours and reworded the BetrVG note into plain language.
+    # 0.2.4 run: the prose instruction was not followed; the script now renders table and note as `antwort`
+    # (pinned in test_eval_befunde_024), the skill copies it unchanged.
     _, body = skill("personalplanung")
-    assert "| Team | Jahresbedarf Stunden | Bedarf FTE | Köpfe | Lücke | Einstellungen |" in body
-    assert "with this paragraph, character for character: `Hinweis: <hinweis>`" in body
+    assert "first copy `antwort` into the chat unchanged" in " ".join(body.split())
+    assert "closing `Hinweis:` paragraph" in " ".join(body.split())
 
 
 def test_deck_answer_names_the_source_file_of_the_key_numbers():
