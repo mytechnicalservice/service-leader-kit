@@ -1,6 +1,6 @@
 {
   "name": "service-leader-kit",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "KI-Stab für Leiter Kundendienst (Profit Center): Agenten, Skills, Vorlagen und Routinen.",
   "author": { "name": "myTS" },
   "license": "LicenseRef-PolyForm-Internal-Use-1.0.0"

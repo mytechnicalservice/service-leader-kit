@@ -2,6 +2,35 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.4 – 2026-10-08
+
+Korrekturen aus dem Eval-Lauf 0.2.3.
+
+### Behoben
+
+- **Key-Account-Review:** Ein Kundenname ohne Rechtsform („Nordmetall“) wird dem einen passenden Kunden zugeordnet
+  („Nordmetall GmbH“); Claude sagt dazu, wie er den Namen gelesen hat. Passen mehrere Kunden, fragt Claude nach.
+- **Skill-Matrix:** Eine neue Einschätzung für ein Team ersetzt nur diese Zeile. Die übrigen Zeilen des letzten Stands
+  werden unverändert mitgenommen – vorher galten nach dem Eintragen alle anderen Bereiche als „nicht abgedeckt“.
+- **Eigener Skill:** Sagt der Nutzer „leg ihn gleich an“, legt Claude den gewünschten Skill direkt an, ohne den
+  Entwurf zu zeigen. Reichen die Daten nur teilweise (z. B. nur Monatsexporte für einen Wochenbericht), steht die
+  Grenze im Skill und in der Antwort – Claude ersetzt den Wunsch nicht durch einen anderen Skill.
+- **Großangebot:** Die direkten Kosten, die der Nutzer nennt, gehen an die Margenprüfung von Finanzen; fehlen sie,
+  fragt Claude danach, bevor Finanzen prüft.
+- **Personalplanung:** Die Antwort zeigt eine feste Teamtabelle mit dem Jahresbedarf in Stunden und schließt mit dem
+  Hinweis zu Betriebsrat und Datenschutz im genauen Wortlaut.
+- **Präsentation:** Die Antwort nennt die Quelldatei der Kernzahlen.
+- **Lernpunkte:** Merkt sich Claude eine Regel, nennt die Antwort die Datei `Unternehmen/lernpunkte.md`.
+
+### Evals (für Entwickler)
+
+- Prompts: workflow-budget ohne widersprüchliche Annahme zu den Vertragskonditionen; workflow-grossangebot nennt die
+  direkten Kosten; teamleiter-runde-unordentlich mit Fälligkeiten im Dezember; eskalation-topkunde-sauber mit
+  Stichtag 30.09.2026.
+- Grader: personalplanung-unordentlich liest die Teamdatei dort, wohin die bestätigte Übernahme sie verschiebt;
+  vertragspruefung-unordentlich zählt „9 Punkten“/„4 davon sind kritisch“; margen-analyse-unordentlich zählt
+  „Datenzeilen 3 und 7“; `dokument-vollstaendig` erkennt auch die Python-Form des Prüfergebnisses.
+
 ## 0.2.3 – 2026-10-07
 
 Korrekturen aus dem Eval-Lauf 0.2.2.
