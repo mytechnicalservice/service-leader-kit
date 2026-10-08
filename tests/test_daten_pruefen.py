@@ -94,3 +94,27 @@ def test_user_mapping_is_saved_and_reused(ws, tmp_path):
     f2 = ws / "00_Eingang" / "erg2.xlsx"
     wb2.save(f2)
     assert pruefe(ws, f2, "ergebnis", None, [], False, HEUTE)["ok"]
+
+
+def test_list_with_person_columns_is_refused_and_routed_to_team_aggregation(ws):
+    # Eval 0.2.6 (personalplanung-unordentlich): the model imported the per-technician hour list directly and then gave
+    # up. The import itself refuses name or personnel-number columns (spec §9.3) and names the team aggregation.
+    src = ws / "00_Eingang" / "stunden_techniker_2026-10.csv"
+    src.parent.mkdir()
+    src.write_text("Monat,Team,Name,Soll_Stunden,Ist_Stunden\n2026-10,Süd,Anna Berg,150,160\n"
+                   "2026-10,Süd,Kai Wolf,150,140\n", encoding="utf-8")
+    r = pruefe(ws, src, "kapazitaet", None, [], True, HEUTE)
+    assert not r["ok"] and src.exists() and not (ws / "07_Daten").exists()
+    text = " ".join(r["meldungen"])
+    assert "personenbezogen" in text and "team-aggregat" in text and "Name" in text
+    assert "Anna Berg" not in text and "Kai Wolf" not in text
+    trocken = pruefe(ws, src, "kapazitaet", None, [], False, HEUTE)  # a dry check (betrieb compares totals) stays allowed
+    assert "team-aggregat" in trocken["personenbezug"]["hinweis"] and trocken["personenbezug"]["spalten"] == ["Name"]
+    assert "Anna Berg" not in json.dumps(trocken, ensure_ascii=False)
+
+
+def test_head_count_column_is_not_a_person_column(ws):
+    src = ws / "00_Eingang" / "kapazitaet_2026-10.csv"
+    src.parent.mkdir()
+    src.write_text("Monat,Team,Techniker_Anzahl,Soll_Stunden,Ist_Stunden\n2026-10,Süd,5,750,784\n", encoding="utf-8")
+    assert pruefe(ws, src, "kapazitaet", None, [], False, HEUTE)["ok"]

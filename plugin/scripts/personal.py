@@ -17,7 +17,7 @@ from pathlib import Path
 
 import kennzahlen as kz
 from arbeitsordner import lies_konfig
-from daten_pruefen import ImportFehler, datum, leer, lese, monat
+from daten_pruefen import ImportFehler, datum, leer, lese, monat, personen_spalten
 from slk_common import JsonParser, csv_sicher, run, write_atomic, zahl
 
 HINWEIS = ("Hinweis: Personalthemen können die Mitbestimmung des Betriebsrats (§ 87 Abs. 1 Nr. 6, § 94 und § 98 "
@@ -294,19 +294,9 @@ def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
                "gliederung": gl}
 
 
-PERSON = re.compile(r"^(?:(?:vor|nach|mitarbeiter|techniker|monteur|bearbeiter)?name|mitarbeiter(?:in)?|mitarbeitende"
-                    r"|techniker(?:in)?|monteur(?:in)?|bearbeiter(?:in)?|person|(?:personal|pers|ma)[\s._-]*(?:nr|nummer))\.?$")
 SP = {"team": ("team", "gruppe", "region"), "monat": ("monat", "periode"),
       "soll": ("soll", "soll_stunden", "soll-stunden", "sollstunden", "soll stunden", "kapazität"),
       "ist": ("ist", "ist_stunden", "ist-stunden", "iststunden", "ist stunden", "geleistet")}
-
-
-def _ist_zahl(v) -> bool:
-    try:
-        zahl(v)
-        return True
-    except ValueError:
-        return False
 
 
 def tabellen(datei: Path) -> list[tuple[list[str], list[list], int]]:
@@ -316,18 +306,6 @@ def tabellen(datei: Path) -> list[tuple[list[str], list[list], int]]:
             if sum(not leer(c) for c in r) >= 2:
                 out.append(([("" if leer(c) else str(c).strip()) for c in r], rows[i + 1:], i + 2))
                 break
-    return out
-
-
-def personen_spalten(kopf: list[str], rows: list[list]) -> list[str]:
-    out = []
-    for i, h in enumerate(kopf):
-        if not PERSON.match(h.casefold()):
-            continue
-        werte = [r[i] for r in rows if i < len(r) and not leer(r[i])]
-        if h.casefold().startswith(("techniker", "monteur")) and werte and all(_ist_zahl(v) for v in werte):
-            continue  # a head count, not a person
-        out.append(h)
     return out
 
 

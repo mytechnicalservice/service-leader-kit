@@ -148,6 +148,31 @@ def zuordnen(header: list[str], tpl: dict, manuell: dict, gespeichert: dict) -> 
     return mapping, errs, strittig
 
 
+# Columns that identify a person (spec §9.3). Shared with personal.py, which aggregates such lists to team level.
+PERSON = re.compile(r"^(?:(?:vor|nach|mitarbeiter|techniker|monteur|bearbeiter)?name|mitarbeiter(?:in)?|mitarbeitende"
+                    r"|techniker(?:in)?|monteur(?:in)?|bearbeiter(?:in)?|person|(?:personal|pers|ma)[\s._-]*(?:nr|nummer))\.?$")
+
+
+def _ist_zahl(v) -> bool:
+    try:
+        zahl(v)
+        return True
+    except ValueError:
+        return False
+
+
+def personen_spalten(kopf: list[str], rows: list[list]) -> list[str]:
+    out = []
+    for i, h in enumerate(kopf):
+        if not PERSON.match(h.casefold()):
+            continue
+        werte = [r[i] for r in rows if i < len(r) and not leer(r[i])]
+        if h.casefold().startswith(("techniker", "monteur")) and werte and all(_ist_zahl(v) for v in werte):
+            continue  # a head count, not a person
+        out.append(h)
+    return out
+
+
 def kopf_finden(blaetter, tpl, manuell, gespeichert):
     """Picks the sheet and header row that cover the most mandatory template columns (contested ones count too)."""
     pflicht = {s["name"] for s in tpl["spalten"] if s["pflicht"]}
@@ -199,6 +224,14 @@ def _pruefe(ws, datei, vorlage, kontrollsumme, zuordnung, uebernehmen, heute, du
     gespeichert = load_zuordnung(ws).get(vorlage, {})
     blatt, rows, kopf_idx, header, mapping, konflikte, strittig = kopf_finden(blaetter, tpl, manuell, gespeichert)
     result["blatt"], result["kopfzeile"] = blatt, kopf_idx + 1
+    personen = personen_spalten(header, rows[kopf_idx + 1:])
+    if personen:
+        hinweis = (f"{datei.name} enthält personenbezogene Spalten ({', '.join(personen)}) und wird nicht direkt "
+                   "übernommen (nur Teamwerte, spec §9.3). Für eine Stundenliste je Person: personal.py team-aggregat "
+                   "(Skill personalplanung) bildet Teamsummen; die Datei bleibt in 00_Eingang.")
+        if uebernehmen:
+            raise ImportFehler(hinweis)
+        result["personenbezug"] = {"spalten": personen, "hinweis": hinweis}  # a dry check (e.g. a total) stays allowed
     result["zuordnung"] = {h: t for h, t in mapping.items() if h != t}
     result["meldungen"] += konflikte
     fehlend = [s["name"] for s in tpl["spalten"]

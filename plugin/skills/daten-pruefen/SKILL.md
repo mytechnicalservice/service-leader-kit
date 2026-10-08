@@ -37,3 +37,6 @@ headers; ask the user if unsure. Capacity data is aggregated per team; never rep
 3. If `ok` is true: show period, rows, sum (German number format) and removed duplicates (`duplikate`), and ask
    whether to take it over. Then run the same command with `--uebernehmen` and name `ziel`.
 4. "<Monat> ist bereits importiert": tell the user; the file stays in `00_Eingang/`. Never import a period twice.
+5. If the result has `personenbezug`, the file holds names or personnel numbers: never import it. Hours or capacity per
+   person go to team totals through the `personalplanung` skill (`personal.py team-aggregat`); say so in plain German
+   and leave the file in `00_Eingang/`.
