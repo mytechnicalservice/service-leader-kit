@@ -50,4 +50,5 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
    from those layouts.
 6. **Check:** `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" pruefe-datei --ws "<workspace>" --datei "<datei>" --erwarte "<zahl 1>" --erwarte "<zahl 2>"`
    with the two or three key numbers in German format. If `ok` is false, fix the file and check again. Report the file
-   path, the slide titles and `version` (path + sha256) in German.
+   path, the slide titles, the source file of the key numbers (e.g. `07_Daten/ergebnis_2026-09.csv`) and `version`
+   (path + sha256) in German.

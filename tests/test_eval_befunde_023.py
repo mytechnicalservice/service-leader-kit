@@ -21,3 +21,9 @@ def test_staffing_answer_has_a_fixed_table_and_the_verbatim_note():
     _, body = skill("personalplanung")
     assert "| Team | Jahresbedarf Stunden | Bedarf FTE | Köpfe | Lücke | Einstellungen |" in body
     assert "with this paragraph, character for character: `Hinweis: <hinweis>`" in body
+
+
+def test_deck_answer_names_the_source_file_of_the_key_numbers():
+    # praesentation-sauber: the answer gave 436.019 EUR against plan but never named 07_Daten/ergebnis_2026-09.csv.
+    _, body = skill("praesentation")
+    assert "the source file of the key numbers (e.g. `07_Daten/ergebnis_2026-09.csv`)" in body
