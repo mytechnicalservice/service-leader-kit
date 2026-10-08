@@ -62,7 +62,11 @@ the gap with an estimate.
    visible), the annual demand in hours (`Jahresbedarf Stunden`), FTE need, heads and gap per team, hires, each business case with its lines from the section
    "Einstellung Team …" (Kosten Jahr 1, Erlös Jahr 1, payback month), every line of `meldungen`, and then the
    `hinweis` as its own paragraph: copy `hinweis` unchanged (it names § 87, § 94, § 98 BetrVG, DSGVO and BDSG) and
-   never shorten or reword it. A surplus is never a reason to propose cutting staff.
+   never shorten or reword it. A surplus is never a reason to propose cutting staff. Use this team table (plain
+   language never replaces a column):
+   `| Team | Jahresbedarf Stunden | Bedarf FTE | Köpfe | Lücke | Einstellungen |`
+   and close the results (before any offer from step 5) with this paragraph, character for character:
+   `Hinweis: <hinweis>`.
 2. Write `03_Berichte/JJJJ-MM-TT_personalplanung.xlsx` with Claude's built-in xlsx skill: one sheet per
    `gliederung` section, rows exactly as given, plus a sheet "Quellen" with each value's `quelle` and `formel`.
    With `beispiel: true`, put "Beispieldaten – Muster Maschinenbau GmbH" on every sheet. If the file exists, add

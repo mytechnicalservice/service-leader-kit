@@ -14,3 +14,10 @@ def test_large_quote_hands_the_users_direct_costs_to_finanzen():
     _, body = skill("grossangebot")
     assert "Direkte Kosten: <material, Fremdleistung, Technikerstunden" in body
     assert "ask the user for them before starting finanzen" in body
+
+
+def test_staffing_answer_has_a_fixed_table_and_the_verbatim_note():
+    # personalplanung-sauber: the answer dropped the annual hours and reworded the BetrVG note into plain language.
+    _, body = skill("personalplanung")
+    assert "| Team | Jahresbedarf Stunden | Bedarf FTE | Köpfe | Lücke | Einstellungen |" in body
+    assert "with this paragraph, character for character: `Hinweis: <hinweis>`" in body
