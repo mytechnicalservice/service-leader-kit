@@ -374,5 +374,5 @@ def test_script_reproduces_the_expected_values_in_sample_mode(capsys, kit_ws):
 def test_messy_graders_match_the_lane_fixture():
     texte = {p.parent.name: p.read_text(encoding="utf-8") for p in (ROOT / "plugin" / "evals").glob("*/case.yaml")}
     assert "108,3" in texte["kapazitaet-lage-unordentlich"] and "2\\\\.396" in texte["kapazitaet-lage-unordentlich"]
-    assert "2026-10-09" in texte["teamleiter-runde-unordentlich"]
+    assert "2026-12-09" in texte["teamleiter-runde-unordentlich"]  # December since 0.2.4 (run-date drift)
     assert "48" in texte["eskalation-topkunde-unordentlich"]
