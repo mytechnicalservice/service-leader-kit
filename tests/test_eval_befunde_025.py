@@ -81,3 +81,18 @@ def test_kuendigung_eval_forbids_a_name_in_bash_and_requires_none():
         n = g["kein-name-im-befehl"]
         assert n["tool"] == "Bash" and n["max"] == 0 and "Rehm" in n["input_match"]
         assert "pruefe-ausgabe" in g["dokument-auf-namen-geprueft"]["input_match"]
+
+
+def test_direct_import_grader_counts_only_an_import_attempt():
+    # Eval 0.2.7: a dry check of the original list (allowed, the script flags the personal data) failed the grader.
+    import re
+    import yaml
+    from conftest import ROOT
+    case = yaml.safe_load((ROOT / "plugin" / "evals" / "personalplanung-unordentlich" / "case.yaml").read_text(encoding="utf-8"))
+    g = next(g for g in case["graders"] if g["name"] == "liste-nicht-direkt-importiert")
+    muster = re.compile(g["input_match"])
+    datei = "00_Eingang/stunden_techniker_2026-10.csv"
+    assert muster.search(f'uv run daten_pruefen.py --ws . --datei "{datei}" --vorlage kapazitaet --uebernehmen')
+    assert muster.search(f'uv run daten_pruefen.py --uebernehmen --ws . --datei "{datei}" --vorlage kapazitaet')
+    assert not muster.search(f'uv run daten_pruefen.py --ws . --datei "{datei}" --vorlage kapazitaet')
+    assert (g["min"], g["max"]) == (0, 0)
