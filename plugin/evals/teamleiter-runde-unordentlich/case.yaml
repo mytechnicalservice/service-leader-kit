@@ -13,11 +13,12 @@ graders:
   - name: massnahme-sued
     type: tool_used
     tool: Bash
-    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Jana Becker)(?=.*2026-10-09)"
+    # Due dates in December: the run date drifts past October (0.2.3 run on 08.10. asked about an overdue date).
+    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Jana Becker)(?=.*2026-12-09)"
   - name: massnahme-nord
     type: tool_used
     tool: Bash
-    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Tom Wei)(?=.*2026-10-07)"
+    input_match: "(?=.*vorgang\\.py.*neu)(?=.*Tom Wei)(?=.*2026-12-07)"
   - name: keine-massnahme-ohne-person
     type: tool_used
     tool: Bash

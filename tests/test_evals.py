@@ -265,6 +265,19 @@ def test_trace_patterns_match_the_json_escaped_script_output():
             assert re.search(g["pattern"], ausgabe), (c, g["name"])
 
 
+def test_completeness_pattern_also_matches_an_extracted_check_result():
+    # eval run 0.2.3: all three dokument-vollstaendig graders failed although the answers reported a passed check;
+    # a run that pipes the JSON through python prints the dict as "'vollstaendig': True".
+    import re
+    formen = [json.dumps({"content": json.dumps({"dokument": {"vollstaendig": True}})}),
+              json.dumps({"content": str({"datei": "x.docx", "vollstaendig": True, "fehlt": []})})]
+    gefunden = [(c, g) for c, g in _graders() if g["name"] == "dokument-vollstaendig"]
+    assert len(gefunden) == 3
+    for c, g in gefunden:
+        assert all(re.search(g["pattern"], f) for f in formen), c
+        assert not re.search(g["pattern"], json.dumps({"content": "'vollstaendig': False"})), c
+
+
 def test_tool_used_does_not_count_calls_for_results():
     # Several script runs fit into one Bash call (mail-triage-sauber filed five mails in one call, quartal-sauber
     # prepared three talks in one). Results are graded on files or the answer; tool_used only checks the call exists.

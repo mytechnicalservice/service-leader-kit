@@ -17,13 +17,13 @@ graders:
   - {
       name: anzahl,
       type: regex,
-      pattern: "\\b9\\b\\s+Abweichungen",
+      pattern: "\\b9\\b\\s+(?:Abweichungen|Punkten|Punkte|Stellen)",
       target: last_message,
     }
   - {
       name: kritisch,
       type: regex,
-      pattern: "\\b4\\b\\s+kritisch",
+      pattern: "\\b4\\b(?:\\s+davon)?(?:\\s+(?:sind|als))?\\s+kritisch",
       target: last_message,
     }
   - {
