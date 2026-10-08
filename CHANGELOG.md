@@ -2,6 +2,25 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.5 – 2026-10-08
+
+Korrekturen aus dem Eval-Lauf 0.2.4 und die ersten öffentlichen Dokumente.
+
+### Neu
+
+- **Erste Schritte (`plugin/README.de.md`):** Anleitung für Leiter Kundendienst – Voraussetzungen, Installation,
+  erste Schritte mit der Beispielfirma, was das Kit kann, schützt und nicht verhindert, Lizenz in einfachen Worten.
+- **Datenfluss (`plugin/DATENFLUSS.md`):** eine Seite für IT und Datenschutzbeauftragte – was wo liegt, was an
+  Anthropic geht, Konnektoren, Plan und AVV, Aufbewahrung und Löschung, Mitarbeiterdaten.
+
+### Behoben
+
+- **Skill-Matrix:** Die Namensprüfung der Excel-Datei nimmt die Namen jetzt selbst aus den Exporten im
+  Arbeitsordner. Namen, die du im Gespräch nennst, landen nicht mehr in einem Befehl.
+- **Personalplanung:** Das Skript liefert Teamtabelle, Einstellungsfall (Kosten und Erlös im ersten Jahr,
+  Amortisation) und den Hinweis zu Betriebsrat und Datenschutz als fertigen Block; Claude gibt ihn unverändert
+  wieder, statt ihn umzuformulieren.
+
 ## 0.2.4 – 2026-10-08
 
 Korrekturen aus dem Eval-Lauf 0.2.3.
