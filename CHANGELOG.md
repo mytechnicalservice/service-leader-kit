@@ -2,6 +2,23 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.9 – 2026-10-08
+
+Zwei Varianten aus einer Quelle: das Kit mit Updates und die eigene Kopie.
+
+### Neu
+
+- **Eigene Kopie:** Wer Agenten und Skills selbst umbauen will, kann das ganze Kit in den Kundendienst-Ordner holen
+  (Unterordner `.claude/`). Dann gehört es dir, es gibt aber **keine automatischen Updates** mehr, und auch die
+  Schutzregeln sind änderbar – sie schützen nur, solange du sie nicht änderst. Empfohlen bleibt das Kit mit Updates.
+- **„Mach das Kit zu meiner eigenen Kopie“:** Der neue Skill erklärt zuerst, was sich ändert, und legt die Kopie nur
+  nach einem ausdrücklichen „Ja, eigene Kopie“ an. Vorhandene Dateien in `.claude/` ersetzt er nur nach Rückfrage,
+  eine vorhandene `settings.json` wird nur ergänzt. `Unternehmen/`, `01_Vorgaenge/` und alle anderen Ordner bleiben
+  unberührt. Am Ende nennt er den Befehl, mit dem du das Plugin für diesen Ordner abschaltest.
+- **Eigene Kopie als ZIP-Datei** zum Entpacken in den Kundendienst-Ordner, für alle, die gleich ohne Plugin starten.
+- Einrichtung und `README.de.md` erklären die beiden Varianten. In der eigenen Kopie verweisen Hinweise auf neuere
+  Versionen nicht mehr auf `/plugin update`.
+
 ## 0.2.8 – 2026-10-08
 
 Nach dem ersten Test in VS Code: Man sah nicht, welche Agenten es gibt, und nicht, wie man sie anpasst.
