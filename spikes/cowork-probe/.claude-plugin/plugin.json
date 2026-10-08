@@ -1,6 +1,0 @@
-{
-  "name": "slk-cowork-probe",
-  "version": "0.1.0",
-  "description": "Throwaway probe: verifies hook, agent and file behaviour in Claude Cowork for the Service Leader Kit.",
-  "author": { "name": "myTS" }
-}

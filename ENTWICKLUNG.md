@@ -30,7 +30,6 @@ Claude Code plugin (for VS Code) for heads of industrial service, alpha (0.2.x).
 - `CHANGELOG.md` — changes per version (German, for users)
 - `plugin/README.de.md` — getting started for users (German, non-technical)
 - `plugin/DATENFLUSS.md` — one-page data-flow sheet for IT and the data protection officer (spec §9)
-- `spikes/` — throwaway probes (Plan 1, prerequisite check). Removed before the public release.
 
 ## Was das Kit nicht verhindert
 
