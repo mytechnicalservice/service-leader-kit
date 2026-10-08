@@ -1,8 +1,9 @@
 # Skill-Katalog des Service Leader Kits
 
-Alle Skill-Ordner des Kits: 43 Skills (spec §5) und 5 Routinen (spec §8, Entscheidung D11). Ein Ordner unter
-`plugin/skills/` muss hier stehen; `tests/test_katalog.py` prüft das. Spalte **Agent** = wer den Skill verantwortet
-(`gemeinsam` = von allen genutzt), **Plan** = in welchem Bauplan er entsteht.
+Alle Skill-Ordner des Kits: 44 Skills (spec §5 und die Kit-Übersicht) und 5 Routinen (spec §8, Entscheidung D11).
+Ein Ordner unter `plugin/skills/` muss hier stehen; `tests/test_katalog.py` prüft das. Spalte **Agent** = wer den
+Skill verantwortet (`gemeinsam` = von allen genutzt), **Plan** = in welchem Bauplan er entsteht. Das Skript
+`kit_uebersicht.py` liest diese Tabelle für die Übersicht „Was kannst du?“.
 
 | Skill                         | Art     | Agent            | Plan |
 | ----------------------------- | ------- | ---------------- | ---- |
@@ -49,6 +50,7 @@ Alle Skill-Ordner des Kits: 43 Skills (spec §5) und 5 Routinen (spec §8, Entsc
 | `wochenplanung`               | skill   | assistenz        | 4i   |
 | `besprechung`                 | skill   | assistenz        | 4i   |
 | `mail-triage`                 | skill   | assistenz        | 4i   |
+| `kit-uebersicht`              | skill   | assistenz        | 5    |
 | `tagesstart`                  | routine | assistenz        | 5    |
 | `wochenstart`                 | routine | assistenz        | 5    |
 | `monatsabschluss`             | routine | assistenz        | 5    |

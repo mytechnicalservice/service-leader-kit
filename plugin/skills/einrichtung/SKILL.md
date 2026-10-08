@@ -77,6 +77,7 @@ Say: "Fertig. Leg Dateien einfach in 00_Eingang/. Mit 'Guten Morgen' startet die
 was chosen: "Die Beispieldaten kannst du sofort nutzen." Offer onboarding: "Damit das Kit deine Firma kennt, gibt es
 ein Onboarding: etwa 45 Minuten, jederzeit unterbrechbar." If no `onboarding` skill is available, say that it follows
 with the next kit version and that the files in `Unternehmen/` can be filled in by hand (each lists its questions).
+End with this sentence: "Sag jederzeit ‚Was kannst du?‘ für eine Übersicht."
 
 To remove the sample company later ("lösch die Beispieldaten"): ask once "Soll ich den Ordner Beispiel/ mit der
 Musterfirma löschen? Alles in Beispiel/ wird gelöscht; deine Dateien außerhalb von Beispiel/ bleiben unberührt." Only

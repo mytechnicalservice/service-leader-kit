@@ -98,8 +98,10 @@ Du sprichst immer nur mit der Assistenz. Sie holt die richtigen Fachleute dazu.
   Kit beim Öffnen des Ordners.
 - **Vorgänge:** Alles, was nachverfolgt oder entschieden werden muss, wird ein Vorgang mit einer verantwortlichen
   Person und einer Frist. Empfehlungen stehen darin; die Entscheidung triffst du.
-- **Lernen:** Korrigierst du eine Ausgabe, merkt sich das Kit die Regel in `Unternehmen/lernpunkte.md`. Eigene
-  Skills lassen sich anlegen.
+- **Lernen:** Korrigierst du eine Ausgabe, merkt sich das Kit die Regel in `Unternehmen/lernpunkte.md`. Regeln nur
+  für einen Agenten („Merk dir: Finanzen soll …“) stehen in dessen Datei in `Unternehmen/agenten/`; beide Ordner
+  bleiben bei jedem Update erhalten. Eigene Skills lassen sich anlegen.
+- **Überblick:** „Was kannst du?“ zeigt alle Agenten mit Beispielsätzen, die Routinen und wie du das Kit anpasst.
 
 Berichte entstehen als Word-, Excel- oder PowerPoint-Datei – auf deinem Briefkopf und deinem Folienmaster, wenn du
 sie im Onboarding hinterlegst.

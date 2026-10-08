@@ -12,13 +12,13 @@ GEBAUT = {"2c", "3", "4a", "4b", "4c", "4d", "4e", "4f", "4g", "4h", "4i", "5"}
 ORDNER = sorted(p.parent.name for p in (ROOT / "plugin" / "skills").glob("*/SKILL.md"))
 
 
-def test_catalog_lists_48_unique_entries_with_known_owners():
+def test_catalog_lists_49_unique_entries_with_known_owners():
     e = eintraege()
     namen = [x["name"] for x in e]
-    assert len(namen) == 48 == len(set(namen))
+    assert len(namen) == 49 == len(set(namen))
     assert sum(x["art"] == "routine" for x in e) == 5
     assert {x["agent"] for x in e} <= vorgang.AGENTEN | {"gemeinsam"}
-    assert KATALOG.read_text(encoding="utf-8").count("\n| `") == 48  # no row the pattern silently skipped
+    assert KATALOG.read_text(encoding="utf-8").count("\n| `") == 49  # no row the pattern silently skipped
 
 
 def test_every_skill_folder_is_in_the_catalog():

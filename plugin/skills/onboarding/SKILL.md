@@ -94,4 +94,6 @@ master|briefkopf|beispielmail`.
   that they do not belong in `Unternehmen/` and leave them out; the script refuses them as well.
 - Limits and thresholds go only into `Unternehmen/` via the script, never into a rule or a skill.
 - At the end (`stand` → `fertig: true`): summarise in five lines what the kit now knows, and say that every agent
-  uses it from now on and that `Unternehmen/` can also be edited by hand (each file lists its questions).
+  uses it from now on and that `Unternehmen/` can also be edited by hand (each file lists its questions). Rules for one
+  agent go into `Unternehmen/agenten/<agent>.md`. End with this sentence: "Sag jederzeit ‚Was kannst du?‘ für eine
+  Übersicht."
