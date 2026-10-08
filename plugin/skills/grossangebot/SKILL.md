@@ -79,8 +79,10 @@ Create the file `ziel` (.docx) with the built-in Word document skill:
 You never write a recommendation yourself (no self-review). Run the reviewers one after the other:
 
 1. If `pruefung.finanzen` is not empty: start the agent `service-leader-kit:finanzen` (Agent tool) with: "Skill
-   margen-pruefung für Vorgang <V-…>. Angebot: <ziel>. Kalkulation: `vertrieb.py <aufruf>`. Gründe: <pruefung.finanzen>.
-   Schreib deine Empfehlung mit vorgang.py eintrag --art empfehlung --von finanzen in den Vorgang."
+   margen-pruefung für Vorgang <V-…>. Angebot: <ziel>. Kalkulation: `vertrieb.py <aufruf>`. Direkte Kosten: <material, Fremdleistung, Technikerstunden
+   wörtlich wie vom Nutzer genannt>. Gründe: <pruefung.finanzen>. Schreib deine Empfehlung mit vorgang.py eintrag
+   --art empfehlung --von finanzen in den Vorgang." The script prices nothing on the cost side: if the user has not
+   given the direct costs, ask the user for them before starting finanzen (never estimate them).
 2. If `pruefung.qualitaet_recht` is not empty: start the agent `service-leader-kit:qualitaet-recht` with: "Skill
    vertragspruefung für Vorgang <V-…>. Angebot: <ziel>. Abweichungen: <pruefung.qualitaet_recht>. Fachexperte
    Recht: <pruefung.fachexperte_recht>. Schreib deine Empfehlung mit vorgang.py eintrag --art empfehlung --von
