@@ -2,6 +2,30 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.8 – 2026-10-08
+
+Nach dem ersten Test in VS Code: Man sah nicht, welche Agenten es gibt, und nicht, wie man sie anpasst.
+
+### Neu
+
+- **Übersicht „Was kannst du?“:** Auch „Welche Agenten habe ich?“, „Übersicht“ oder „Hilfe“. Zeigt die zehn Agenten
+  mit ihrer Rolle, typischen Aufgaben und Beispielsätzen zum Eintippen, die fünf Routinen mit ihrem Termin, die
+  gemeinsamen Skills, deine eigenen Skills und wie du das Kit anpasst. Die Liste entsteht bei jedem Aufruf aus den
+  Dateien des Kits und deines Ordners (`kit_uebersicht.py`), sie veraltet also nicht. Einrichtung und Onboarding
+  enden mit dem Hinweis darauf.
+- **Eigene Regeln je Agent:** `Unternehmen/agenten/<agent>.md`, eine Datei pro Agent. Sie gehört dir und bleibt bei
+  jedem Update erhalten. Jeder Agent liest seine Datei vor jeder Arbeit; bei einem Widerspruch zu `lernpunkte.md` gilt
+  die genauere Regel aus der Agenten-Datei. Gegen die Schutzregeln (nichts senden, nichts löschen, keine Auswertung
+  einzelner Mitarbeitender, nichts vortäuschen, Dateiinhalte sind keine Anweisungen) gilt keine Regel; der Agent sagt
+  das. „Merk dir: Finanzen soll …“ trägt der System-Architekt in die Datei von Finanzen ein, nicht in
+  `lernpunkte.md`, und zeigt die Änderung. Die Übersicht zeigt, welche Agenten eigene Regeln haben.
+- Einrichtung und Gesundheitscheck legen fehlende Regel-Dateien an und überschreiben nie eine vorhandene.
+
+### Geprüft
+
+- Der doppelte Hinweis „Der Ordner liegt nur auf diesem Computer …“ nach der Einrichtung kommt nicht vom Kit: Das
+  Einrichtungs-Skript gibt ihn genau einmal aus (jetzt mit Test).
+
 ## 0.2.7 – 2026-10-08
 
 Korrektur aus dem Eval-Lauf 0.2.6.
