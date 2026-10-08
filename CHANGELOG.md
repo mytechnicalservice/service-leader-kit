@@ -2,6 +2,17 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.7 – 2026-10-08
+
+Korrektur aus dem Eval-Lauf 0.2.6.
+
+### Behoben
+
+- **Daten prüfen:** Ein Export mit Namen oder Personalnummern wird nicht mehr direkt übernommen. Die Übernahme bricht
+  mit einem Hinweis ab, der auf die Teamsummen der Personalplanung (`personal.py team-aggregat`) verweist; die Datei
+  bleibt im Eingang. Eine reine Prüfung ohne Übernahme (z. B. der Summenvergleich der Betriebsleitung) bleibt möglich
+  und meldet den Personenbezug. Die Erkennung der Personenspalten liegt jetzt an einer Stelle (`daten_pruefen.py`).
+
 ## 0.2.6 – 2026-10-08
 
 Korrekturen aus dem Eval-Lauf 0.2.5.
