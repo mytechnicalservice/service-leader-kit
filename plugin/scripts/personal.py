@@ -568,13 +568,22 @@ def cmd_matrix_erfassen(a, ws: Path) -> tuple[int, dict]:
     w = csv.writer(buf, lineterminator="\n")
     w.writerow(["Team", "Maschinentyp", "Auftragsart", "Qualifiziert_Anzahl", "In_Schulung_Anzahl", "Ausbilder_Anzahl"])
     zeilen = [{"team": t, "maschinentyp": m, "auftragsart": x, **s} for (t, m, x), s in sorted(summen.items())]
-    for z in zeilen:
+    # The evaluation reads only the newest month: carry the other cells of the latest state over unchanged.
+    alt = neueste(lade_optional(ws, "qualifikation"))
+    bleiben = [{"team": str(r["Team"]), "maschinentyp": str(r["Maschinentyp"]), "auftragsart": str(r["Auftragsart"]),
+                "qualifiziert": anzahl(r, "Qualifiziert_Anzahl"), "in_schulung": anzahl(r, "In_Schulung_Anzahl"),
+                "ausbilder": anzahl(r, "Ausbilder_Anzahl")} for r in alt
+               if (str(r["Team"]), str(r["Maschinentyp"]), str(r["Auftragsart"])) not in summen]
+    for z in zeilen + bleiben:
         w.writerow([csv_sicher(z["team"]), csv_sicher(z["maschinentyp"]), csv_sicher(z["auftragsart"]),
                     z["qualifiziert"], z["in_schulung"], z["ausbilder"]])
     write_atomic(ziel, buf.getvalue(), encoding="utf-8-sig")
-    return 0, {"ok": True, "datei": rel, "zeilen": zeilen,
-               "meldungen": [f"Gespeichert sind nur Anzahlen je Team ({rel}). Jetzt mit daten-pruefen als Vorlage "
-                             "'qualifikation' übernehmen."]}
+    meldungen = [f"Gespeichert sind nur Anzahlen je Team ({rel}). Jetzt mit daten-pruefen als Vorlage "
+                 "'qualifikation' übernehmen."]
+    if bleiben:
+        meldungen.append(f"{len(bleiben)} weitere Zeilen unverändert aus {alt[0]['_datei']} mitgenommen, damit der "
+                         "neue Stand vollständig ist.")
+    return 0, {"ok": True, "datei": rel, "zeilen": zeilen, "uebernommen": len(bleiben), "meldungen": meldungen}
 
 
 def cmd_abgang(a, ws: Path) -> tuple[int, dict]:

@@ -234,6 +234,21 @@ def test_matrix_erfassen_zaehlt_anonyme_stufen(kit_ws, tmp_path):
     assert r["ok"], r["meldungen"]
 
 
+def test_matrix_erfassen_traegt_die_uebrigen_zellen_des_letzten_stands_mit(pws, tmp_path):
+    # skill-matrix-unordentlich (0.2.3): one updated cell became the newest month alone, so every other cell
+    # read as "nicht abgedeckt". The captured file now carries the other rows of the latest state unchanged.
+    e = tmp_path / "e.json"
+    e.write_text(json.dumps([{"team": "West", "maschinentyp": "MM-800 Retrofit", "auftragsart": "Reparatur",
+                              "stufe": s} for s in (2, 2, 1, 0)]), encoding="utf-8")
+    vorher = (pws / "07_Daten" / "qualifikation_2026-09.csv").read_text(encoding="utf-8-sig").splitlines()
+    code, out = lauf("matrix-erfassen", "--ws", pws, "--eingabe", e, "--heute", "2026-10-06")
+    assert code == 0 and out["uebernommen"] == len(vorher) - 1 - sum("West,MM-800 Retrofit,Reparatur," in z
+                                                                      for z in vorher)
+    text = (pws / out["datei"]).read_text(encoding="utf-8-sig")
+    assert "West,MM-800 Retrofit,Reparatur,2,1,0" in text and len(text.splitlines()) == out["uebernommen"] + 2
+    assert any("unverändert aus 07_Daten/qualifikation_2026-09.csv mitgenommen" in m for m in out["meldungen"])
+
+
 def test_matrix_erfassen_lehnt_namen_ab(kit_ws, tmp_path):
     e = tmp_path / "e.json"
     e.write_text(json.dumps([{"team": "West", "maschinentyp": "MM-400", "auftragsart": "alle", "stufe": 2,
