@@ -16,12 +16,32 @@ VORLAGE = PLUGIN / "vorlagen" / "arbeitsordner"
 SCHEMA = PLUGIN / "vorlagen" / "kit-config.schema"
 GITIGNORE = PLUGIN / "vorlagen" / "workspace.gitignore"
 SCHEMA_VERSION = 1
+# "Eigene Kopie" (eigene_kopie.py): the kit lives in <Projekt>/.claude/kit, agents and skills next to it in
+# .claude/agents and .claude/skills, and VERSION replaces .claude-plugin/plugin.json. As a plugin, all lie in PLUGIN.
+EIGENE_KOPIE = (PLUGIN / "VERSION").is_file()
 # Case folders stay empty: vorgang.py treats every .md in them as a case.
 LEERE_ORDNER = ("01_Vorgaenge/offen", "01_Vorgaenge/erledigt", "01_Vorgaenge/_zur-loeschung")
 
 
-def kit_version() -> str:
-    return json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+def kit_version(plugin: Path = PLUGIN) -> str:
+    if (plugin / "VERSION").is_file():
+        return (plugin / "VERSION").read_text(encoding="utf-8").strip()
+    return json.loads((plugin / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+
+
+def kit_pfade(plugin: Path = PLUGIN) -> dict[str, Path]:
+    """Where the agents, the skills and the skill catalog of this kit lie (plugin or eigene Kopie)."""
+    if (plugin / "agents").is_dir():
+        return {"agents": plugin / "agents", "skills": plugin / "skills", "katalog": plugin / "skills" / "KATALOG.md"}
+    return {"agents": plugin.parent / "agents", "skills": plugin.parent / "skills", "katalog": plugin / "KATALOG.md"}
+
+
+def update_hinweis() -> str:
+    """How the user gets a newer kit: the plugin updates itself; an eigene Kopie never does."""
+    if EIGENE_KOPIE:
+        return ("Dies ist deine eigene Kopie des Kits ohne automatische Updates; eine neuere Version bekommst du "
+                "bei myTS")
+    return "Bitte das Kit aktualisieren (/plugin update service-leader-kit)"
 
 
 def ist_arbeitsordner(ws: Path) -> bool:
@@ -101,8 +121,8 @@ def neueres_schema(werte: dict[str, str] | None) -> str | None:
     schema = (werte or {}).get("schema", "")
     if not (re.fullmatch(r"[0-9]+", schema) and int(schema) > SCHEMA_VERSION):
         return None
-    return (f"Die Einstellungen stammen von einer neueren Kit-Version (schema={schema}). Bitte das Kit "
-            "aktualisieren (/plugin update service-leader-kit); bis dahin gilt das sichere Verhalten.")
+    return (f"Die Einstellungen stammen von einer neueren Kit-Version (schema={schema}). {update_hinweis()}; "
+            "bis dahin gilt das sichere Verhalten.")
 
 
 def render(werte: dict[str, str]) -> str:

@@ -1,8 +1,6 @@
 import pytest
 
-from hookrun import echt, run_hook, write
-
-ARCHITEKT = "service-leader-kit:system-architekt"
+from hookrun import ARCHITEKT, NS, echt, run_hook, write
 
 
 def pre(shell, ws, payload, proj=None):
@@ -38,7 +36,7 @@ def test_real_write_payload_is_blocked_on_a_case_file(shell, kit_ws):
     assert pre(shell, kit_ws, p)[0] == 2
 
 
-@pytest.mark.parametrize("agent,erwartet", [(None, 2), ("service-leader-kit:finanzen", 2), (ARCHITEKT, 0)])
+@pytest.mark.parametrize("agent,erwartet", [(None, 2), (NS + "finanzen", 2), (ARCHITEKT, 0)])
 def test_unternehmen_is_written_only_by_the_system_architect(shell, kit_ws, agent, erwartet):
     code, err = pre(shell, kit_ws, write(kit_ws / "Unternehmen" / "profil.md", agent=agent))
     assert code == erwartet

@@ -30,9 +30,9 @@ def pruefe(name: str, beschreibung: str, text: str) -> list[str]:
     if not 40 <= len(beschreibung) <= 1024:
         fehler.append("Beschreibung: 40 bis 1024 Zeichen; sie sagt, wann der Skill gilt")
     fehler += [f"Im Text fehlt '{p}'" for p in PFLICHT if p not in text]
-    if "CLAUDE_PLUGIN_ROOT" in text:
-        fehler.append("Eigene Skills rufen keine Kit-Skripte direkt auf (CLAUDE_PLUGIN_ROOT gibt es dort nicht); "
-                      "stattdessen den Kit-Skill beim Namen nennen, z. B. 'nutze den Skill vorgang'")
+    if "CLAUDE_PLUGIN_ROOT" in text or "/.claude/kit/" in text:  # plugin or eigene Kopie
+        fehler.append("Eigene Skills rufen keine Kit-Skripte direkt auf; stattdessen den Kit-Skill beim Namen "
+                      "nennen, z. B. 'nutze den Skill vorgang'")
     if re.search(r"pip install|\brm\b|curl|sendmail", text):
         fehler.append("Eigene Skills installieren, löschen oder senden nichts")
     return fehler

@@ -117,7 +117,7 @@ def cmd_pruefen(a) -> tuple[int, dict]:
         meldungen.append(neuer)
     ok = probe["anlegen"] and all(v["ok"] for v in vor if v["pflicht"])
     return (0 if ok else 1), {
-        "ok": ok, "ordner": str(ordner), "voraussetzungen": vor, "probe": probe, "git_auto_moeglich": auto,
+        "ok": ok, "variante": "eigene-kopie" if ao.EIGENE_KOPIE else "plugin", "ordner": str(ordner), "voraussetzungen": vor, "probe": probe, "git_auto_moeglich": auto,
         "ablage_vorschlag": ablage_vorschlag(ordner), "einstellungen": werte,
         "einstellungen_fehler": fehler if werte is not None else [], "meldungen": meldungen}
 

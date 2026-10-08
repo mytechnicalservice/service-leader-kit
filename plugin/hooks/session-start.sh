@@ -32,7 +32,9 @@ if ! pruefe "{\"tool_name\":\"Bash\",\"cwd\":$w,\"tool_input\":{\"command\":\"rm
   slk_log "$ws" SELBSTTEST "fehlgeschlagen"
 fi
 
-v_kit=$(slk_field "$(cat "$SLK_PLUGIN/.claude-plugin/plugin.json" 2>/dev/null)" version)
+# Plugin: .claude-plugin/plugin.json. Eigene Kopie (.claude/kit): VERSION, agents in .claude/agents.
+if [ -f "$SLK_PLUGIN/VERSION" ]; then v_kit=$(tr -d ' \r\n' < "$SLK_PLUGIN/VERSION"); agents="$SLK_PLUGIN/../agents"
+else v_kit=$(slk_field "$(cat "$SLK_PLUGIN/.claude-plugin/plugin.json" 2>/dev/null)" version); agents="$SLK_PLUGIN/agents"; fi
 v_ws=""; [ -f "$U/.kit-version" ] && v_ws=$(tr -d ' \r\n' < "$U/.kit-version" | sed "s/^$bom//")
 if [ -n "$v_kit" ] && slk_ver_gt "$v_kit" "${v_ws:-0}"; then
   add "Neue Kit-Version $v_kit (Ordner: ${v_ws:-unbekannt}): zuerst gesundheitscheck ausführen."
@@ -84,6 +86,6 @@ fi
 printf 'Service Leader Kit – Stand %s, Ordner %s%s\n' "$heute" "$ws" "${out:-
 - Nichts fällig.}"
 # D12: the main conversation is the coordinator. Its persona is the marked block in agents/assistenz.md (one source).
-persona=$(sed -n '/<!-- persona:anfang -->/,/<!-- persona:ende -->/p' "$SLK_PLUGIN/agents/assistenz.md" 2>/dev/null | sed '1d;$d')
+persona=$(sed -n '/<!-- persona:anfang -->/,/<!-- persona:ende -->/p' "$agents/assistenz.md" 2>/dev/null | sed '1d;$d')
 [ -n "$persona" ] && printf '\n%s\n' "$persona"
 exit 0

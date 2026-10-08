@@ -35,13 +35,13 @@ def kopf(text: str) -> dict[str, str]:
 
 
 def katalog(plugin: Path) -> list[dict]:
-    p = plugin / "skills" / "KATALOG.md"
+    p = ao.kit_pfade(plugin)["katalog"]
     zeilen = p.read_text(encoding="utf-8").splitlines() if p.is_file() else []
     return [{"name": m.group(1), "art": m.group(2), "agent": m.group(3)} for z in zeilen if (m := ZEILE.match(z))]
 
 
 def beschreibung(plugin: Path, skill: str) -> str:
-    p = plugin / "skills" / skill / "SKILL.md"
+    p = ao.kit_pfade(plugin)["skills"] / skill / "SKILL.md"
     return kopf(p.read_text(encoding="utf-8")).get("description", "") if p.is_file() else ""
 
 
@@ -72,7 +72,7 @@ def uebersicht(plugin: Path, ws: Path | None) -> dict:
         skills_von.setdefault(e["agent"], []).append({"name": e["name"], "art": e["art"],
                                                       "beschreibung": beschreibung(plugin, e["name"])})
     agenten = []
-    for p in sorted((plugin / "agents").glob("*.md"), key=lambda x: (x.stem != ERSTER, x.stem)):
+    for p in sorted(ao.kit_pfade(plugin)["agents"].glob("*.md"), key=lambda x: (x.stem != ERSTER, x.stem)):
         text = p.read_text(encoding="utf-8")
         meta, prof = kopf(text), profil(text)
         slug = meta.get("name") or p.stem

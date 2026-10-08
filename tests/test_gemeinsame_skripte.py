@@ -53,7 +53,8 @@ def test_custom_skill_is_created_in_the_workspace_once(kit_ws, capsys, monkeypat
 
 def test_custom_skill_rules(kit_ws, capsys, monkeypatch):
     for name, text, teil in (("Groß", GUT, "Name"), ("ok", "**Liest:** x", "Schreibt"),
-                             ("ok", GUT + 'uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py"', "CLAUDE_PLUGIN_ROOT"),
+                             ("ok", GUT + 'uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py"', "Kit-Skripte"),
+                                 ("ok", GUT + 'uv run "${CLAUDE_PROJECT_DIR}/.claude/kit/scripts/vorgang.py"', "Kit-Skripte"),
                              ("ok", GUT + "rm alt.md", "löschen")):
         code, out = call(eigene_skills, capsys, monkeypatch,
                          ["anlegen", "--ws", kit_ws, "--name", name, "--beschreibung", BESCHREIBUNG], text)

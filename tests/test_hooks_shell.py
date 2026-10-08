@@ -1,6 +1,6 @@
 import pytest
 
-from hookrun import bash, echt, run_hook
+from hookrun import NS, bash, echt, run_hook
 
 BLOCK = [
     ("rm 01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
@@ -240,7 +240,7 @@ def test_shell_inside_a_protected_folder_blocks_relative_deletes(shell, kit_ws):
 
 def test_only_the_human_decides(shell, kit_ws):
     cmd = 'uv run "/p/plugin/scripts/vorgang.py" entscheide --nr V-0001 --entscheidung freigegeben --von x --dokument y'
-    code, err = pre(shell, kit_ws, bash(kit_ws, cmd, agent="service-leader-kit:finanzen"))
+    code, err = pre(shell, kit_ws, bash(kit_ws, cmd, agent=NS + "finanzen"))
     assert code == 2 and "Empfehlung" in err
     assert pre(shell, kit_ws, bash(kit_ws, cmd))[0] == 0
 

@@ -8,7 +8,13 @@ from pathlib import Path
 
 from conftest import ROOT
 
-HOOKS = ROOT / "plugin" / "hooks"
+# SLK_TEST_HOOKS runs the same scenarios against the hooks of an eigene Kopie (tests/test_eigene_kopie.py): there the
+# hooks live in .claude/kit/hooks, the agents in .claude/agents and agent names carry no "service-leader-kit:".
+HOOKS = Path(os.environ.get("SLK_TEST_HOOKS") or ROOT / "plugin" / "hooks")
+EIGENE_KOPIE = (HOOKS.parent / "VERSION").is_file()
+AGENTS = HOOKS.parent.parent / "agents" if EIGENE_KOPIE else HOOKS.parent / "agents"
+NS = "" if EIGENE_KOPIE else "service-leader-kit:"
+ARCHITEKT = NS + "system-architekt"
 PAYLOADS = ROOT / "tests" / "payloads"
 
 

@@ -35,7 +35,16 @@ Rechne also damit, dass dir Ecken auffallen. Sag uns Bescheid (siehe „Hilfe“
 
 Die Einrichtung prüft das alles und sagt dir in einfachen Worten, was fehlt und wie du es installierst.
 
-## Installation
+## Zwei Varianten
+
+- **Kit mit Updates (empfohlen):** Das Kit wird als Plugin installiert. Korrekturen und neue Funktionen kommen von
+  selbst, die Schutzregeln sind fest eingebaut. Anpassen kannst du trotzdem viel: deine Firma in `Unternehmen/`,
+  eigene Regeln je Agent und eigene Skills.
+- **Eigene Kopie:** Für alle, die Agenten und Skills selbst umbauen wollen. Das ganze Kit liegt dann in deinem
+  Kundendienst-Ordner (im Unterordner `.claude/`) und gehört dir. Dafür gibt es **keine automatischen Updates**, und
+  auch die Schutzregeln sind änderbar – sie schützen nur, solange du sie nicht änderst.
+
+## Installation: Kit mit Updates
 
 1. VS Code öffnen, den Claude-Bereich öffnen.
 2. Den Marktplatz einmal hinzufügen – diese Zeile in Claude eintippen:
@@ -52,6 +61,18 @@ Die Einrichtung prüft das alles und sagt dir in einfachen Worten, was fehlt und
 
    Wähle dabei den Bereich **Projekt** [prüfen: genaue Auswahl bzw. Schalter für den Projekt-Bereich im aktuellen
    Claude Code]. So meldet sich das Kit nur in deinem Kundendienst-Ordner und stört in anderen Projekten nicht.
+
+## Installation: Eigene Kopie
+
+1. Die Datei `service-leader-kit-eigene-kopie-<Version>.zip` von der Release-Seite laden
+   [prüfen: Link auf die GitHub-Releases von mytechnicalservice/service-leader-kit einsetzen].
+2. Die ZIP-Datei **direkt in deinen Kundendienst-Ordner** entpacken, sodass dort der Ordner `.claude` entsteht (unter
+   Windows beim Entpacken als Ziel genau diesen Ordner wählen; unter macOS ist `.claude` im Finder versteckt).
+3. Den Ordner in VS Code öffnen und wie unten weitermachen. Ein Plugin brauchst du dann nicht.
+
+Schon mit dem Kit mit Updates eingerichtet? Dann schreib **„Mach das Kit zu meiner eigenen Kopie“**. Claude erklärt,
+was sich ändert, fragt nach und sagt dir am Ende, wie du das Plugin für diesen Ordner abschaltest. Deine Daten bleiben
+unverändert.
 
 Mit Hilfe dauert die Installation höchstens etwa 30 Minuten (Ziel aus unserer Planung, noch nicht bei Kunden
 gemessen).
@@ -166,6 +187,9 @@ Updates sind für alle kostenlos und kommen über Claude Code. So holst du die n
 Beim nächsten Öffnen des Ordners erkennt das Kit die neue Version und passt deinen Ordner an (fehlende Ordner
 ergänzen, Einstellungen umstellen – vorher mit Sicherungskopie). Deine Inhalte überschreibt ein Update nie. Was sich
 geändert hat, steht in `CHANGELOG.md`.
+
+**Eigene Kopie:** Sie bekommt keine Updates. Eine neuere Version wäre eine neue ZIP-Datei; deine eigenen Änderungen
+an Agenten und Skills müsstest du dann selbst übertragen.
 
 ## Lizenz
 

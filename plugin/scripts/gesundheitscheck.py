@@ -139,7 +139,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     aktualisiert = False
     if v_ordner and ao.version_neuer(v_ordner, v_kit):  # e.g. a second PC with an older kit: never lower it
         meldungen.append(f"Der Ordner wurde schon mit einer neueren Kit-Version ({v_ordner}) benutzt; hier ist "
-                         f"{v_kit} installiert. Bitte das Kit aktualisieren (/plugin update service-leader-kit).")
+                         f"{v_kit} installiert. {ao.update_hinweis()}.")
     elif konfig["status"] in ("ok", "migriert") and v_ordner != v_kit:
         write_atomic(v_datei, v_kit + "\n")
         aktualisiert = True

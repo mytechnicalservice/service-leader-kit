@@ -8,6 +8,22 @@ Claude Code plugin (for VS Code) for heads of industrial service. Spec: myTS rep
 - `tools/` — developer tools, not shipped to users: sample-data generator; `eval_wheels.sh` builds the offline wheel folder for eval runs; `testworkspace.py` builds a test workspace (`uv run tools/testworkspace.py "<leerer Ordner>"`)
 - `tests/` — `uv run --with pytest --with openpyxl==3.1.5 --with python-docx==1.1.2 --with python-pptx==1.0.2 --with pyyaml==6.0.2 pytest tests -q`
 - `plugin/evals/` — evals (billed): `DOCKER_CONFIG="$(mktemp -d)" claude plugin eval ./plugin --scaffold --trust-plugin --allow-tools Bash Write Edit Agent Skill --no-publish` — the empty `DOCKER_CONFIG` is needed where the Docker credential store holds symlinks (Docker Desktop on macOS), and without `--allow-tools Bash Write Edit` no grader can pass. On Max's Mac it is not enough: symlinks in `~/.docker/cli-plugins/` still make the eval refuse Bash (open, Plan 6). **Before an eval run, build the wheel folder once:** `sh tools/eval_wheels.sh` (network needed only for that) downloads openpyxl, python-docx, python-pptx and their dependencies into `plugin/evals/_gemeinsam/wheels/` (gitignored). The folder is platform-specific (lxml and pillow are compiled wheels), so build it on the machine that runs the evals. The eval sandbox has no network and an empty uv cache; the scaffold writes a `uv.toml` (no index, find-links to that folder) into each run workspace and stops with an error if the folder is missing. The `uv.toml` only applies when `uv run` starts in the workspace or below, so the scaffold copies it to the run's user-level uv config (`$HOME/.config/uv/uv.toml`, only when the workspace is `$HOME/cwd` as in an eval run) for scripts started from `$TMPDIR`. Every case has a scaffold for this (einrichtung-sauber: `uv_offline` only, no workspace)
+- **Two variants from one source (Option A, 0.2.9):** "Kit mit Updates" = `plugin/` as a plugin, unchanged. "Eigene
+  Kopie" = a self-contained `.claude/` the user owns: `plugin/scripts/eigene_kopie.py` builds it (shipped, so the skill
+  `kit-auswerfen` can run it from the installed plugin into a workspace); `tools/build-standalone.py "<Projektordner>"`
+  builds it for development, `uv run tools/build-standalone.py --zip [<Ordner>]` writes
+  `service-leader-kit-eigene-kopie-<version>.zip` (only `.claude/`, reproducible) for a GitHub release. Layout:
+  `.claude/agents/`, `.claude/skills/`, `.claude/settings.json` (the hooks of `hooks/hooks.json` merged into existing
+  settings, nothing removed) and everything else under `.claude/kit/` (scripts, hooks, vorlagen, beispiel,
+  README.de.md, DATENFLUSS.md, KATALOG.md, plus CHANGELOG.md and LICENSE when built from the repo; never evals/ or
+  beispiel-unordentlich/). `.claude/kit/VERSION` stamps the source version and marks the copy
+  (`arbeitsordner.EIGENE_KOPIE`). Text rewrites only in agents, skills and hooks: `${CLAUDE_PLUGIN_ROOT}` →
+  `${CLAUDE_PROJECT_DIR}/.claude/kit` (Claude Code substitutes `${CLAUDE_PROJECT_DIR}` in skill text and exports it
+  to hook commands; it is not set in the Bash tool, hence never `$CLAUDE_PROJECT_DIR` unbraced in commands the model
+  types) and `service-leader-kit:<name>` → `<name>`. Scripts are never rewritten: `arbeitsordner.kit_pfade()`,
+  `kit_version()` and `update_hinweis()` handle both layouts, `session-start.sh` reads `VERSION` and
+  `../agents` when present. The hook tests run against a built copy too (`SLK_TEST_HOOKS`, see `tests/hookrun.py`).
+  In the copy the guards are plain files the user may edit: protection is advisory there.
 - `CHANGELOG.md` — changes per version (German, for users)
 - `plugin/README.de.md` — getting started for users (German, non-technical)
 - `plugin/DATENFLUSS.md` — one-page data-flow sheet for IT and the data protection officer (spec §9)
