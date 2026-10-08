@@ -34,7 +34,8 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
 Ask per team, machine type and order type (`alle` allowed): how many work alone, how many are in training, how
 many can train others. Ask for numbers, not names ("Bitte keine Einzelbewertungen – nur Anzahlen je Team").
 If the user lists individuals anyway, pass only anonymous levels (0 kann es nicht, 1 mit Anleitung, 2
-selbstständig, 3 kann schulen) — **remove every name before the command** — and do not repeat the names:
+selbstständig, 3 kann schulen) — **remove every name before the command** — and do not repeat the names. Names
+stay in the user's message: never type a name into a command, a heredoc or a file, not even for a check (spec §9.3):
 
 ```
 uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" matrix-erfassen --ws "<workspace>" --eingabe - <<'EOF'
@@ -57,8 +58,11 @@ training, order hours), machine types nobody covers, every `meldungen` line and 
 `03_Berichte/JJJJ-MM-TT_skill-matrix.xlsx` with Claude's xlsx skill (sheet "Matrix" with one row per cell and the
 level as text, sheet "Schulungsbedarf", sheet "Quellen"); `_2` if it exists; without the xlsx skill as in
 **Ohne Dokument-Skill** above.
-Check it: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" pruefe-ausgabe --datei "<xlsx>" --name "<every name the user mentioned>"`
-(skip when no name was mentioned). With `treffer` > 0, fix and check again.
+Check it: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/personal.py" pruefe-ausgabe --ws "<workspace>" --datei "<xlsx>"`
+(the script takes the names from the workspace's own exports; pass none). With `treffer` > 0, fix and check again.
+
+Answer for an update: the stored counts in the script's words (qualifiziert, in Schulung, Ausbilder) and that no
+names or single ratings were kept, then the cell's new level. Never describe what one person can or is learning.
 
 The README note on employee data (§9.3) applies: a qualification matrix per person is a typical co-determination
 topic; this matrix stays at team level, and teams under 3 heads are flagged because counts there point to

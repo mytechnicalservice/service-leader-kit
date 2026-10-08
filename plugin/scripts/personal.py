@@ -213,6 +213,22 @@ def business_case(t, n, umsatz, std, luecke, p, std_fte, defs, heute) -> tuple[d
     return fall, w
 
 
+def antwort_block(teams: list[str], werte: list[dict], faelle: list[dict], hinweis: str) -> str:
+    """The chat block the skill copies unchanged: team table, each hiring case, the note (eval run 0.2.4)."""
+    w = {x["name"]: x["betrag"] for x in werte}
+    z = ["| Team | Jahresbedarf Stunden | Bedarf FTE | Köpfe | Lücke | Einstellungen |", "|---|---|---|---|---|---|"]
+    z += [f"| {t} | {kz.deutsch(w[f'Jahresbedarf Stunden {t}'])} | {kz.deutsch(w[f'FTE-Bedarf {t}'], 1)} | "
+          f"{kz.deutsch(w[f'Köpfe {t}'])} | {kz.deutsch(w[f'Lücke FTE {t}'], 1)} | {kz.deutsch(w[f'Einstellungen {t}'])} |"
+          for t in teams]
+    for f in faelle:
+        t, monat_ = f["team"], int(w[f"Amortisation Monat {f['team']}"])
+        z += ["", f"Einstellung Team {t} ({f['einstellungen']} Servicetechniker): Kosten Jahr 1: "
+                  f"{kz.deutsch(w[f'Kosten Jahr 1 {t}'])} EUR · Erlös Jahr 1: {kz.deutsch(w[f'Erlös Jahr 1 {t}'])} EUR"
+                  f" · Amortisation: " + (f"Monat {monat_}" if monat_ else "nicht innerhalb von 24 Monaten")
+                  + f" · Eintritt frühestens: {f['eintritt_fruehestens']}"]
+    return "\n".join(z + ["", f"Hinweis: {hinweis}"])
+
+
 def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
     k = kontext(ws)
     bis = monat(a.bis) if a.bis else letzter_monat(k["ordner"], "auftraege")
@@ -273,7 +289,7 @@ def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
                     abschnitt("Bedarf und Lücke je Team", [w for w in werte if w["einheit"] in ("Std", "FTE", "Köpfe")]),
                     *bc, abschnitt("Hinweise", meldungen + [k["hinweis"]])]
     return 0, {"ok": True, "beispiel": k["beispiel"], "zeitraum": zeitraum, "hinweis": k["hinweis"],
-               "annahmen": annahmen, "werte": werte, "einstellungen": faelle,
+               "antwort": antwort_block(teams, werte, faelle, k["hinweis"]), "annahmen": annahmen, "werte": werte, "einstellungen": faelle,
                "fuer_budget": {"koepfe_plan": budget, "mehrkosten_eur": mehr}, "meldungen": meldungen,
                "gliederung": gl}
 
@@ -419,17 +435,35 @@ def cmd_team_aggregat(a, ws: Path) -> tuple[int, dict]:
                "hinweis": kontext(ws)["hinweis"]}
 
 
+def namensquellen(ws: Path) -> list[Path]:
+    """Tables in 00_Eingang/ and 07_Daten/ that hold a name or personnel-number column (read here, never typed)."""
+    out = []
+    for f in sorted(p for o in ("00_Eingang", "07_Daten") if (ws / o).is_dir() for p in (ws / o).rglob("*")
+                    if p.suffix.lower() in (".csv", ".xlsx")):
+        try:
+            if any(personen_spalten(k_, r_) for k_, r_, _ in tabellen(f)):
+                out.append(f)
+        except (ImportFehler, ValueError, OSError):
+            continue
+    return out
+
+
 def cmd_pruefe_ausgabe(a, ws) -> tuple[int, dict]:
     namen = {n.strip() for n in a.name if len(n.strip()) >= 4}
-    for q in a.namen_aus:
+    for q in a.namen_aus + (namensquellen(ws) if ws else []):
         namen |= personen_werte(Path(q))
+    if not namen and ws:
+        return 0, {"ok": True, "treffer": 0, "fundstellen": [], "namen_geprueft": 0,
+                   "meldungen": ["Im Arbeitsordner liegt keine Datei mit Namen oder Personalnummern – es gab nichts "
+                                 "zum Abgleichen."]}
     if not namen:
-        return 1, fehler("Keine Namen zum Prüfen – --name oder --namen-aus angeben.")
+        return 1, fehler("Keine Namen zum Prüfen – --ws, --namen-aus oder --name angeben.")
     muster = [re.compile(rf"(?<!\w){re.escape(n)}(?!\w)", re.I) for n in namen]
     funde = [stelle for stelle, text in text_aus(Path(a.datei)) if any(m.search(text) for m in muster)]
     m = [] if not funde else [f"Das Dokument nennt Personen ({len(funde)} Stellen: {', '.join(funde)}). Bitte dort nur "
                               "Teamwerte schreiben und erneut prüfen."]
-    return (1 if funde else 0), {"ok": not funde, "treffer": len(funde), "fundstellen": funde, "meldungen": m}
+    return (1 if funde else 0), {"ok": not funde, "treffer": len(funde), "fundstellen": funde,
+                                 "namen_geprueft": len(namen), "meldungen": m}
 
 
 STUFEN = ((3, "A – robust (3 und mehr)"), (2, "B – abgedeckt (2)"), (1, "C – Einzelwissen (1)"),
@@ -771,6 +805,7 @@ def parser() -> JsonParser:
     sp = add("team-aggregat")
     sp.add_argument("--datei", required=True)
     sp = add("pruefe-ausgabe", ws=False)
+    sp.add_argument("--ws")
     sp.add_argument("--datei", required=True)
     sp.add_argument("--name", action="append", default=[])
     sp.add_argument("--namen-aus", dest="namen_aus", action="append", default=[])
