@@ -1,0 +1,30 @@
+schema_version: "1.1"
+name: kit-uebersicht-sauber
+description: "„Was kannst du?“: alle zehn Agenten mit Beispielsätzen, die Routinen und wie man das Kit anpasst."
+tags: ["skill:kit-uebersicht", sauber]
+runs: 3
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "kit_uebersicht\\.py"
+  - name: nichts-geschrieben
+    type: regex
+    pattern: '"name":"(Write|Edit|MultiEdit)"'
+    match: not_contains
+    target: trace
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German and plain (no technical skill slugs like management-report), names all ten
+      agents (Persönliche Assistenz, Betriebsleitung, Projektleitung, Vertrieb, Serviceangebot, Ersatzteile & Einkauf,
+      Personal & Qualifikation, Finanzen, Qualität & Recht, System-Architekt) with example sentences to type, lists
+      the five routines with when they run (Wochenstart on Montag), and explains how to adapt the kit including own
+      rules per agent in Unternehmen/agenten/ and "Merk dir" for lernpunkte.md. FAIL if an agent is missing or an
+      agent or skill is invented.

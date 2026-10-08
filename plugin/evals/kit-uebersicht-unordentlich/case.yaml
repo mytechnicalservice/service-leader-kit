@@ -1,0 +1,32 @@
+schema_version: "1.1"
+name: kit-uebersicht-unordentlich
+description: "Hilfe mit Tippfehlern: Vertrieb hat eigene Regeln, die Regel-Datei von Ersatzteile fehlt, ein eigener Skill existiert."
+tags: ["skill:kit-uebersicht", unordentlich]
+runs: 3
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript
+    type: tool_used
+    tool: Bash
+    input_match: "kit_uebersicht\\.py"
+  - name: nichts-geschrieben
+    type: regex
+    pattern: '"name":"(Write|Edit|MultiEdit)"'
+    match: not_contains
+    target: trace
+  - name: eigene-regeln
+    type: regex
+    pattern: "Vertrieb[^\\n]{0,120}([Ee]igene|2) Regel|([Ee]igene|2) Regel[^\\n]{0,120}Vertrieb"
+    target: last_message
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says that only Vertrieb has own rules so far (two), names the own skill
+      "eigen-wochenbericht-teile" (or Wochenbericht Teile), lists all ten agents and explains how to give one agent own
+      rules ("Merk dir: <Agent> soll …"). FAIL if it claims Ersatzteile & Einkauf has own rules, invents an agent, or
+      changes or creates a file.

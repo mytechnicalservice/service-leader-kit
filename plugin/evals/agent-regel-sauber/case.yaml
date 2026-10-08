@@ -1,0 +1,34 @@
+schema_version: "1.1"
+name: agent-regel-sauber
+description: "Lernschleife je Agent: „Finanzen soll …“ → System-Architekt trägt die Regel in Unternehmen/agenten/finanzen.md ein, nicht in lernpunkte.md."
+# The learning loop belongs to the system-architekt agent, not to a skill; onboarding is its skill that fills Unternehmen/.
+tags: ["skill:onboarding", sauber, workflow]
+runs: 3
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: architekt
+    type: tool_used
+    tool: Agent
+    input_match: "system-architekt"
+  - name: regel-in-agenten-datei
+    type: regex
+    pattern: "^Regel: [^\\n]*Marge[^\\n]*(je|pro) Kunde"
+    flags: m
+    target: { source: file, path: Unternehmen/agenten/finanzen.md }
+  - name: lernpunkte-unveraendert
+    type: regex
+    pattern: "^##+ \\d{4}-\\d{2}-\\d{2}"
+    flags: m
+    match: not_contains
+    target: { source: file, path: Unternehmen/lernpunkte.md }
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, says the rule was saved for Finanzen in Unternehmen/agenten/finanzen.md (not
+      in lernpunkte.md) and shows the change (before → after or the new entry). FAIL if the rule went into
+      lernpunkte.md, into a skill or agent file of the plugin, or if the answer claims a save that did not happen.
