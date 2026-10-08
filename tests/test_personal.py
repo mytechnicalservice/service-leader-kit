@@ -198,13 +198,6 @@ def test_pruefe_ausgabe_kein_fehlalarm(kit_ws, tmp_path):
     assert code == 0 and out["treffer"] == 0
 
 
-def test_pruefe_ausgabe_mit_genanntem_namen(tmp_path):
-    md = tmp_path / "plan.md"
-    md.write_text("# Abdeckung\n\nÜbergabe durch tobias rehm\n", encoding="utf-8")
-    out = lauf("pruefe-ausgabe", "--datei", md, "--name", "Tobias Rehm")[1]
-    assert out["treffer"] == 1 and out["fundstellen"] == ["Zeile 3"]
-
-
 def test_skill_matrix_stufen_und_schulungsbedarf(pws):
     code, out = lauf("skill-matrix", "--ws", pws, "--bis", "2026-09", "--monate", 3)
     assert code == 0, out

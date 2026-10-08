@@ -226,7 +226,7 @@ def antwort_block(teams: list[str], werte: list[dict], faelle: list[dict], hinwe
                   f"{kz.deutsch(w[f'Kosten Jahr 1 {t}'])} EUR · Erlös Jahr 1: {kz.deutsch(w[f'Erlös Jahr 1 {t}'])} EUR"
                   f" · Amortisation: " + (f"Monat {monat_}" if monat_ else "nicht innerhalb von 24 Monaten")
                   + f" · Eintritt frühestens: {f['eintritt_fruehestens']}"]
-    return "\n".join(z + ["", f"Hinweis: {hinweis}"])
+    return "\n".join(z + ["", hinweis])  # hinweis starts with "Hinweis:"
 
 
 def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
@@ -449,7 +449,7 @@ def namensquellen(ws: Path) -> list[Path]:
 
 
 def cmd_pruefe_ausgabe(a, ws) -> tuple[int, dict]:
-    namen = {n.strip() for n in a.name if len(n.strip()) >= 4}
+    namen: set[str] = set()
     for q in a.namen_aus + (namensquellen(ws) if ws else []):
         namen |= personen_werte(Path(q))
     if not namen and ws:
@@ -457,7 +457,7 @@ def cmd_pruefe_ausgabe(a, ws) -> tuple[int, dict]:
                    "meldungen": ["Im Arbeitsordner liegt keine Datei mit Namen oder Personalnummern – es gab nichts "
                                  "zum Abgleichen."]}
     if not namen:
-        return 1, fehler("Keine Namen zum Prüfen – --ws, --namen-aus oder --name angeben.")
+        return 1, fehler("Keine Namen zum Prüfen – --ws oder --namen-aus angeben.")
     muster = [re.compile(rf"(?<!\w){re.escape(n)}(?!\w)", re.I) for n in namen]
     funde = [stelle for stelle, text in text_aus(Path(a.datei)) if any(m.search(text) for m in muster)]
     m = [] if not funde else [f"Das Dokument nennt Personen ({len(funde)} Stellen: {', '.join(funde)}). Bitte dort nur "
@@ -807,7 +807,6 @@ def parser() -> JsonParser:
     sp = add("pruefe-ausgabe", ws=False)
     sp.add_argument("--ws")
     sp.add_argument("--datei", required=True)
-    sp.add_argument("--name", action="append", default=[])
     sp.add_argument("--namen-aus", dest="namen_aus", action="append", default=[])
     add("skill-matrix", fenster_args=True)
     sp = add("matrix-erfassen")

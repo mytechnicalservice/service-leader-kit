@@ -110,8 +110,8 @@ def test_a_plain_call_preparation_routes_to_besprechung_even_for_an_escalation_c
 def test_staffing_plan_uses_a_staff_list_through_team_aggregat():
     # personalplanung-unordentlich (0.2.2): the list was still refused ("Einzelne Mitarbeitende werte ich nicht aus").
     _, body = skill("personalplanung")
-    team = body.index("**Team level only:**")
-    assert "a per-person list the user hands over is used through step 2 (aggregated per team)" in body[team:team + 600]
+    team = body.index("**Team level only (spec §9.3):**")
+    assert "An export with names is imported, not refused" in " ".join(body[team:team + 600].split())
     assert "Refusing the list is wrong" in body
 
 

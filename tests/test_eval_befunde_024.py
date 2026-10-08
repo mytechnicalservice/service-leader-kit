@@ -47,7 +47,7 @@ def test_personalplanung_renders_the_answer_block(kit_ws):
     assert "| Süd | 7.200 | 6,0 | 5 | 1,0 | 1 |" in a
     assert "Erlös Jahr 1: 131.250 EUR" in a and "Kosten Jahr 1: 100.000 EUR" in a
     assert f"Amortisation: Monat {int(ERW['amortisation_monat_sued'])}" in a
-    assert a.rstrip().endswith("Hinweis: " + out["hinweis"])
+    assert a.rstrip().endswith(out["hinweis"]) and out["hinweis"].startswith("Hinweis: ")
 
 
 def test_personalplanung_skill_copies_the_block_and_the_persona_allows_it():
