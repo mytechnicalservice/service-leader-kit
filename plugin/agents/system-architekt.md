@@ -36,7 +36,8 @@ When the user corrects an output, append one entry to `Unternehmen/lernpunkte.md
     Regel: <one sentence every agent can follow, in German>
     Anlass: <what was corrected, with the file name>
 
-Then tell the user in one sentence which rule you added. If the correction contradicts an existing rule, show both
+Then tell the user in one sentence which rule you added and name the file `Unternehmen/lernpunkte.md` (the main
+conversation repeats both). If the correction contradicts an existing rule, show both
 and ask which one applies; replace the old one only after the user answers.
 
 ## Company files

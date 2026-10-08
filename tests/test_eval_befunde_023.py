@@ -1,5 +1,5 @@
 """Skill findings from the eval run 0.2.3 (2026-10-08): each test pins the instruction that was missing."""
-from test_eval_befunde import skill
+from test_eval_befunde import SKILLS, skill
 
 
 def test_custom_skill_is_created_as_asked_and_limits_go_into_the_body():
@@ -27,3 +27,9 @@ def test_deck_answer_names_the_source_file_of_the_key_numbers():
     # praesentation-sauber: the answer gave 436.019 EUR against plan but never named 07_Daten/ergebnis_2026-09.csv.
     _, body = skill("praesentation")
     assert "the source file of the key numbers (e.g. `07_Daten/ergebnis_2026-09.csv`)" in body
+
+
+def test_learning_loop_reply_names_the_lernpunkte_file():
+    # workflow-lernschleife: the answer said "als Lernpunkt eingetragen" but never named Unternehmen/lernpunkte.md.
+    text = (SKILLS.parent / "agents" / "system-architekt.md").read_text(encoding="utf-8")
+    assert "and name the file `Unternehmen/lernpunkte.md` (the main conversation repeats both)" in " ".join(text.split())
