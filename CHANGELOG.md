@@ -2,6 +2,19 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.2.6 – 2026-10-08
+
+Korrekturen aus dem Eval-Lauf 0.2.5.
+
+### Behoben
+
+- **Personalplanung:** Eine Stundenliste mit Namen wird wieder übernommen – das Skript fasst sie je Team zusammen
+  und liest die Namen selbst; Claude tippt keinen Namen und lehnt nur Auswertungen je Person ab. Der Hinweis zu
+  Betriebsrat und Datenschutz steht in der Antwort nur noch einmal („Hinweis:“ statt „Hinweis: Hinweis:“).
+- **Kündigung einer Schlüsselperson:** Der Name der ausscheidenden Fachkraft geht in keinen Befehl und keine Datei
+  mehr – sie wird nur über Team und Abdeckung beschrieben; die Namensprüfung des Abdeckungsplans liest die Namen
+  selbst aus den Exporten im Arbeitsordner.
+
 ## 0.2.5 – 2026-10-08
 
 Korrekturen aus dem Eval-Lauf 0.2.4 und die ersten öffentlichen Dokumente.
