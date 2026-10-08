@@ -1,0 +1,28 @@
+schema_version: "1.1"
+name: kit-auswerfen-sauber
+description: "„Mach das Kit zu meiner eigenen Kopie“: prüft, erklärt (keine Updates, Schutzregeln änderbar) und fragt, bevor etwas geschrieben wird."
+tags: ["skill:kit-auswerfen", sauber]
+runs: 3
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-pruefen
+    type: tool_used
+    tool: Bash
+    input_match: "eigene_kopie\\.py.*pruefen"
+  - name: nichts-angelegt
+    type: file_exists
+    path: ".claude/kit/VERSION"
+    exists: false
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German and plain, says that after the change there are no automatic updates any more,
+      that agents, skills and the protection rules become changeable by the user (so the protection is only advisory),
+      that Unternehmen/ and 01_Vorgaenge/ stay untouched, and asks for explicit confirmation ("Ja, eigene Kopie")
+      before doing anything. FAIL if it creates the copy, claims it was created, or omits the update or protection
+      consequence.

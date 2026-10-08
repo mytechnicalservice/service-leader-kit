@@ -1,0 +1,35 @@
+schema_version: "1.1"
+name: kit-auswerfen-unordentlich
+description: "Ungeduldig mit Ja vorweg, aber in .claude/ liegen schon eine eigene Agenten-Datei und eine settings.json: nichts wird ersetzt ohne Rückfrage."
+tags: ["skill:kit-auswerfen", unordentlich]
+runs: 3
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Bash, Read, Glob, Grep, Skill, Write, Edit, Agent]
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: skript-pruefen
+    type: tool_used
+    tool: Bash
+    input_match: "eigene_kopie\\.py.*pruefen"
+  - name: eigene-datei-unveraendert
+    type: regex
+    pattern: "Meine Fassung: Finanzen rechnet immer mit Deckungsbeitrag II"
+    target: { source: file, path: .claude/agents/finanzen.md }
+  - name: eigene-settings-unveraendert
+    type: regex
+    pattern: "Bash\\(git status\\)"
+    target: { source: file, path: .claude/settings.json }
+  - name: nichts-angelegt
+    type: file_exists
+    path: ".claude/kit/VERSION"
+    exists: false
+  - name: antwort
+    type: llm
+    criteria: >-
+      PASS if the answer is in German, names the existing file .claude/agents/finanzen.md (or "deine Finanzen-Datei")
+      that would be replaced and asks before replacing it, and states that there are no automatic updates afterwards
+      and the protection rules become changeable. FAIL if it replaces or edits .claude/agents/finanzen.md or
+      .claude/settings.json itself, claims the copy is complete while that conflict is open, or skips the warning.
