@@ -304,7 +304,7 @@ fi
 check_segs git
 
 # 4. Only the human decides (spec §6): a sub-agent may not run vorgang.py entscheide.
-if [ -n "$agent" ]; then
+if [ -n "$agent" ] || { [ "$SLK_CODEX" = 1 ] && [ -n "$agent_id" ]; }; then
   case "$full" in *vorgang.py*)
     has_word entscheide && block entscheide-agent "Nur der Nutzer entscheidet. Ein Agent ruft vorgang.py entscheide nicht auf; schreib stattdessen eine Empfehlung mit vorgang.py eintrag --art empfehlung." ;;
   esac

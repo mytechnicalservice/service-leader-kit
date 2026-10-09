@@ -3,8 +3,16 @@
 # Unternehmen/ is written only by the system architect agent (spec §11, §12.3). Path-based, so it also
 # holds when the user opened another folder: some folder containing the path must be a workspace.
 # The path is normalised first (relative, "..", backslashes) and every folder occurrence is tried.
-path=$(slk_field "$payload" file_path)
-[ -n "$path" ] || path=$(slk_field "$payload" notebook_path)
+if [ "$tool" != apply_patch ]; then
+  path=$(slk_field "$payload" file_path)
+  [ -n "$path" ] || path=$(slk_field "$payload" notebook_path)
+fi
+slk_company_denied=0
+if [ "$SLK_CODEX" = 1 ]; then
+  [ "$agent" != "system-architekt" ] && slk_company_denied=1
+else
+  [ "$agent" != "service-leader-kit:system-architekt" ] && slk_company_denied=1
+fi
 np=$(slk_norm_path "$path" "$cwd")
 lc=$(slk_lower "$np")
 case "$lc" in
@@ -16,7 +24,7 @@ case "$lc" in
 esac
 case "$lc" in
   */unternehmen/*)
-    if [ "$agent" != "service-leader-kit:system-architekt" ] && root=$(slk_ws_for "$np" unternehmen); then
+    if [ "$slk_company_denied" = 1 ] && root=$(slk_ws_for "$np" unternehmen); then
       ws=${ws:-$root}
       block write-unternehmen "Dateien in Unternehmen/ ändert nur der System-Architekt (Agent service-leader-kit:system-architekt). Gib die Änderung an ihn weiter oder bitte den Nutzer, sie selbst vorzunehmen."
     fi ;;

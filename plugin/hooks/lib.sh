@@ -4,6 +4,17 @@ LC_ALL=C
 export LC_ALL
 SLK_HOOKS=${SLK_HOOKS:-$(cd "$(dirname "$0")" && pwd)}
 SLK_PLUGIN=$(dirname "$SLK_HOOKS")
+SLK_CODEX=0
+[ -f "$SLK_PLUGIN/VARIANTE" ] && [ "$(tr -d ' \r\n' < "$SLK_PLUGIN/VARIANTE")" = codex ] && SLK_CODEX=1
+
+# Identity must come from the host, never from nested tool arguments.
+slk_top_field() { printf '%s' "$1" | awk -v want="$2" -v top=1 -f "$SLK_HOOKS/json.awk"; return 0; }
+slk_project() {
+  if [ "$SLK_CODEX" = 1 ]; then
+    _slk_project=$(slk_top_field "$1" cwd)
+    printf '%s' "${_slk_project:-$(pwd)}"
+  else printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}"; fi
+}
 
 # First value of a JSON key in a payload (see json.awk). Empty if absent; always succeeds.
 slk_field() { printf '%s' "$1" | awk -v want="$2" -f "$SLK_HOOKS/json.awk"; return 0; }

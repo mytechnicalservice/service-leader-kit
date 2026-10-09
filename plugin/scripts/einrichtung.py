@@ -117,7 +117,7 @@ def cmd_pruefen(a) -> tuple[int, dict]:
         meldungen.append(neuer)
     ok = probe["anlegen"] and all(v["ok"] for v in vor if v["pflicht"])
     return (0 if ok else 1), {
-        "ok": ok, "variante": "eigene-kopie" if ao.EIGENE_KOPIE else "plugin", "ordner": str(ordner), "voraussetzungen": vor, "probe": probe, "git_auto_moeglich": auto,
+        "ok": ok, "variante": ao.kit_variante(), "ordner": str(ordner), "voraussetzungen": vor, "probe": probe, "git_auto_moeglich": auto,
         "ablage_vorschlag": ablage_vorschlag(ordner), "einstellungen": werte,
         "einstellungen_fehler": fehler if werte is not None else [], "meldungen": meldungen}
 
@@ -189,7 +189,8 @@ def cmd_anlegen(a) -> tuple[int, dict]:
         return fehler(neuer)
     alt = gueltige_werte(ws)
     gegeben = {k: getattr(a, k) for k in (*FRAGEN, "git_auto") if getattr(a, k) is not None}
-    neu = alt | gegeben | {"schema": str(ao.SCHEMA_VERSION), "laufzeit": "claude-code"}
+    laufzeit = "codex" if ao.kit_variante() == "codex" else "claude-code"
+    neu = alt | gegeben | {"schema": str(ao.SCHEMA_VERSION), "laufzeit": laufzeit}
     fehlend = [k for k in FRAGEN if k not in neu]
     if fehlend:
         return fehler("Diese Fragen fehlen noch: " + ", ".join(fehlend), fehlende_fragen=fehlend)

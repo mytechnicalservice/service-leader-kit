@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 import arbeitsordner as ao
@@ -72,9 +73,11 @@ def uebersicht(plugin: Path, ws: Path | None) -> dict:
         skills_von.setdefault(e["agent"], []).append({"name": e["name"], "art": e["art"],
                                                       "beschreibung": beschreibung(plugin, e["name"])})
     agenten = []
-    for p in sorted(ao.kit_pfade(plugin)["agents"].glob("*.md"), key=lambda x: (x.stem != ERSTER, x.stem)):
+    muster = "*.toml" if ao.kit_variante(plugin) == "codex" else "*.md"
+    for p in sorted(ao.kit_pfade(plugin)["agents"].glob(muster), key=lambda x: (x.stem != ERSTER, x.stem)):
         text = p.read_text(encoding="utf-8")
-        meta, prof = kopf(text), profil(text)
+        meta = tomllib.loads(text) if p.suffix == ".toml" else kopf(text)
+        prof = profil(meta.get("developer_instructions", "")) if p.suffix == ".toml" else profil(text)
         slug = meta.get("name") or p.stem
         eigen = skills_von.get(slug, [])
         agenten.append({"slug": slug, "titel": prof["titel"] or slug, "rolle": prof["rolle"],
@@ -83,7 +86,7 @@ def uebersicht(plugin: Path, ws: Path | None) -> dict:
                         "eigene_regeln": eigene_regeln(ws, slug)})
     routinen = [s for e in skills_von.values() for s in e if s["art"] == "routine"]
     gemeinsam = [s for s in skills_von.get("gemeinsam", []) if s["art"] == "skill"]
-    eigene_skills = sorted(p.parent.name for p in (ws / ".claude" / "skills").glob("eigen-*/SKILL.md")) if ws else []
+    eigene_skills = sorted(p.parent.name for p in ao.eigene_skill_ordner(ws, plugin).glob("eigen-*/SKILL.md")) if ws else []
     werte = (ao.lies_konfig(ws)[0] or {}) if ws else {}
     return {"agenten": agenten, "routinen": routinen, "gemeinsam": gemeinsam, "eigene_skills": eigene_skills,
             "mit_eigenen_regeln": [a["slug"] for a in agenten if a["eigene_regeln"]["regeln"]],

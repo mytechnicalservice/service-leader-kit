@@ -81,6 +81,7 @@ On a first run, say in one line which kit variant this is (`variante` from step 
 - `plugin`: "Du nutzt das Kit mit Updates (empfohlen): Korrekturen und neue Funktionen kommen von selbst. Wer Agenten
   und Skills selbst umbauen will, kann es später zur eigenen Kopie machen (‚Mach das Kit zu meiner eigenen Kopie‘)."
 - `eigene-kopie`: "Du nutzt deine eigene Kopie des Kits: Du kannst alles ändern, Updates kommen nicht von selbst."
+- `codex`: "Du nutzt das Kit in Codex: Deine Kopie liegt in deinem Ordner, Updates kommen nicht von selbst."
 End with this sentence: "Sag jederzeit ‚Was kannst du?‘ für eine Übersicht."
 
 To remove the sample company later ("lösch die Beispieldaten"): ask once "Soll ich den Ordner Beispiel/ mit der

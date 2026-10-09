@@ -5,6 +5,32 @@ description: "Turns the kit in this workspace into the user's own copy (Eigene K
 
 # Kit auswerfen (eigene Kopie)
 
+## Codex nur auf ausdrücklichen Wunsch
+
+Offer the Codex target only when the user explicitly asks for Codex. In that case use this branch instead of
+steps 1–5 below. From an already generated copy, stop: a new version needs the generator of the new source or a
+new ZIP; never pretend that the old copy updates itself.
+
+1. Run `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/eigene_kopie.py" pruefen --ziel codex --ws "<workspace>"`.
+   On `ok: false`, show `meldungen` and stop. List all `konflikte`.
+2. Say: "Damit bekommst du eine eigene Kopie für Codex in deinem Ordner: AGENTS.md, .agents/ und .codex/.
+   Updates kommen nicht von selbst. Die Schutzregeln sind änderbar und keine vollständige Sicherheitsgrenze.
+   Was Codex liest und unser Gespräch gehen an OpenAI; IT und Datenschutz müssen das vorher freigeben.
+   Deine Unternehmensdaten und Vorgänge bleiben unverändert. Soll ich sie anlegen? Antworte bitte mit
+   ‚Ja, Codex-Kopie‘." Wait. Only an explicit yes counts.
+3. If there are conflicts, name every affected file and ask separately before replacing any existing kit file.
+   Without explicit consent stop. Existing project instructions, unrelated hooks and config keys are retained;
+   conflicting settings need the user's own choice, not a silent override.
+4. Run `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/eigene_kopie.py" anlegen --ziel codex --ws "<workspace>" --bestaetigt`.
+   Add `--ueberschreiben` only after step 3's yes. On `ok: false`, show `meldungen` and stop.
+5. Say: "Öffne genau diesen Ordner in Codex, prüfe die Schutzregeln in /hooks und schreibe ‚Was kannst du?‘.
+   Die Codex-Version ist Alpha; der geprüfte Stand und die offenen Prüfungen stehen in .codex/kit/README.de.md."
+
+For an explicitly requested Codex update from a newly installed source, first use `pruefen --ziel codex
+--aktualisieren --ws "<workspace>"`; explain the changes and obtain explicit confirmation before
+`anlegen --ziel codex --aktualisieren --ws "<workspace>" --bestaetigt`. Replacing local edits still needs separate
+consent for `--ueberschreiben`. Never run updates on behalf of the user without that request.
+
 **Liest:** `.claude/` of the workspace (through the script). **Schreibt:** only through the script and only below
 `.claude/` of the workspace: `.claude/agents/`, `.claude/skills/`, `.claude/kit/`, `.claude/settings.json`. Never
 `Unternehmen/`, `01_Vorgaenge/` or any other folder of the user.

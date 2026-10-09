@@ -1,4 +1,5 @@
 import datetime as dt
+import tomllib
 import os
 import shutil
 import time
@@ -7,7 +8,7 @@ import pytest
 
 import arbeitsordner as ao
 from conftest import KONFIG, ROOT
-from hookrun import AGENTS, HOOKS, run_hook, run_lib
+from hookrun import AGENTS, CODEX, HOOKS, run_hook, run_lib
 
 START = {"session_id": "test", "hook_event_name": "SessionStart", "source": "startup"}
 
@@ -144,7 +145,9 @@ def test_status_files_with_a_utf8_bom_are_read(shell, kit_ws):
 
 def test_session_start_injects_the_coordinator_persona(shell, kit_ws, tmp_path):
     out = start(shell, kit_ws)
-    persona = (AGENTS / "assistenz.md").read_text(encoding="utf-8")
+    persona = (AGENTS / ("assistenz.toml" if CODEX else "assistenz.md")).read_text(encoding="utf-8")
+    if CODEX:
+        persona = tomllib.loads(persona)["developer_instructions"]
     block = persona.split("<!-- persona:anfang -->\n")[1].split("<!-- persona:ende -->")[0].strip()
     assert out.startswith("Service Leader Kit – Stand ") and out.rstrip().endswith(block)
     assert "persona:" not in out

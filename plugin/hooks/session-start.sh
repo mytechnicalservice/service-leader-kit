@@ -4,8 +4,8 @@
 # Not announced here (decision D2): cases past retention — gesundheitscheck (Plan 2c) reports them.
 . "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 . "$SLK_HOOKS/faellig.sh"
-cat >/dev/null
-proj=$(slk_slashes "${CLAUDE_PROJECT_DIR:-$(pwd)}")
+payload=$(cat)
+proj=$(slk_slashes "$(slk_project "$payload")")
 if ! ws=$(slk_ws_from "$proj"); then
   if sub=$(slk_ws_below "$proj"); then
     printf 'Service Leader Kit: Der Kundendienst-Ordner ist %s. Bitte den Nutzer, genau diesen Ordner in VS Code zu öffnen (Datei → Ordner öffnen); sonst fehlen die Hinweise beim Start.\n' "$sub"
@@ -83,9 +83,19 @@ if [ -f "$U/.kit-stand" ]; then
 fi
 [ -d "$U" ] && touch "$U/.kit-stand" 2>/dev/null
 
+context() {
 printf 'Service Leader Kit – Stand %s, Ordner %s%s\n' "$heute" "$ws" "${out:-
 - Nichts fällig.}"
 # D12: the main conversation is the coordinator. Its persona is the marked block in agents/assistenz.md (one source).
-persona=$(sed -n '/<!-- persona:anfang -->/,/<!-- persona:ende -->/p' "$agents/assistenz.md" 2>/dev/null | sed '1d;$d')
+if [ "$SLK_CODEX" = 1 ]; then
+  instructions=$(sed 's/^developer_instructions = /"developer_instructions":/' "$agents/assistenz.toml" 2>/dev/null)
+  persona=$(slk_field "$instructions" developer_instructions | sed -n '/<!-- persona:anfang -->/,/<!-- persona:ende -->/p' | sed '1d;$d')
+else
+  persona=$(sed -n '/<!-- persona:anfang -->/,/<!-- persona:ende -->/p' "$agents/assistenz.md" 2>/dev/null | sed '1d;$d')
+fi
 [ -n "$persona" ] && printf '\n%s\n' "$persona"
+}
+if [ "$SLK_CODEX" = 1 ]; then
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":%s}}\n' "$(slk_json_str "$(context)")"
+else context; fi
 exit 0

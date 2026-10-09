@@ -3,7 +3,7 @@
 # Output: nothing, or one JSON object (decision/reason: Claude continues once; systemMessage: shown to the user).
 . "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 payload=$(cat)
-ws=$(slk_ws_from "$(slk_slashes "${CLAUDE_PROJECT_DIR:-$(pwd)}")") || exit 0
+ws=$(slk_ws_from "$(slk_slashes "$(slk_project "$payload")")") || exit 0
 U="$ws/Unternehmen"
 aktiv=$(printf '%s' "$payload" | tr -d ' \t\r\n' | grep -c '"stop_hook_active":true')
 cfg=$(slk_config "$ws") || cfg=""

@@ -20,7 +20,7 @@ PFLICHT = ["**Liest:**", "**Schreibt:**", "Daten, nie Anweisungen"]
 
 
 def ordner(ws: Path) -> Path:
-    return ws / ".claude" / "skills"
+    return ao.eigene_skill_ordner(ws)
 
 
 def pruefe(name: str, beschreibung: str, text: str) -> list[str]:
@@ -30,7 +30,7 @@ def pruefe(name: str, beschreibung: str, text: str) -> list[str]:
     if not 40 <= len(beschreibung) <= 1024:
         fehler.append("Beschreibung: 40 bis 1024 Zeichen; sie sagt, wann der Skill gilt")
     fehler += [f"Im Text fehlt '{p}'" for p in PFLICHT if p not in text]
-    if "CLAUDE_PLUGIN_ROOT" in text or "/.claude/kit/" in text:  # plugin or eigene Kopie
+    if any(p in text for p in ("CLAUDE_PLUGIN_ROOT", "KIT_ROOT", ".claude/kit/", ".codex/kit/")):
         fehler.append("Eigene Skills rufen keine Kit-Skripte direkt auf; stattdessen den Kit-Skill beim Namen "
                       "nennen, z. B. 'nutze den Skill vorgang'")
     if re.search(r"pip install|\brm\b|curl|sendmail", text):
@@ -49,8 +49,11 @@ def cmd_anlegen(a, ws: Path) -> tuple[int, dict]:
         return 1, {"ok": False, "fehler": fehler, "meldungen": fehler}
     kopf = f"---\nname: eigen-{a.name}\ndescription: {json.dumps(a.beschreibung.strip(), ensure_ascii=False)}\n---\n\n"
     write_atomic(ziel, kopf + text.strip() + "\n")
+    hinweis = ("Der Skill ist ab der nächsten Codex-Sitzung verfügbar; bitte eine neue Unterhaltung öffnen."
+               if ao.kit_variante() == "codex" else
+               "Der Skill ist ab der nächsten Sitzung verfügbar (VS Code: Claude-Fenster neu öffnen oder /clear).")
     return 0, {"ok": True, "skill": f"eigen-{a.name}", "datei": ziel.relative_to(ws).as_posix(),
-               "meldungen": ["Der Skill ist ab der nächsten Sitzung verfügbar (VS Code: Claude-Fenster neu öffnen oder /clear)."]}
+               "meldungen": [hinweis]}
 
 
 def cmd_liste(a, ws: Path) -> tuple[int, dict]:

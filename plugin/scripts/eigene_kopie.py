@@ -94,9 +94,15 @@ def konflikte(plugin: Path, projekt: Path) -> list[str]:
     return sorted(r for r in plan(plugin) if (projekt / r).exists() or (projekt / r).is_symlink())
 
 
-def baue(plugin: Path, projekt: Path, ueberschreiben: bool = False) -> dict:
+def baue(plugin: Path, projekt: Path, ueberschreiben: bool = False, ziel: str = "eigene-kopie",
+         aktualisieren: bool = False) -> dict:
     """Writes the eigene Kopie into projekt/.claude/. Refuses (nothing written) on conflicts without ueberschreiben
     and on an unreadable settings.json."""
+    if ziel == "codex":
+        import codex_install
+        return codex_install.baue(plugin, projekt, aktualisieren, ueberschreiben)
+    if ziel != "eigene-kopie" or aktualisieren:
+        raise ValueError("Unbekanntes Ziel oder nicht unterstützte Aktualisierung der Claude-Kopie.")
     alt, settings = lies_settings(projekt)
     if alt is None:
         raise ValueError(".claude/settings.json ist kein gültiges JSON; bitte zuerst in VS Code prüfen.")
@@ -123,12 +129,22 @@ def baue(plugin: Path, projekt: Path, ueberschreiben: bool = False) -> dict:
 
 def schon_kopie() -> tuple[int, dict] | None:
     if ao.EIGENE_KOPIE:
+        if ao.kit_variante() == "codex":
+            text = "Das Kit ist hier schon die Codex-Version. Neue Version: Generator erneut ausführen oder neue ZIP prüfen."
+            return 1, {"ok": False, "variante": "codex", "meldungen": [text], "fehler": [text]}
         text = "Das Kit ist hier schon deine eigene Kopie (Ordner .claude/). Es gibt nichts umzustellen."
         return 1, {"ok": False, "variante": "eigene-kopie", "meldungen": [text], "fehler": [text]}
     return None
 
 
 def cmd_pruefen(a, ws: Path) -> tuple[int, dict]:
+    if a.ziel == "codex":
+        import codex_install
+        try:
+            erg = codex_install.pruefen(ao.PLUGIN, ws, a.aktualisieren)
+        except ValueError as exc:
+            return 1, {"ok": False, "variante": "codex", "meldungen": [str(exc)], "fehler": [str(exc)]}
+        return 0, {"ok": True, **erg, "ziel": str(ws), "settings": "ergaenzen"}
     vorhanden = konflikte(ao.PLUGIN, ws)
     _, settings = lies_settings(ws)
     meldungen = []
@@ -150,14 +166,19 @@ def cmd_anlegen(a, ws: Path) -> tuple[int, dict]:
         text = "Die eigene Kopie entsteht nur nach ausdrücklicher Bestätigung (--bestaetigt)."
         return 1, {"ok": False, "meldungen": [text], "fehler": [text]}
     try:
-        erg = baue(ao.PLUGIN, ws, a.ueberschreiben)
+        erg = baue(ao.PLUGIN, ws, a.ueberschreiben, a.ziel, a.aktualisieren)
     except FileExistsError as exc:
         vorhanden = exc.args[0]
-        text = (f"In .claude/ gibt es schon {len(vorhanden)} Datei(en) mit denselben Namen; nichts wurde "
+        ordner = ".codex/ und .agents/" if a.ziel == "codex" else ".claude/"
+        text = (f"In {ordner} gibt es schon {len(vorhanden)} Datei(en) mit denselben Namen oder eigene Änderungen; nichts wurde "
                 "geschrieben. Nur nach Rückfrage beim Nutzer mit --ueberschreiben.")
         return 1, {"ok": False, "konflikte": vorhanden, "meldungen": [text], "fehler": [text]}
     except ValueError as exc:
         return 1, {"ok": False, "meldungen": [str(exc)], "fehler": [str(exc)]}
+    if a.ziel == "codex":
+        return 0, {"ok": True, **erg, "ziel": str(ws), "meldungen": [
+            f"Codex-Version {erg['version']} liegt in .codex/, .agents/ und AGENTS.md. Prüfe die Schutzregeln in /hooks.",
+            *erg.get("meldungen", [])]}
     return 0, {"ok": True, **erg, "ziel": str(ws / ".claude"), "meldungen": [
         f"Eigene Kopie des Kits {erg['version']} liegt in .claude/ (Agenten, Skills, Schutzregeln, Skripte)."]}
 
@@ -165,11 +186,15 @@ def cmd_anlegen(a, ws: Path) -> tuple[int, dict]:
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap = JsonParser(prog="eigene_kopie")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("pruefen").add_argument("--ws", required=True)
+    pr = sub.add_parser("pruefen")
+    pr.add_argument("--ws", required=True)
     an = sub.add_parser("anlegen")
     an.add_argument("--ws", required=True)
     an.add_argument("--bestaetigt", action="store_true")
     an.add_argument("--ueberschreiben", action="store_true")
+    for parser in (pr, an):
+        parser.add_argument("--ziel", choices=("eigene-kopie", "codex"), default="eigene-kopie")
+        parser.add_argument("--aktualisieren", action="store_true")
     a = ap.parse_args(argv)
     if fertig := schon_kopie():
         return fertig

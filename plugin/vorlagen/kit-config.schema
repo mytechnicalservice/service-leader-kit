@@ -3,7 +3,7 @@
 schema=1
 ablage=lokal|cloud|github
 git_auto=ja|nein
-laufzeit=claude-code|unbekannt
+laufzeit=claude-code|codex|unbekannt
 beispieldaten=ja|nein
 mail=postausgang|connector
 sprache=de|en

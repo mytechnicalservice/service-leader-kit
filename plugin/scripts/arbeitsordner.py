@@ -29,16 +29,36 @@ def kit_version(plugin: Path = PLUGIN) -> str:
     return json.loads((plugin / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
 
 
+def kit_variante(plugin: Path = PLUGIN) -> str:
+    """Distribution marker; old own copies only carry VERSION."""
+    marker = plugin / "VARIANTE"
+    if marker.is_file() and marker.read_text(encoding="utf-8").strip() == "codex":
+        return "codex"
+    return "eigene-kopie" if (plugin / "VERSION").is_file() else "plugin"
+
+
+def eigene_skill_ordner(ws: Path, plugin: Path = PLUGIN) -> Path:
+    """Project-owned skills in the host's discovery folder."""
+    return ws / (".agents" if kit_variante(plugin) == "codex" else ".claude") / "skills"
+
+
 def kit_pfade(plugin: Path = PLUGIN) -> dict[str, Path]:
-    """Where the agents, the skills and the skill catalog of this kit lie (plugin or eigene Kopie)."""
+    """Agents, skills and catalog in all three distributions."""
+    if kit_variante(plugin) == "codex":
+        return {"agents": plugin.parent / "agents", "skills": plugin.parents[1] / ".agents" / "skills",
+                "katalog": plugin / "KATALOG.md"}
     if (plugin / "agents").is_dir():
         return {"agents": plugin / "agents", "skills": plugin / "skills", "katalog": plugin / "skills" / "KATALOG.md"}
     return {"agents": plugin.parent / "agents", "skills": plugin.parent / "skills", "katalog": plugin / "KATALOG.md"}
 
 
-def update_hinweis() -> str:
+def update_hinweis(plugin: Path = PLUGIN) -> str:
     """How the user gets a newer kit: the plugin updates itself; an eigene Kopie never does."""
-    if EIGENE_KOPIE:
+    variante = kit_variante(plugin)
+    if variante == "codex":
+        return ("Codex-Version: Für eine neue Version den Generator erneut ausführen oder eine neue ZIP "
+                "verwenden; vorher die Änderungen prüfen und bestätigen")
+    if variante == "eigene-kopie":
         return ("Dies ist deine eigene Kopie des Kits ohne automatische Updates; eine neuere Version bekommst du "
                 "bei myTS")
     return "Bitte das Kit aktualisieren (/plugin update service-leader-kit)"

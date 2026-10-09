@@ -12,6 +12,7 @@ from conftest import ROOT
 # hooks live in .claude/kit/hooks, the agents in .claude/agents and agent names carry no "service-leader-kit:".
 HOOKS = Path(os.environ.get("SLK_TEST_HOOKS") or ROOT / "plugin" / "hooks")
 EIGENE_KOPIE = (HOOKS.parent / "VERSION").is_file()
+CODEX = (HOOKS.parent / "VARIANTE").is_file() and (HOOKS.parent / "VARIANTE").read_text().strip() == "codex"
 AGENTS = HOOKS.parent.parent / "agents" if EIGENE_KOPIE else HOOKS.parent / "agents"
 NS = "" if EIGENE_KOPIE else "service-leader-kit:"
 ARCHITEKT = NS + "system-architekt"
@@ -23,15 +24,24 @@ def umgebung(ws: Path | None, **extra: str) -> dict:
            "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "CLAUDE_PLUGIN_ROOT": str(ROOT / "plugin")}
     if ws is not None:
         env["CLAUDE_PROJECT_DIR"] = str(ws)
+    if CODEX:
+        env.pop("CLAUDE_PROJECT_DIR", None)
+        env.pop("CLAUDE_PLUGIN_ROOT", None)
     env.update(extra)
     return env
 
 
 def run_hook(shell: str, name: str, payload, ws: Path | None = None, hooks: Path = HOOKS,
              **extra: str) -> subprocess.CompletedProcess:
+    if CODEX and isinstance(payload, dict) and ws is not None and "cwd" not in payload:
+        payload = {**payload, "cwd": str(ws)}
     data = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
-    return subprocess.run([shell, str(hooks / name)], input=data.encode("utf-8"), capture_output=True,
+    result = subprocess.run([shell, str(hooks / name)], input=data.encode("utf-8"), capture_output=True,
                           env=umgebung(ws, **extra), cwd=str(ws) if ws else None, timeout=60)
+    if CODEX and name == "session-start.sh" and result.stdout.startswith(b'{"hookSpecificOutput"'):
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        result.stdout = (context + "\n").encode()
+    return result
 
 
 def run_lib(shell: str, script: str, ws: Path | None = None, **extra: str) -> subprocess.CompletedProcess:
