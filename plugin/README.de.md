@@ -1,16 +1,19 @@
 # Service Leader Kit – Erste Schritte
 
-Für Leiterinnen und Leiter Kundendienst. Du brauchst keine Programmierkenntnisse: Du schreibst Claude, was du
-brauchst, und das Kit legt Berichte, Entwürfe und Vorgänge in deinem Kundendienst-Ordner ab.
+Für Leiterinnen und Leiter im industriellen Kundendienst – mit **Claude Code oder Codex**. Du brauchst keine
+Programmierkenntnisse: Beschreibe, was du brauchst, und das Kit legt Berichte, Entwürfe und Vorgänge in deinem
+Kundendienst-Ordner ab.
 
 ## Was das Kit ist
 
-Das Service Leader Kit ist ein KI-Stab für den Kundendienst: eine Erweiterung (Plugin) für Claude Code in VS Code.
-Eine Persönliche Assistenz nimmt deine Wünsche an und gibt Facharbeit an Fachleute weiter – Betrieb, Projekte,
-Vertrieb, Serviceangebot, Ersatzteile, Personal. Finanzen sowie Qualität & Recht prüfen, bevor du etwas
-entscheidest. Entscheiden tust immer du.
+Das Service Leader Kit ist dein KI-Stab für die Kundendienstleitung. Du nutzt es mit Claude Code von Anthropic
+oder Codex von OpenAI. Eine persönliche Assistenz koordiniert die Facharbeit: Betrieb, Projekte, Vertrieb,
+Serviceangebot, Ersatzteile und Personal. Finanzen sowie Qualität & Recht prüfen die Vorlagen für deine
+Entscheidungen. **Du entscheidest.**
 
-Alles läuft auf deinem Computer, direkt in deinem Kundendienst-Ordner. Das Kit ist kostenlos.
+Deine Arbeitsdateien liegen in deinem Kundendienst-Ordner. Dein Gespräch und die Inhalte, die der KI-Assistent
+liest, werden von Anthropic beziehungsweise OpenAI verarbeitet (siehe [Daten und Datenschutz](#daten-und-datenschutz)).
+Das Kit ist für die interne Nutzung kostenlos; den Zugang zu Claude Code oder Codex richtest du separat ein.
 
 **Stand: Version 0.3.x – noch nicht fertig erprobt.** Ehrlich gesagt heißt das:
 
@@ -24,8 +27,11 @@ Rechne also damit, dass dir Ecken auffallen. Sag uns Bescheid (siehe „Hilfe“
 
 ## Voraussetzungen
 
-- **VS Code** mit der Erweiterung **Claude Code**, angemeldet mit einem **bezahlten Claude-Plan**. Für Firmen
-  empfehlen wir **Team** (oder Enterprise), nicht ein privates Konto – warum, steht in `DATENFLUSS.md`.
+- **Ein KI-Assistent deiner Wahl:**
+  - **Claude Code:** VS Code mit der Claude-Code-Erweiterung und einem bezahlten Claude-Plan. Hinweise zum Konto
+    für den Firmeneinsatz stehen in [DATENFLUSS.md](DATENFLUSS.md).
+  - **Codex:** eingerichteter Codex-Zugang. Geprüft ist die CLI auf macOS; die VS-Code-Erweiterung ist noch nicht
+    live abgenommen. Folge dem Abschnitt [Kit in Codex](#kit-in-codex-alpha).
 - **uv** – ein kleines Programm, das sich ohne Administratorrechte installieren lässt. Es holt Python und die
   Bibliotheken beim ersten Gebrauch; du siehst davon nichts. Installation: <https://docs.astral.sh/uv/>
   [prüfen: genauen Installationsbefehl für Windows und macOS hier einsetzen]
@@ -247,10 +253,9 @@ will:
 
 ## Daten und Datenschutz
 
-Kurz: Deine Dateien bleiben, wo du sie bei der Einrichtung abgelegt hast. **Was Claude für eine Aufgabe liest, und
-das Gespräch selbst, gehen zur Verarbeitung an Anthropic** – „nur lokal“ ist es also nicht. Alles Weitere für IT
-und Datenschutzbeauftragte steht auf einer Seite in **[DATENFLUSS.md](DATENFLUSS.md)**.
-Bei der Codex-Version verarbeitet OpenAI diese Inhalte.
+Deine Dateien liegen dort, wo du sie bei der Einrichtung abgelegt hast. **Dein Gespräch und die Inhalte, die der
+KI-Assistent für eine Aufgabe liest, werden vom jeweiligen Anbieter verarbeitet: bei Claude Code von Anthropic,
+bei Codex von OpenAI.** Einzelheiten für IT und Datenschutz stehen in **[DATENFLUSS.md](DATENFLUSS.md)**.
 
 **Mitarbeiterdaten und Betriebsrat:** Das Kit wertet keine einzelnen Mitarbeitenden aus; Personalthemen bleiben auf
 Teamebene. Trotzdem kann der Einsatz bei Personalthemen die Mitbestimmung des Betriebsrats nach **§ 87 Abs. 1 Nr. 6
@@ -259,7 +264,7 @@ Datenschutzbeauftragte(n) ein, **bevor** du die Personal-Skills nutzt. Das Kit g
 
 ## Updates
 
-Updates sind für alle kostenlos und kommen über Claude Code. So holst du die neueste Version:
+Updates des **Claude-Code-Plugins** sind kostenlos. So holst du die neueste Version über Claude Code:
 
 ```
 /plugin marketplace update service-leader-kit
@@ -271,8 +276,11 @@ Beim nächsten Öffnen des Ordners erkennt das Kit die neue Version und passt de
 ergänzen, Einstellungen umstellen – vorher mit Sicherungskopie). Deine Inhalte überschreibt ein Update nie. Was sich
 geändert hat, steht in `CHANGELOG.md`.
 
-**Eigene Kopie:** Sie bekommt keine Updates. Eine neuere Version wäre eine neue ZIP-Datei; deine eigenen Änderungen
-an Agenten und Skills müsstest du dann selbst übertragen.
+**Eigene Claude-Kopie:** Sie bekommt keine automatischen Updates. Bei einer neuen ZIP-Datei musst du deine eigenen
+Änderungen an Agenten und Skills selbst übertragen.
+
+**Codex-Kopie:** Updates übernimmst du ebenfalls selbst. Vorschau, Generator und ZIP-Austausch sind unter
+[Kit in Codex → Aktualisieren](#aktualisieren) beschrieben.
 
 ## Lizenz
 
