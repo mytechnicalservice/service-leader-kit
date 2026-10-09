@@ -12,7 +12,7 @@ entscheidest. Entscheiden tust immer du.
 
 Alles läuft auf deinem Computer, direkt in deinem Kundendienst-Ordner. Das Kit ist kostenlos.
 
-**Stand: Version 0.2.x – noch nicht fertig erprobt.** Ehrlich gesagt heißt das:
+**Stand: Version 0.3.x – noch nicht fertig erprobt.** Ehrlich gesagt heißt das:
 
 - **Getestet:** über 2.000 automatische Tests der Skripte und Schutzregeln; jeder Skill hat Prüffälle mit einer
   sauberen und einer unordentlichen Beispielfirma (Evals), die mit Claude durchgespielt werden.
@@ -35,7 +35,7 @@ Rechne also damit, dass dir Ecken auffallen. Sag uns Bescheid (siehe „Hilfe“
 
 Die Einrichtung prüft das alles und sagt dir in einfachen Worten, was fehlt und wie du es installierst.
 
-## Zwei Varianten
+## Drei Varianten
 
 - **Kit mit Updates (empfohlen):** Das Kit wird als Plugin installiert. Korrekturen und neue Funktionen kommen von
   selbst, die Schutzregeln sind fest eingebaut. Anpassen kannst du trotzdem viel: deine Firma in `Unternehmen/`,
@@ -43,6 +43,9 @@ Die Einrichtung prüft das alles und sagt dir in einfachen Worten, was fehlt und
 - **Eigene Kopie:** Für alle, die Agenten und Skills selbst umbauen wollen. Das ganze Kit liegt dann in deinem
   Kundendienst-Ordner (im Unterordner `.claude/`) und gehört dir. Dafür gibt es **keine automatischen Updates**, und
   auch die Schutzregeln sind änderbar – sie schützen nur, solange du sie nicht änderst.
+- **Kit in Codex (Alpha):** eine eigene Kopie für den KI-Assistenten von OpenAI. Sie liegt in `.agents/` und
+  `.codex/`, bekommt keine automatischen Updates und hat änderbare Schutzregeln. Die Angaben zum geprüften Stand
+  findest du im Abschnitt „Kit in Codex“.
 
 ## Installation: Kit mit Updates
 
@@ -76,6 +79,82 @@ unverändert.
 
 Mit Hilfe dauert die Installation höchstens etwa 30 Minuten (Ziel aus unserer Planung, noch nicht bei Kunden
 gemessen).
+
+## Kit in Codex (Alpha)
+
+Du kannst das Kit auch mit Codex von OpenAI nutzen. Dafür brauchst du Codex, `uv` und denselben
+Kundendienst-Ordner. **Was Codex liest, und dein Gespräch, gehen an OpenAI.** Lass das vor Firmendaten von IT und
+Datenschutz freigeben (siehe `DATENFLUSS.md`). Die Claude-Anmeldung gilt dafür nicht.
+
+**Geprüfter Stand:** Die Agentenkennung wurde mit `/opt/homebrew/bin/codex`, CLI **0.161.0**, auf macOS geprüft:
+Hauptgespräch und zwei gleichzeitig laufende Fachagenten lassen sich unterscheiden. Die Schutzregeln nutzen diese
+Kennung; ein Abgleich über Start-/Stop-Ereignisse oder ein eigener Bearbeitungsmodus ist nicht nötig.
+Die erzeugte Kopie bestand am 09.10.2026 die CLI-Abnahme: normale Arbeit, Einrichtung, Routinen, eigene Skills und
+alle zehn Profile funktionierten. Die geprüften Schreib-, Lösch-, Entscheidungs- und Sendeversuche wurden vor
+Seiteneffekten gesperrt. Das belegt die getesteten Wege, keine vollständige Sperre jedes denkbaren Werkzeugaufrufs.
+Prüfablauf und Grenzen: `ENTWICKLUNG.md`, „Codex-Abnahme“.
+
+### Installieren
+
+1. Die Datei `service-leader-kit-codex-<Version>.zip` von
+   [der Release-Seite](https://github.com/mytechnicalservice/service-leader-kit/releases) laden, sobald sie dort
+   veröffentlicht ist. Noch vorhandene Kit-Dateien nicht ungefragt ersetzen.
+2. In einen neuen Kundendienst-Ordner entpacken. Darin entstehen `AGENTS.md`, `.agents/` und `.codex/`.
+   Diese Ordner können im Dateimanager versteckt sein. Für einen bereits eingerichteten Ordner lass die Technik
+   zuerst die Vorschau des Generators prüfen; sie bewahrt vorhandene Anweisungen und Einstellungen.
+3. Genau diesen Ordner in Codex öffnen. Die Schutzprogramme in `/hooks` prüfen und ihnen zustimmen. Nach Updates
+   kann eine erneute Prüfung nötig sein, wenn sich die Programme geändert haben. Ohne aktive Schutzprogramme gilt
+   die Anleitung allein; der Start-Selbsttest ersetzt die Freigabe in Codex nicht.
+4. **„Was kannst du?“** schreiben; danach **„richte den Kundendienst ein“** und die Beispielfirma ausprobieren.
+   Einen Skill rufst du ausdrücklich mit `$kit-uebersicht` oder `$einrichtung` auf.
+
+Für die Technik, aus dem Quellordner des Kits:
+
+```bash
+uv run tools/build-standalone.py --ziel codex "<Kundendienst-Ordner>" --pruefen
+uv run tools/build-standalone.py --ziel codex "<Kundendienst-Ordner>"
+uv run tools/build-standalone.py --ziel codex --zip "<ZIP-Zielordner>"
+```
+
+Der Generator setzt `default_permissions = "slk"`. Dieses Profil erlaubt normale Arbeit im Ordner und eigene
+Skills in `.agents/skills/`; die Unternehmensregel kommt aus den Hooks. Starte die CLI im Kundendienst-Ordner
+mit `codex -c 'default_permissions="slk"'`, ohne `-s` oder `--sandbox`. Vorhandene abweichende Projektprofile,
+`sandbox_mode` oder eingebettete Hooks meldet der Generator als Konflikt und ändert sie nicht.
+Globale Einstellungen und Startschalter musst du zusätzlich prüfen; sie lassen sich aus dem Projekt nicht
+zuverlässig erkennen. `-p slk` ist bei der geprüften CLI kein Schalter für dieses Projektprofil.
+
+**VS Code:** [prüfen: die Codex-Erweiterung live prüfen. Öffne eine erzeugte Kopie, kontrolliere `/hooks`, rufe
+`$kit-uebersicht` auf und lasse die Technik die gesperrten Versuche aus „Codex-Abnahme“ durchführen. Die gebündelte
+CLI 0.162.0-alpha.2 ist kein Nachweis für die Erweiterung.]
+**Windows:** [prüfen: denselben Ablauf auf einem echten Windows-Gerät durchführen; die Schutzprogramme brauchen
+`sh` aus Git for Windows. Ein macOS-Test belegt keinen Windows-Schutz.]
+
+### Aktualisieren
+
+Updates kommen nicht von selbst. Lass vor einer neuen Version die Vorschau prüfen:
+
+```bash
+uv run tools/build-standalone.py --ziel codex "<Kundendienst-Ordner>" --aktualisieren --pruefen
+uv run tools/build-standalone.py --ziel codex "<Kundendienst-Ordner>" --aktualisieren
+```
+
+Unveränderte Kit-Dateien werden aktualisiert. Hast du eine erzeugte Datei selbst bearbeitet, hält der Generator
+an und nennt den Konflikt. Sichere deine Fassung und entscheide für jede betroffene Änderung, ob du sie behalten
+oder durch die neue Kit-Fassung ersetzen willst. **Nur nach ausdrücklicher Zustimmung** darf die Technik
+`--ueberschreiben` hinzufügen. Eigene Skills, Unternehmensdaten und fremde Anweisungen/Einstellungen bleiben
+erhalten; widersprechende Einstellungen müssen geklärt werden. Bei einer neuen ZIP zuerst in einen separaten
+Ordner entpacken und die Änderungen vergleichen; niemals blind über deine bearbeitete Kopie entpacken.
+Danach Codex neu öffnen und die geänderten Schutzprogramme erneut in `/hooks` prüfen.
+
+### Grenzen des Schutzes
+
+In Codex sind die Schutzprogramme eine **Leitplanke**, keine vollständige Dateisperre. Direkte Änderungen an
+`Unternehmen/` sollen nur vom System-Architekten kommen; Fachagenten dürfen keine menschliche Entscheidung in
+einem Vorgang setzen. Einrichtung, Routine-Status und Protokoll bleiben über die vorgesehenen Skripte möglich.
+Die Kennung schützt die geprüften Werkzeugaufrufe, nicht beliebigen versteckten Schreibcode. Die Tool-Beschränkungen
+der Claude-Agenten lassen sich nicht vollständig übernehmen. Du kannst die Dateien der Kopie selbst ändern und
+damit Schutz abschalten. Absichtliche Umgehung, Lesen und anders benannte Sendewege bleiben Grenzen wie unten.
+Alte Sandbox-Einstellungen können neue Berechtigungsprofile verdrängen; die Technik muss solche Konflikte klären.
 
 ## Erste Schritte
 
@@ -129,6 +208,9 @@ sie im Onboarding hinterlegst.
 
 ## Was das Kit schützt
 
+Die folgenden Angaben beschreiben die Claude-Version. Für Codex gelten der geprüfte Stand und die Grenzen im
+Abschnitt „Kit in Codex“; eine CLI-Probe belegt keinen Schutz in der VS-Code-Erweiterung.
+
 Zusätzlich zu den Regeln in jedem Skill prüfen kleine Schutzprogramme (Hooks) jeden Schreib-, Lösch- und
 Sendeversuch, bevor er ausgeführt wird. Sie sind nur in deinem Kundendienst-Ordner aktiv:
 
@@ -168,6 +250,7 @@ will:
 Kurz: Deine Dateien bleiben, wo du sie bei der Einrichtung abgelegt hast. **Was Claude für eine Aufgabe liest, und
 das Gespräch selbst, gehen zur Verarbeitung an Anthropic** – „nur lokal“ ist es also nicht. Alles Weitere für IT
 und Datenschutzbeauftragte steht auf einer Seite in **[DATENFLUSS.md](DATENFLUSS.md)**.
+Bei der Codex-Version verarbeitet OpenAI diese Inhalte.
 
 **Mitarbeiterdaten und Betriebsrat:** Das Kit wertet keine einzelnen Mitarbeitenden aus; Personalthemen bleiben auf
 Teamebene. Trotzdem kann der Einsatz bei Personalthemen die Mitbestimmung des Betriebsrats nach **§ 87 Abs. 1 Nr. 6

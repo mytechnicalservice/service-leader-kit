@@ -2,6 +2,22 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## 0.3.0 – 2026-10-08
+
+### Neu
+
+- **Kit in Codex (Alpha):** Der bestehende Generator baut jetzt auch eine Codex-Kopie: `AGENTS.md`, alle Skills
+  in `.agents/skills/`, zehn Fachagenten in `.codex/agents/` und Skripte sowie Schutzprogramme in `.codex/kit/`.
+  Eine reproduzierbare Codex-ZIP lässt sich aus derselben Quelle bauen. Keine automatischen Updates.
+- **Updates mit Vorschau:** Eine Dateiliste erkennt eigene Änderungen an erzeugten Kit-Dateien. Unveränderte
+  Dateien lassen sich ausdrücklich aktualisieren; eigene Änderungen brauchen eine gesonderte Zustimmung.
+  Eigene Skills, fremde Anweisungen und Einstellungen sowie Unternehmensdaten bleiben erhalten.
+- **Codex-Schutzprogramme:** Direkte Agentenkennung für Unternehmensänderungen und menschliche Entscheidungen,
+  Prüfung aller Pfade eines Patches sowie der bekannten Shell- und Sendewege. Das sind änderbare Leitplanken;
+  IDE und Windows sind noch nicht live abgenommen. Angaben zum geprüften CLI-Stand: Anleitung und Entwicklung.
+- Übersicht, Einrichtung und eigene Skills erkennen die Codex-Kopie. Der Datenfluss nennt OpenAI als Empfänger
+  der von Codex gelesenen Inhalte und des Gesprächs. Der Umstellungs-Skill bietet Codex nur auf ausdrücklichen Wunsch.
+
 ## 0.2.9 – 2026-10-08
 
 Zwei Varianten aus einer Quelle: das Kit mit Updates und die eigene Kopie.

@@ -2,7 +2,7 @@
 
 Der KI-Stab für Leiterinnen und Leiter Kundendienst – in einem Ordner.
 
-> **Alpha-Version (0.2.x):** Das Kit ist nutzbar und getestet, aber noch jung. Abläufe und Ordnerstruktur können
+> **Alpha-Version (0.3.x):** Das Kit ist nutzbar und getestet, aber noch jung. Abläufe und Ordnerstruktur können
 > sich bis Version 1.0 ändern; deine Inhalte bleiben bei jedem Update erhalten. Rückmeldungen an myTS sind
 > ausdrücklich erwünscht.
 
@@ -37,7 +37,10 @@ Kit unterstützt deine eigene Arbeit.
 ## Womit es läuft
 
 - **Claude Code in VS Code** mit einem bezahlten Claude-Plan. Für Firmen empfehlen wir den Plan Team.
-- **Codex (OpenAI):** Codex-Version folgt.
+- **Codex (OpenAI, Alpha):** als erzeugte Kopie in deinem Ordner. Die Agentenkennung wurde mit der CLI 0.161.0
+  auf macOS geprüft; die geprüften Schreib-, Lösch-, Entscheidungs- und Sendeversuche blieben ohne Seiteneffekt.
+  Die VS-Code-Erweiterung und Windows sind noch nicht live abgenommen.
+  Installation, Updates und Grenzen stehen in der [Anleitung](plugin/README.de.md#kit-in-codex-alpha).
 
 Unter Windows braucht das Kit zusätzlich Git for Windows. Auf einem echten Windows-Gerät ist es noch nicht geprüft.
 
