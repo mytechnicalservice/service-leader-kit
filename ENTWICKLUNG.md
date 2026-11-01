@@ -133,7 +133,11 @@ Die Hooks (`plugin/hooks/`) halten versehentliche und eingeschleuste Schäden au
 
 - **Lesen ist nicht geschützt.** Die Hooks prüfen Schreiben, Löschen, Verschieben und Senden, nie das Lesen.
   `Unternehmen/` und `01_Vorgaenge/` sind für Claude lesbar; Vorlagen aus `Unternehmen/vorlagen/` dürfen per `cp`
-  nach außen kopiert werden (Briefkopf, Master), hineinschreiben bleibt gesperrt.
+  nach außen kopiert werden (Briefkopf, Master), hineinschreiben bleibt gesperrt. Ein Dateiname, den ein lesender
+  Befehl (`cat`, `ls`, `head`, `grep`, `sed` ohne `-i` …) bekommt, zählt nicht als Nennen der geschützten Ordner,
+  solange dessen Ausgabe nur den Bildschirm erreicht (keine Befehlsersetzung, Umleitung oder Pipe in einen
+  schreibenden Befehl) und derselbe Text sonst nirgends im Befehl steht (T-1952). Inline-Code, der die Ordner nennt,
+  bleibt gesperrt, auch zum Lesen.
 - **Absichtliche Verschleierung wird nicht erkannt.** Ein Skript, das einen Pfad aus Teilen zusammensetzt (z. B. eine
   Python-Datei in `$TMPDIR`, die `Unternehmen/` intern adressiert), oder ein kodierter Befehl läuft an der
   Wort-Prüfung vorbei. Im Eval-Lauf 0.2.1 las ein Modell so `Unternehmen/` aus einem Temp-Skript – das ist Lesen und

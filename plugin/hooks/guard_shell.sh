@@ -71,6 +71,11 @@ move_dest() { # $1 = verb, then the args
     _slk_i=$((_slk_i + 1)); _slk_t=${_slk_a#???}; _slk_l=$(slk_lower "$_slk_t")
     if [ "$_slk_nx" = d ]; then _slk_d=$_slk_i; _slk_nx=0; continue; fi
     if [ "$_slk_nx" = p ]; then _slk_nx=0; continue; fi
+    # A redirection (2>/dev/null, 2>&1, "> datei") is no name: cp a b 2>/dev/null still copies onto b.
+    case "$_slk_a" in ??0*[\<\>]*)
+      case "$_slk_t" in *[\<\>]) _slk_nx=p ;; esac
+      continue ;;
+    esac
     case "$_slk_t" in
       --target-directory) _slk_nx=d; continue ;;
       --target-directory=*) _slk_d=-1; continue ;;
@@ -235,12 +240,82 @@ ohne() { printf '%s\n' "$1" | awk -v p="$2" 'p != "" {
 zahl() { printf '%s\n' "$1" | awk -v p="$2" '{ while ((i = index($0, p)) > 0) { n++; $0 = substr($0, i + length(p)) } }
   END { print n + 0 }'; }
 nqs=$(ohne "$nq" "$lws")
-# 3a. Templates may be copied OUT of Unternehmen/vorlagen/: the document skills build on the letterhead and the
-# master. A source of cp/Copy-Item under unternehmen/vorlagen/ (no "..") does not count as naming the protected
-# folder, if every mention of that exact text in the command is such a source. Writes stay blocked: the copy's
-# destination, any other command, a redirection or a second mention still name Unternehmen/ below.
-vorlage_quellen() {
+# 3a. Mentions that only read do not count as naming the protected folders (T-1952): the document skills look at
+# a case, the company files and the letterhead in the same call as they build a file in the temp folder.
+# - Templates may be copied OUT of Unternehmen/vorlagen/ (letterhead, master): a source of cp/Copy-Item under
+#   unternehmen/vorlagen/ (no "..").
+# - A file name given to a reading command (LESEN; sed: its files, never its script, and none with -i/-e/-f) whose
+#   output only reaches the screen: not inside $(…), backticks, (…), <(…) or a wrapped command, no redirection but
+#   2>/dev/null and 2>&1-style, and piped only into further such reading commands (ls … | xargs cp, cat … | python3
+#   and Get-ChildItem … | Clear-Content hand the name on). Not a variable or a substitution itself. Since a group
+#   ({ …; }, a loop, if … fi) passes its output on as a whole, the exemption needs the whole command to feed no
+#   other command through a pipe and to redirect no output (2>/dev/null and 2>&1-style aside).
+# A mention is dropped only if every occurrence of that exact text in the command is such a read (longest first).
+# Writes stay blocked: a copy's destination, any other command, inline code, a redirection or a second mention of
+# the same text still name the folder below. Inline code that names a protected folder stays refused, read or not.
+LESEN="cat head tail ls wc grep egrep fgrep stat diff cmp sed get-content gc type select-string sls get-childitem gci dir"
+# The reading commands that qualify, as "verb TAB args" lines (segments.awk -v marks=1, checked last to first).
+lese_segs() {
+  printf '%s\n' "$cmd" | awk -v ps="$_slk_ps" -v marks=1 -f "$SLK_HOOKS/segments.awk" |
+    awk -F '\t' -v lesen=" $LESEN " '
+      { m[NR] = $1; z = $0; sub(/^[^\t]*\t/, "", z); l[NR] = z; v[NR] = $2; f[NR] = (z ~ /\t100\$xargs$/)
+        if (f[NR] && index(lesen, " " v[NR] " ") == 0) fremd = 1 }
+      END {
+        if (fremd) exit
+        for (i = NR; i >= 1; i--) {
+          ok[i] = 0
+          if (substr(m[i], 1, 1) != "-" || index(lesen, " " v[i] " ") == 0) continue
+          n = split(l[i], a, "\t"); bad = 0
+          for (j = 2; j <= n; j++) {
+            t = substr(a[j], 4)
+            if (t !~ /[<>]/ || t ~ /^[0-9]*>>?(&[0-9-]|\/dev\/null)$/) continue
+            if (t ~ /^[0-9]*>>?$/ && j < n && substr(a[j + 1], 4) == "/dev/null") { j++; continue }
+            bad = 1
+          }
+          if (bad) continue
+          if (substr(m[i], 2, 1) == "p" && !(i < NR && f[i + 1] && ok[i + 1])) continue
+          ok[i] = 1
+        }
+        for (i = 1; i <= NR; i++) if (ok[i]) print l[i]
+      }'
+}
+# The file names of one reading command ($1 = verb, then the args) that mention a protected folder.
+lese_args() {
+  _slk_rv=$1; shift; _slk_skr=0; _slk_vor=""
+  if [ "$_slk_rv" = sed ]; then
+    _slk_skr=1
+    for _slk_a in "$@"; do
+      case "$(slk_lower "${_slk_a#???}")" in -i*|--in-place*|--expression*|--file*) return 0 ;; esac
+      case "${_slk_a#???}" in -e*|-f*|-*[ef]) return 0 ;; esac
+    done
+  fi
+  for _slk_a in "$@"; do
+    _slk_t=${_slk_a#???}; _slk_pv=$_slk_vor; _slk_vor=$_slk_t
+    case "$_slk_t" in -*) continue ;; esac
+    if [ "$_slk_skr" = 1 ]; then _slk_skr=0; continue; fi
+    case "$_slk_a" in 1??*) continue ;; esac
+    case "$_slk_t$_slk_pv" in *">"*|*"<"*) continue ;; esac
+    _slk_k=$(ohne "$(slk_lower "$(slk_slashes "$_slk_t")")" "$lws")
+    case "$_slk_k" in *01_vorgaenge*|*unternehmen*) printf '%s\n' "$_slk_k" ;; esac
+  done
+}
+lesende_quellen() {
   _slk_oifs=$IFS
+  _slk_ls=$(lese_segs)
+  case "$(printf '%s' "$bare" | sed -E 's/[0-9]*>>?[[:space:]]*(&[0-9-]|\/dev\/null)//g')" in *">"*) _slk_ls="" ;; esac
+  IFS='
+'
+  for _slk_line in $_slk_ls; do
+    IFS='	'
+    # shellcheck disable=SC2086
+    set -- $_slk_line
+    IFS=$_slk_oifs
+    _slk_vb=$1; shift
+    lese_args "$_slk_vb" "$@"
+    IFS='
+'
+  done
+  IFS=$_slk_oifs
   IFS='
 '
   for _slk_line in $segs; do
@@ -269,12 +344,12 @@ vorlage_quellen() {
   done
   IFS=$_slk_oifs
 }
-_slk_q=$(vorlage_quellen)
+_slk_q=$(lesende_quellen)
 if [ -n "$_slk_q" ]; then
   _slk_oifs=$IFS
   IFS='
 '
-  for _slk_s in $(printf '%s\n' "$_slk_q" | sort -u); do
+  for _slk_s in $(printf '%s\n' "$_slk_q" | sort -u | awk '{ print length($0) "\t" $0 }' | sort -k1,1nr | cut -f2-); do
     IFS=$_slk_oifs
     [ "$(zahl "$nqs" "$_slk_s")" = "$(printf '%s\n' "$_slk_q" | grep -cxF -- "$_slk_s")" ] && nqs=$(ohne "$nqs" "$_slk_s")
   done
@@ -289,7 +364,7 @@ schutz="01_Vorgaenge/ und Unternehmen/ sind geschützt: kein Löschen, Verschieb
 if [ "$named" = 1 ]; then
   # shellcheck disable=SC2086
   has_verb $DEL $MOVE $COPY $INLINE && block shell-geschuetzt "$schutz"
-  has_verb sed perl && has_flag '-i*' && block shell-geschuetzt "$schutz"
+  has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && block shell-geschuetzt "$schutz"
   has_verb git && has_word rm mv checkout restore reset stash && block shell-geschuetzt "$schutz"
   has_verb uv && has_word python python3 && has_word -c && block shell-geschuetzt "$schutz"
   printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&

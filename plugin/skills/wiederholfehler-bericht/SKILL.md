@@ -21,6 +21,9 @@ start it from the workspace without `cd`: `uv run --with python-docx==1.1.2 pyth
 (.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). Copy a letterhead or master from
 `Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into `Unternehmen/` stays forbidden) and open the
 copy. If this `uv run` fails, Nie vortäuschen applies: stop and name what is missing.
+The script opens only that copy and the files it writes. Write it with the Write tool and put into it what it
+needs from `01_Vorgaenge/` or `Unternehmen/` after reading those files yourself (Read tool or the kit's scripts);
+inline code (`python -c`, `python - <<EOF`) that names them is refused by the guard, even to read.
 
 1. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/qualitaet_recht.py" wiederholfehler --ws "<workspace>"`
    Add `--bis JJJJ-MM` if the user names the last month.

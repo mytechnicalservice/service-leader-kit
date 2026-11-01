@@ -21,3 +21,15 @@ stable placeholders (`test-prompt`, `test-agent`, `toolu_test_<name>`). In `tran
   Bash `command`, `description`; Skill `skill`; Agent `description`, `prompt`, `subagent_type`,
   `run_in_background`.
 - Non-ASCII is written literally (`Müller`), quotes JSON-escaped; payloads are one line, no trailing newline.
+
+## T-1952: refused Bash commands from the demo rehearsal (2026-10-27, plugin 0.3.0)
+
+`T-1952-*.sh` are the exact `tool_input.command` texts of the three Bash calls the PreToolUse guard refused in
+native session `ed574210-…` (sub-agents of the Betrieb workflows), workspace path -> `__WS__`. They are not
+scripts to run; `tests/test_hooks_shell.py` feeds them to the hook.
+
+- `lesen-und-python`: `cat`/`ls` of `Beispiel/Unternehmen/…` plus `python3 -c` on `/tmp/mr.json` (read only).
+- `briefkopf-ansehen`: letterhead `cp` out of `Beispiel/Unternehmen/vorlagen/`, `uv run … python -I -c` on the
+  temp copy, `sed -n` of `Beispiel/01_Vorgaenge/offen/V-0003.md` (eskalation-topkunde, call preparation).
+- `entscheidungsvorlage`: letterhead `cp`, a heredoc build script in `/tmp`, a `python3 -` heredoc that opens
+  `01_Vorgaenge/offen/V-0003.md`, then `uv run … python /tmp/ev3/bau.py` (entscheidungsvorlage).

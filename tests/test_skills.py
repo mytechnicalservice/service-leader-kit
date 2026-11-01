@@ -66,7 +66,10 @@ OHNE_DOKUMENT_SKILL = (
     "\"<temporärer Ordner>/datei.py\"` (.xlsx: `--with openpyxl==3.1.5`, .pptx: `--with python-pptx==1.0.2`). "
     "Copy a letterhead or master from `Unternehmen/vorlagen/` to the temp folder first (`cp`; writing into "
     "`Unternehmen/` stays forbidden) and open the copy. If this `uv run` fails, Nie vortäuschen applies: stop and "
-    "name what is missing."
+    "name what is missing. The script opens only that copy and the files it writes. Write it with the Write tool and "
+    "put into it what it needs from `01_Vorgaenge/` or `Unternehmen/` after reading those files yourself (Read tool "
+    "or the kit's scripts); inline code (`python -c`, `python - <<EOF`) that names them is refused by the guard, even "
+    "to read."
 )
 DOKUMENT_SKILL = re.compile(r"\b(docx|xlsx|pptx|Word|Excel)\b[\w/ -]{0,12}skill\b|\bdocument skill\b", re.I)
 
