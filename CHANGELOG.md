@@ -2,6 +2,18 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
+## Unveröffentlicht
+
+### Behoben
+
+- **Dokumente auf dem Briefkopf (T-1952):** Das Schutzprogramm sperrte Shell-Aufrufe, die einen Vorgang oder eine
+  Unternehmensdatei nur lasen (`cat`, `ls`, `sed -n` …) und im selben Aufruf den Briefkopf kopierten oder Python
+  starteten. Dadurch scheiterten Gesprächsvorbereitung und Entscheidungsvorlage. Lesen, dessen Ausgabe nur auf dem
+  Bildschirm landet, zählt jetzt nicht mehr als Zugriff. Schreiben, Löschen, Verschieben, Umleiten in die geschützten
+  Ordner und Inline-Code, der sie nennt, bleiben gesperrt; die Dokument-Skills sagen das nun ausdrücklich.
+- Eine Umleitung hinter `cp` (`2>/dev/null`) galt fälschlich als Ziel der Kopie; so ließ sich in
+  `Unternehmen/vorlagen/` schreiben. Das ist jetzt gesperrt.
+
 ## 0.3.0 – 2026-10-08
 
 ### Neu

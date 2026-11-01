@@ -14,6 +14,10 @@
 # If a text ends inside an open quote (an apostrophe in prose),
 # it is split again with the quote state reset at every newline, so one bad line cannot hide later ones.
 # With -v ps=1 (PowerShell, cmd) a backslash is always a path separator and a backtick escapes.
+# ">&" before a digit or "-" (2>&1, >&2, 2>&-) stays in its word: it duplicates a descriptor, no file.
+# With -v marks=1 each line is led by two marks and a TAB: "s" if the command runs inside a substitution, subshell
+# or wrapped command (its output may feed another command), else "-"; then "p" if it pipes its output into the
+# next command, else "-". The shell guard uses them for its read exemption (T-1952).
 BEGIN {
   n = split("sudo command exec xargs env nohup time nice builtin then do else elif if while until ! { }", a, " ")
   for (i = 1; i <= n; i++) skip[a[i]] = 1
@@ -21,7 +25,7 @@ BEGIN {
   for (i = 1; i <= n; i++) wrapper[a[i]] = 1
   SPECIAL = " \t'\"`;&|()<>"
 }
-function reset_cmd() { verb = ""; args = ""; fed = 0 }
+function reset_cmd() { verb = ""; args = ""; fed = 0; pout = 0 }
 function reset_word() { word = ""; inw = 0; wv = 0; ww = 0; wq = 0 }
 function addch(ch) { if (ch == "\t" || ch == "\n") ch = " "; word = word ch; inw = 1 }
 function endword(   lx, b) {
@@ -45,6 +49,7 @@ function flush(   line) {
   if (verb != "") {
     line = verb args
     if (fed) line = line "\t100$xargs"
+    if (marks) line = ((sp > 0 || lvl > 0) ? "s" : "-") (pout ? "p" : "-") "\t" line
     out = out line "\n"
     reset_cmd()
   } else args = ""   # no command yet: a pending pipe/xargs feed carries over (ls |<newline> rm)
@@ -139,7 +144,7 @@ function hd_char(c,   e, line, d) {
 function pipe() {
   if (substr(T, I + 1, 1) == "|") { flush(); I++; return }
   if (substr(T, I - 1, 1) == ">") { flush(); return }
-  flush(); fed = 1
+  pout = 1; flush(); pout = 0; fed = 1
   if (substr(T, I + 1, 1) == "&") I++
 }
 function backtick() { if (sp > 0 && kd[sp] == "b") { flush(); pop() } else push("b") }
@@ -175,6 +180,7 @@ function parse(text,   c, d) {
     else if (c == " " || c == "\t") endword()
     else if (c == "\n") { flush(); if (hd_n > 0 && !hd_on) hd_start() }
     else if (c == "|") pipe()
+    else if (c == "&" && inw && substr(T, I - 1, 1) == ">" && substr(T, I + 1, 1) ~ /[0-9-]/) addch(c)
     else if (c == ";" || c == "&") flush()
     else if (c == "<" && heredoc_ok()) heredoc_start()
     else if (c == "(") { push("p"); if (substr(T, I + 1, 1) == "(") arith() }

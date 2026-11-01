@@ -1,0 +1,3 @@
+cd "__WS__" && ls; cat Beispiel/Unternehmen/ergebnisrechnung.md Beispiel/Unternehmen/kpi-ziele.md Beispiel/Unternehmen/tonalitaet.md; ls Beispiel/Unternehmen Beispiel/Unternehmen/agenten 2>&1; cat Beispiel/Unternehmen/vorlagen/layout-map.md; python3 -c "
+import json;d=json.load(open('/tmp/mr.json'));print(d['definitionen']);print([ (z['name'],z['anzeige']) for z in d['kernzahlen'] if 'kumul' in z['name']])
+print(json.dumps(d['guv']['kumuliert'],ensure_ascii=False)[:300])"

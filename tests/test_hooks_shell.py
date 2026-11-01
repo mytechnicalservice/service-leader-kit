@@ -1,6 +1,6 @@
 import pytest
 
-from hookrun import NS, bash, echt, run_hook
+from hookrun import NS, PAYLOADS, bash, echt, run_hook
 
 BLOCK = [
     ("rm 01_Vorgaenge/offen/V-0001.md", "shell-geschuetzt"),
@@ -378,4 +378,125 @@ def test_template_folder_stays_protected_against_writes(shell, kit_ws, command):
 
 def test_copying_out_from_inside_a_protected_folder_stays_blocked(shell, kit_ws):
     p = bash(kit_ws, "cp briefkopf.docx /tmp/b.docx", cwd=kit_ws / "Unternehmen" / "vorlagen")
+    assert pre(shell, kit_ws, p)[0] == 2
+
+
+# T-1952: reading a protected folder in one simple command must not make an unrelated cp or inline code in another
+# simple command count as touching it. The three refused calls of the 2026-10-27 demo rehearsal, verbatim.
+def demo(name, ws):
+    return (PAYLOADS / f"T-1952-{name}.sh").read_text(encoding="utf-8").replace("__WS__", str(ws))
+
+
+@pytest.fixture
+def beispiel(kit_ws):
+    for d in ("Unternehmen/vorlagen", "Unternehmen/agenten", "01_Vorgaenge/offen", "06_Kunden/Hansa Pack AG"):
+        (kit_ws / "Beispiel" / d).mkdir(parents=True, exist_ok=True)
+    return kit_ws
+
+
+@pytest.mark.parametrize("name", ["lesen-und-python", "briefkopf-ansehen"])
+def test_demo_reads_beside_harmless_cp_or_inline_code_pass(shell, beispiel, name):
+    assert pre(shell, beispiel, bash(beispiel, demo(name, beispiel), agent=NS + "betrieb")) == (0, "")
+
+
+def test_demo_decision_memo_inline_code_reading_a_case_stays_blocked(shell, beispiel):
+    # Its "python3 - <<EOF" opens 01_Vorgaenge/offen/V-0003.md: inline code naming a protected folder, read or write.
+    code, err = pre(shell, beispiel, bash(beispiel, demo("entscheidungsvorlage", beispiel), agent=NS + "betrieb"))
+    assert code == 2 and regel(beispiel).startswith("shell-geschuetzt tool=Bash"), err
+
+
+DOKUMENT_WEG = [
+    # The documented route (Ohne Dokument-Skill): letterhead copied out, script in the temp folder, uv run.
+    'mkdir -p "$TMPDIR/ev" && cp Unternehmen/vorlagen/briefkopf.docx "$TMPDIR/ev/briefkopf.docx" && '
+    'uv run --with python-docx==1.1.2 python "$TMPDIR/ev/bau.py"',
+    # ... with reads of the case and company files in the same call
+    "cat 01_Vorgaenge/offen/V-0003.md Unternehmen/freigabegrenzen.md; cp Unternehmen/vorlagen/briefkopf.docx "
+    "/tmp/ev/b.docx && uv run --with python-docx==1.1.2 python /tmp/ev/bau.py",
+    "sed -n 1,40p 01_Vorgaenge/offen/V-0003.md | head -5; uv run --with python-docx==1.1.2 python -I -c "
+    "\"import docx; print(docx.Document('/tmp/ev/b.docx').paragraphs)\"",
+    "ls Unternehmen Unternehmen/vorlagen 2>&1; head -n 3 Unternehmen/kpi-ziele.md 2>/dev/null; "
+    "python3 -c \"import json; print(json.load(open('/tmp/mr.json')))\"",
+    "grep -n Empfehlung 01_Vorgaenge/offen/V-0003.md && cp Unternehmen/vorlagen/master.pptx /tmp/ev/",
+    'wc -l "Unternehmen/profil.md" && node -e "console.log(1)"',
+]
+
+
+@pytest.mark.parametrize("command", DOKUMENT_WEG)
+def test_document_route_with_reads_passes(shell, kit_ws, command):
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
+
+
+@pytest.mark.parametrize("command", [
+    # a read does not excuse a second mention by a writing command or by inline code
+    "cat Unternehmen/profil.md; python3 -c \"open('Unternehmen/profil.md','w')\"",
+    "cat Unternehmen/profil.md.bak; python3 -c \"open('Unternehmen/profil.md','w')\"",
+    "ls Unternehmen; python3 -c \"import os; os.remove('Unternehmen/profil.md')\"",
+    "cat 01_Vorgaenge/offen/V-0001.md && python3 - <<'EOF'\nopen('01_Vorgaenge/offen/V-0001.md','w')\nEOF",
+    "cat Unternehmen/profil.md | python3 -c \"import sys; open(sys.argv[1],'w')\" Unternehmen/profil.md",
+    "cat Unternehmen/profil.md && mv Unternehmen/profil.md /tmp/",
+    "head Unternehmen/profil.md; rm Unternehmen/profil.md",
+    "ls Unternehmen; cp /tmp/x Unternehmen/profil.md",
+    "cat Unternehmen/vorlagen/briefkopf.docx; cp /tmp/x Unternehmen/vorlagen/briefkopf.docx",
+    "cat 01_Vorgaenge/offen/V-0001.md; sed -i '' 's/a/b/' 01_Vorgaenge/offen/V-0001.md",
+    "sed -n 1p 01_Vorgaenge/offen/V-0001.md; uv run python -c \"open('01_Vorgaenge/offen/V-0001.md','w')\"",
+    # redirections out of a reading command
+    "cat /tmp/x > Unternehmen/profil.md",
+    "cat /tmp/x >Unternehmen/profil.md",
+    "cat /tmp/x >> 01_Vorgaenge/offen/V-0001.md",
+    "head /tmp/x 2> Unternehmen/fehler.log",
+    "cat Unternehmen/profil.md > Unternehmen/kopie.md",
+    "cat <> Unternehmen/profil.md",
+    "grep x /tmp/a | tee Unternehmen/profil.md",
+    # a read whose output feeds another command hands the name on (pipe, xargs, substitution, process substitution)
+    "ls Unternehmen/profil.md | xargs cp /dev/null",
+    "ls Unternehmen/profil.md | xargs tee",
+    "ls Unternehmen/profil.md | head -1 | xargs cp /dev/null",
+    "ls Unternehmen/profil.md | python3 -c 'import sys; open(sys.stdin.read().strip(), \"w\")'",
+    "x=$(ls Unternehmen/profil.md); cp /dev/null \"$x\"",
+    "for f in `ls Unternehmen/profil.md`; do cp /dev/null \"$f\"; done",
+    "while read f; do cp /dev/null \"$f\"; done < <(ls Unternehmen/profil.md)",
+    "python3 -c 'import sys; open(sys.stdin.read().strip(), \"w\")' < <(ls Unternehmen/profil.md)",
+    "(ls Unternehmen/profil.md) | xargs cp /dev/null",
+    "bash -c 'ls Unternehmen/profil.md' | xargs cp /dev/null",
+    "ls Unternehmen/profil.md > /tmp/l; python3 -c \"open(open('/tmp/l').read().strip(), 'w')\"",
+    "ls Unternehmen/profil.md >& /tmp/l; python3 -c \"open(open('/tmp/l').read().strip(), 'w')\"",
+    "ls Unternehmen/profil.md 2>&1 >/tmp/l; python3 -c \"open(open('/tmp/l').read().strip(), 'w')\"",
+    # a group passes the output of its reads on as a whole
+    "{ cat Unternehmen/profil.md; } | xargs cp /dev/null",
+    "for f in a; do ls Unternehmen/profil.md; done | xargs cp /dev/null",
+    "if true; then ls Unternehmen/profil.md; fi | python3 -c 'import sys; open(sys.stdin.read().strip(), \"w\")'",
+    "{ ls Unternehmen/profil.md; } > /tmp/l; python3 -c \"open(open('/tmp/l').read().strip(), 'w')\"",
+    "exec > /tmp/l; ls Unternehmen/profil.md; python3 -c \"open(open('/tmp/l').read().strip(), 'w')\"",
+    # a redirection after the copy is not its destination (refused on 0.3.0 neither: found while fixing T-1952)
+    "cp Unternehmen/vorlagen/briefkopf.docx Unternehmen/vorlagen/b.docx 2>/dev/null",
+    "cp Unternehmen/vorlagen/briefkopf.docx Unternehmen/vorlagen/b.docx 2>&1",
+    "cp Unternehmen/vorlagen/briefkopf.docx Unternehmen/vorlagen/b.docx > /tmp/log",
+    # sed reads files, but its script is not a file name
+    "sed -e 's/a/b/' -i Unternehmen/profil.md",
+    "sed --in-place 's/a/b/' 01_Vorgaenge/offen/V-0001.md",
+    # the decision guard and the inline-code guards are unchanged
+    "cat Unternehmen/profil.md; python3 -c \"import shutil; shutil.rmtree('03_Berichte')\"",
+])
+def test_reads_do_not_open_a_way_to_write_protected_folders(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2, (command, err)
+
+
+@pytest.mark.parametrize("command", [
+    "Get-ChildItem Unternehmen/profil.md | Clear-Content",
+    "Get-ChildItem 01_Vorgaenge -Recurse -File | Clear-Content",
+    "Get-Content Unternehmen\\profil.md | Set-Content Unternehmen\\profil.md",
+])
+def test_powershell_reads_piped_into_writers_stay_blocked(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command, tool="PowerShell"))
+    assert code == 2, (command, err)
+
+
+def test_powershell_read_beside_inline_code_passes(shell, kit_ws):
+    command = "Get-Content Unternehmen\\kpi-ziele.md; python3 -c \"print(1)\""
+    assert pre(shell, kit_ws, bash(kit_ws, command, tool="PowerShell")) == (0, "")
+
+
+def test_reading_inside_a_protected_folder_beside_inline_code_stays_blocked(shell, kit_ws):
+    p = bash(kit_ws, "cat profil.md; python3 -c \"print(1)\"", cwd=kit_ws / "Unternehmen")
     assert pre(shell, kit_ws, p)[0] == 2
