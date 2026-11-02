@@ -21,6 +21,41 @@ ROUTINEN = ["tagesstart", "wochenstart", "monatsabschluss", "quartal", "jahrespl
 WOCHENTAGE = ["mo", "di", "mi", "do", "fr"]
 
 
+# What each step leaves behind: (step, file pattern in the workspace). Only for showing gaps: a routine may be recorded
+# after a failed step (spec), and the user sees which steps left no file in the period.
+SCHRITTE = {
+    "tagesstart": [("morgen-briefing", "03_Berichte/*_morgen-briefing*"), ("freigabe-queue", "03_Berichte/*_freigabe-queue*")],
+    "wochenstart": [("teamleiter-runde", "03_Berichte/*_teamleiter-runde*")],
+    "monatsabschluss": [("management-report", "03_Berichte/*_management-report*"),
+                        ("verlaengerungs-radar", "03_Berichte/*_verlaengerungs-radar*"),
+                        ("kapazitaet-lage", "03_Berichte/*_kapazitaet-lage*")],
+    "quartal": [("key-account-review", "03_Berichte/*_key-account-review*"), ("portfolio-review", "03_Berichte/*_portfolio-review*"),
+                ("besprechung", "06_Kunden/*/*_besprechung-vorbereitung*")],
+    "jahresplanung": [("budgetplanung", "03_Berichte/*_budgetplanung*"), ("personalplanung", "03_Berichte/*_personalplanung*"),
+                      ("preisliste-update", "04_Angebote/*_preisliste-update*"), ("strategie", "03_Berichte/*_strategie-*")],
+}
+DATEI_TAG = re.compile(r"(\d{4}-\d{2}-\d{2})_")
+
+
+def beginn(heute: dt.date, routine: str) -> dt.date:
+    """First day of the period a routine covers."""
+    q_monat = (heute.month - 1) // 3 * 3 + 1
+    return {"tagesstart": heute, "wochenstart": heute - dt.timedelta(days=heute.weekday()),
+            "monatsabschluss": heute.replace(day=1), "quartal": dt.date(heute.year, q_monat, 1),
+            "jahresplanung": dt.date(heute.year, 1, 1)}[routine]
+
+
+def schritte(ws: Path, routine: str, heute: dt.date) -> list[dict]:
+    """Per step the files dated in the routine's period; none means a gap."""
+    von, bis = beginn(heute, routine).isoformat(), heute.isoformat()
+    out = []
+    for schritt, muster in SCHRITTE[routine]:
+        dateien = sorted(p.relative_to(ws).as_posix() for p in ws.glob(muster)
+                         if p.is_file() and (m := DATEI_TAG.match(p.name)) and von <= m.group(1) <= bis)
+        out.append({"schritt": schritt, "dateien": dateien})
+    return out
+
+
 def wert(heute: dt.date, routine: str) -> str:
     return {"tagesstart": heute.isoformat(), "wochenstart": heute.isoformat(), "monatsabschluss": f"{heute:%Y-%m}",
             "quartal": f"{heute.year}-Q{(heute.month - 1) // 3 + 1}", "jahresplanung": str(heute.year)}[routine]
@@ -82,7 +117,27 @@ def cmd_erledigt(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
                 zeilen[i] = ""  # a duplicate key would hide the new value from slk_get
     zeilen = [z for z in zeilen if z] + ([] if gesetzt else [neu])
     write_atomic(ws / "Unternehmen" / ".kit-status", "\n".join(zeilen) + "\n")
-    return 0, {"ok": True, "routine": a.routine, "eintrag": neu}
+    teile = schritte(ws, a.routine, heute)
+    luecken = [s["schritt"] for s in teile if not s["dateien"]]
+    pfad = ws / "Unternehmen" / ".kit-routinen"
+    alt = pfad.read_text(encoding="utf-8").splitlines() if pfad.is_file() else []
+    protokoll = [z for z in alt if not z.startswith(f"{a.routine}=")]
+    protokoll.append(f"{neu}\tam={heute.isoformat()}\tohne_datei={','.join(luecken)}")
+    write_atomic(pfad, "\n".join(protokoll) + "\n")
+    meldungen = [f"{a.routine}: eingetragen, aber ohne Datei aus diesem Zeitraum: {', '.join(luecken)}."] if luecken else []
+    return 0, {"ok": True, "routine": a.routine, "eintrag": neu, "schritte": teile, "luecken": luecken, "meldungen": meldungen}
+
+
+def luecken_aus_protokoll(ws: Path) -> dict[str, list[str]]:
+    """Per routine the steps that left no file the last time it was recorded (Unternehmen/.kit-routinen)."""
+    pfad = ws / "Unternehmen" / ".kit-routinen"
+    out: dict[str, list[str]] = {}
+    for z in pfad.read_text(encoding="utf-8", errors="replace").splitlines() if pfad.is_file() else []:
+        routine = z.split("=", 1)[0]
+        m = re.search(r"\tohne_datei=(.*)$", z)
+        if m and m.group(1):
+            out[routine] = m.group(1).split(",")
+    return out
 
 
 def cmd_stand(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
@@ -93,7 +148,8 @@ def cmd_stand(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
                    "meldungen": ["Einstellungen unvollständig – keine Routine-Hinweise.", *spaet]}
     zeilen = lies_status(ws)
     return 0, {"ok": True, "faellig": faellig(heute, werte, zeilen),
-               "zuletzt": {r: hole(zeilen, r) or None for r in ROUTINEN}, "zukunft": spaet, "meldungen": spaet}
+               "zuletzt": {r: hole(zeilen, r) or None for r in ROUTINEN}, "luecken": luecken_aus_protokoll(ws),
+               "zukunft": spaet, "meldungen": spaet}
 
 
 EREIGNIS = re.compile(r"^### (\d{4}-\d{2}-\d{2}) · ([^·\n]+?) · ([^\n]+?)\s*$", re.M)

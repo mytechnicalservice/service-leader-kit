@@ -34,7 +34,8 @@ Rechne also damit, dass dir Ecken auffallen. Sag uns Bescheid (siehe „Hilfe“
     live abgenommen. Folge dem Abschnitt [Kit in Codex](#kit-in-codex-alpha).
 - **uv** – ein kleines Programm, das sich ohne Administratorrechte installieren lässt. Es holt Python und die
   Bibliotheken beim ersten Gebrauch; du siehst davon nichts. Installation: <https://docs.astral.sh/uv/>
-  [prüfen: genauen Installationsbefehl für Windows und macOS hier einsetzen]
+  macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh` · Windows (PowerShell):
+  `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 - **Nur unter Windows: Git for Windows** (<https://git-scm.com/download/win>). Die Schutzregeln des Kits brauchen es.
   Windows ist noch nicht auf einem echten Gerät geprüft; das geschieht beim ersten Pilotkunden. Notfalls weichen wir
   auf einen Mac oder einen Cloud-Arbeitsplatz aus.
@@ -68,13 +69,12 @@ Die Einrichtung prüft das alles und sagt dir in einfachen Worten, was fehlt und
    /plugin install service-leader-kit
    ```
 
-   Wähle dabei den Bereich **Projekt** [prüfen: genaue Auswahl bzw. Schalter für den Projekt-Bereich im aktuellen
-   Claude Code]. So meldet sich das Kit nur in deinem Kundendienst-Ordner und stört in anderen Projekten nicht.
+   Wähle dabei den Bereich **Projekt**. So meldet sich das Kit nur in deinem Kundendienst-Ordner und stört in anderen Projekten nicht.
 
 ## Installation: Eigene Kopie
 
-1. Die Datei `service-leader-kit-eigene-kopie-<Version>.zip` von der Release-Seite laden
-   [prüfen: Link auf die GitHub-Releases von mytechnicalservice/service-leader-kit einsetzen].
+1. Die Datei `service-leader-kit-eigene-kopie-<Version>.zip` von
+   [der Release-Seite](https://github.com/mytechnicalservice/service-leader-kit/releases) laden.
 2. Die ZIP-Datei **direkt in deinen Kundendienst-Ordner** entpacken, sodass dort der Ordner `.claude` entsteht (unter
    Windows beim Entpacken als Ziel genau diesen Ordner wählen; unter macOS ist `.claude` im Finder versteckt).
 3. Den Ordner in VS Code öffnen und wie unten weitermachen. Ein Plugin brauchst du dann nicht.
@@ -98,7 +98,7 @@ Kennung; ein Abgleich über Start-/Stop-Ereignisse oder ein eigener Bearbeitungs
 Die erzeugte Kopie bestand am 09.10.2026 die CLI-Abnahme: normale Arbeit, Einrichtung, Routinen, eigene Skills und
 alle zehn Profile funktionierten. Die geprüften Schreib-, Lösch-, Entscheidungs- und Sendeversuche wurden vor
 Seiteneffekten gesperrt. Das belegt die getesteten Wege, keine vollständige Sperre jedes denkbaren Werkzeugaufrufs.
-Prüfablauf und Grenzen: `ENTWICKLUNG.md`, „Codex-Abnahme“.
+Prüfablauf und Grenzen: [Entwicklung, „Codex-Abnahme“](https://github.com/mytechnicalservice/service-leader-kit/blob/main/ENTWICKLUNG.md).
 
 ### Installieren
 
@@ -129,11 +129,11 @@ mit `codex -c 'default_permissions="slk"'`, ohne `-s` oder `--sandbox`. Vorhande
 Globale Einstellungen und Startschalter musst du zusätzlich prüfen; sie lassen sich aus dem Projekt nicht
 zuverlässig erkennen. `-p slk` ist bei der geprüften CLI kein Schalter für dieses Projektprofil.
 
-**VS Code:** [prüfen: die Codex-Erweiterung live prüfen. Öffne eine erzeugte Kopie, kontrolliere `/hooks`, rufe
-`$kit-uebersicht` auf und lasse die Technik die gesperrten Versuche aus „Codex-Abnahme“ durchführen. Die gebündelte
-CLI 0.162.0-alpha.2 ist kein Nachweis für die Erweiterung.]
-**Windows:** [prüfen: denselben Ablauf auf einem echten Windows-Gerät durchführen; die Schutzprogramme brauchen
-`sh` aus Git for Windows. Ein macOS-Test belegt keinen Windows-Schutz.]
+**VS Code:** noch nicht live abgenommen. Wer es nutzen will: eine erzeugte Kopie öffnen, `/hooks` kontrollieren,
+`$kit-uebersicht` aufrufen und die Technik die gesperrten Versuche aus „Codex-Abnahme“ durchführen lassen. Die gebündelte
+CLI 0.162.0-alpha.2 ist kein Nachweis für die Erweiterung.
+**Windows:** noch nicht auf einem echten Windows-Gerät abgenommen. Die Schutzprogramme brauchen `sh` aus Git for
+Windows. Ein macOS-Test belegt keinen Windows-Schutz.
 
 ### Aktualisieren
 
@@ -268,9 +268,10 @@ Updates des **Claude-Code-Plugins** sind kostenlos. So holst du die neueste Vers
 
 ```
 /plugin marketplace update service-leader-kit
+/plugin update service-leader-kit
 ```
 
-[prüfen: ob danach noch `/plugin update` oder ein Neustart nötig ist]
+Danach VS Code neu starten: Erst dann gilt die neue Version.
 
 Beim nächsten Öffnen des Ordners erkennt das Kit die neue Version und passt deinen Ordner an (fehlende Ordner
 ergänzen, Einstellungen umstellen – vorher mit Sicherungskopie). Deine Inhalte überschreibt ein Update nie. Was sich
@@ -292,8 +293,18 @@ Das Kit steht unter der **PolyForm Internal Use License 1.0.0** (`LICENSE`). Der
 - **Berater dürfen es nicht bei ihren Kunden einsetzen.**
 - Wer mehr möchte, braucht eine eigene Vereinbarung mit myTS – frag uns einfach.
 
-Maßgeblich ist der englische Lizenztext; diese Zusammenfassung ersetzt ihn nicht. [prüfen: rechtliche Prüfung der
-Lizenz nach deutschem Recht steht vor der Veröffentlichung aus]
+Maßgeblich ist der englische Lizenztext; diese Zusammenfassung ersetzt ihn nicht. Eine rechtliche Prüfung der Lizenz nach
+deutschem Recht steht noch aus.
+
+## Demo auf einem festen Tag
+
+Für eine Vorführung kann der Ordner auf einem festen Tag stehen, egal an welchem Tag du ihn zeigst. Sag:
+„Stell das Kit auf den 04.11.2026.“ Das Kit schreibt dann `demo_datum=2026-11-04` in die Einstellungen
+(`Unternehmen/.kit-config`). Ab dem nächsten Start rechnen Fälligkeiten, Routinen und alle Skripte mit diesem Tag, und
+jede Ausgabe sagt, dass ein Demo-Datum gilt. Ein ausdrücklich genanntes anderes Datum geht vor. Protokoll und Sicherung
+behalten die echte Zeit. Zurück: „Demo-Datum aus.“
+
+Unabhängig davon meldet das Kit Mails, Dateien, Vorgänge und Status-Einträge, die nach dem geltenden Datum liegen.
 
 ## Hilfe
 
@@ -304,4 +315,4 @@ Das Kit kannst du allein nutzen. Wenn du Unterstützung willst, bietet myTS zwei
 - **Kit-Begleitung:** regelmäßige Durchsprache (Lernpunkte, Freigabegrenzen, Kennzahlen), Antwort auf Fragen per
   Mail, eigene Skills für deine Abläufe und Anpassung, wenn sich deine Exporte ändern.
 
-Kontakt: [prüfen: Kontaktadresse von myTS einsetzen]
+Kontakt: über die [Issues im GitHub-Repo](https://github.com/mytechnicalservice/service-leader-kit/issues).

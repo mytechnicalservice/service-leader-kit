@@ -4,8 +4,52 @@ Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Demo-Datum:** Mit „Stell das Kit auf den 04.11.2026“ steht der Ordner für eine Vorführung auf einem festen Tag
+  (`demo_datum` in den Einstellungen, geprüft von der Einrichtung). Sitzungsstart, fällige Routinen und alle Skripte
+  rechnen dann mit diesem Tag, und jede Ausgabe sagt es. Ein ausdrücklich genanntes Datum geht vor. Protokoll und
+  Sicherung behalten die echte Zeit. Ohne die Einstellung ändert sich nichts.
+- **Warnung bei Daten nach dem Bezugsdatum:** Mails, Dateien, Vorgänge und Status-Einträge mit späterem Datum werden
+  gemeldet. Ein solcher Status-Eintrag gilt nicht mehr als „noch nicht gelaufen“.
+- **Großangebot in zwei Dateien:** ein sauberes Kundendokument und eine interne Anlage mit Quellen, Kalkulation,
+  Freigabegrenzen und dem Entwurfsvermerk. Eine neue Prüfung sperrt interne Vermerke im Kundendokument.
+- **Angebot für neue Maschinen** (`--neue-anlagen`): kein Abgleich mit dem Bestand, keine falschen Warnungen.
+- **Routinen zeigen Lücken:** `routine.py erledigt` nennt die Schritte ohne Datei im Zeitraum und merkt sie sich.
+- **Gesendet-Vermerk:** Sagst du, dass du einen Entwurf selbst gesendet hast, trägt das Kit das im Entwurf ein. Es sendet
+  weiterhin nichts.
+- **Wörtliche Zitate prüfen:** `vorgang.py zitate-pruefen` vergleicht Empfehlungen in einer Vorlage mit dem Vorgang.
+
+### Geändert
+
+- **Verlängerungs-Radar:** Liest Verlängerung und Kündigungsfrist aus dem Vertrag, zeigt die Kündigungsfrist als
+  Aktionsdatum und trennt „verlängert sich, wenn nicht gekündigt“ von „endet“. Nur was endet, zählt zum Wert im Risiko.
+- **Beispielverträge und Angebotsklausel:** keine automatische Verlängerung; die Laufzeit endet zum genannten Datum,
+  Verlängerung nur durch neue Vereinbarung. Ein schon angelegter Ordner `Beispiel/` wird nicht von selbst ersetzt.
+- **Freigabe-Queue:** Zeigt jede Prüfer-Empfehlung und markiert Abweichungen. Was wartet oder laut Entscheidungsrecht
+  bei anderen liegt, steht in einem eigenen Block und nicht mehr in der Summe.
+- **KPI-Blick:** Zeigt auch, was `kpi-ziele.md` zusätzlich definiert, und nennt, was das Kit nicht berechnen kann.
+- **Wiederholfehler:** Ohne Spalte Komponente bekommt ein Maschinentyp keine Stufe; die Anlagen stehen nach
+  Wiederholungen sortiert.
+- **Abgenommene Projekte** haben den Zustand „Vertragsstrafe offen“; die Überschrift zeigt den Vertragsmeilenstein.
+- **Wochen-Schwerpunkte:** Vertragsstrafen und Vertragsenden in den nächsten 60 Tagen und Kunden mit Termin kommen zuerst.
+- **Morgen-Briefing:** „Diese Woche fällig“ heißt jetzt, was es ist: fällig in den nächsten 7 Tagen.
+- **Wortwahl:** „Kit-Standard“ statt „in der Einrichtung noch nicht festgelegt“. Prüfschwelle und Entscheidungsrecht
+  heißen bei Kulanz verschieden. Verrechenbarkeit und Auslastung sind getrennt benannt.
+- **Schutzprogramm:** Eine Sperre nennt jetzt ihren Auslöser. Ein Zeichen `>` im Suchmuster eines lesenden Befehls
+  (`grep 'a > b' …`) zählt nicht mehr als Umleitung. Schreibsperren bleiben unverändert.
+
 ### Behoben
 
+- **DB II** steht nur noch „ohne Ziel“, wenn `kpi-ziele.md` keins nennt.
+- **Rückstand:** „älter als 14 Tage“ zählt bis zum Datenstand des Exports, nicht bis zur Runde.
+- **Stichtag** des Radars liegt nie nach dem Bezugsdatum; eine Quelle mit anderem Monat im Namen wird gemeldet.
+- **Vorgänge:** `setze` schreibt alt → neu in den Vorgang, `schliesse` leert „wartet auf“.
+- **Installed Base** gilt als Stand: Portfolio und Konzept nehmen den letzten Stand und nennen ihn.
+- **Abgleich:** schlägt fehl, solange das Dokument fehlt. Prüfung nur der Zahlen geht mit `--nur-zahlen`.
+- **Stop-Hook und Sitzungsstart:** Eine Datei mit einer Änderungszeit in der Zukunft gilt nicht mehr bei jedem Lauf als neu.
+- `--heute` geht jetzt in allen Skripten. Ersatzteil-Marge aus dem Einstandspreis. Einzahl und Mehrzahl („1 Vorgang“).
+  Stückzahl nicht mehr als EUR. Das Audit behält den Hinweis zur fehlenden Komponente. Anleitung ohne Platzhalter.
 - **Dokumente auf dem Briefkopf (T-1952):** Das Schutzprogramm sperrte Shell-Aufrufe, die einen Vorgang oder eine
   Unternehmensdatei nur lasen (`cat`, `ls`, `sed -n` …) und im selben Aufruf den Briefkopf kopierten oder Python
   starteten. Dadurch scheiterten Gesprächsvorbereitung und Entscheidungsvorlage. Lesen, dessen Ausgabe nur auf dem

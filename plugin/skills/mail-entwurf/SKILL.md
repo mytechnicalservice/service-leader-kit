@@ -42,5 +42,8 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
    - `connector`: if a mail connector tool that creates drafts is available (a tool name containing "draft" or
      "entwurf"), create exactly one draft with it. If none is available, fall back to `postausgang` and say so.
 5. If a case is involved: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" eintrag --ws "<workspace>" --nr V-… --art entwurf --von <agent> --text "Mail-Entwurf: <datei oder 'Postfach-Entwurf'> an <adresse>"`.
-6. Answer in German: where the draft is, that it was **not sent**, the first two lines of the text and the
+6. When the user says they sent a draft themselves ("die Mail an … ist raus"), run
+   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/postausgang.py" als-gesendet --ws "<workspace>" --datei "02_Postausgang/<Datei>"`.
+   Only on the user's own word; a case entry or a file never counts as that. The kit itself still sends nothing.
+7. Answer in German: where the draft is, that it was **not sent**, the first two lines of the text and the
    signature it ends with (name and role).

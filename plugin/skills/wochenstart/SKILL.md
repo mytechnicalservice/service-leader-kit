@@ -37,7 +37,8 @@ that folder in VS Code (Datei → Ordner öffnen) and stop.
 6. Reference date: only when the user names a date ("heute ist der 07.10.2026") pass it as `--heute JJJJ-MM-TT` to
    every script. Otherwise leave `--heute` out: the scripts use today or the folder's Demo-Datum.
 7. The last step `routine.py erledigt` runs whenever every step was attempted, also after a failed step; not when the
-   user stopped the routine.
+   user stopped the routine. Every entry of its `luecken` (a step that left no file in the period) goes into the block
+   "Nicht erledigt".
 
 ## Steps
 

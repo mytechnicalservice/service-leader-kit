@@ -27,6 +27,13 @@ graders:
   - name: angebot-datei
     type: file_exists
     path: "04_Angebote/Nordmetall*/*_angebot-wartungsvertrag.docx"
+  - name: interne-anlage
+    type: file_exists
+    path: "04_Angebote/Nordmetall*/*_angebot-wartungsvertrag_intern.md"
+  - name: kundenfassung-geprueft
+    type: tool_used
+    tool: Bash
+    input_match: 'vertrieb\.py(?:\\[n"]|[\s"\\])*pruefe-kundenfassung'
   - name: vorgang
     type: regex
     pattern: "typ: \"angebot\"[\\s\\S]*kunde: \"Nordmetall GmbH\"[\\s\\S]*verantwortlich: \"Max Mustermann[\\s\\S]*entscheidung: null"

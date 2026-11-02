@@ -44,7 +44,7 @@ false, show every entry of `meldungen` and stop. Remember `git_auto_moeglich`, `
 ## 4a. Re-run (settings exist)
 
 If `einstellungen` is not null, show them as a table in plain German (Ablage, Beispieldaten, Mails, Sprache,
-Wochenstart, Monatsabschluss) and ask what should change. Then call `anlegen` with **only** the changed settings.
+Wochenstart, Monatsabschluss, and Demo-Datum if set) and ask what should change. Then call `anlegen` with **only** the changed settings.
 Never re-ask the rest.
 
 ## 4b. First run: ask, in this order (one question at a time; use the question tool if available)

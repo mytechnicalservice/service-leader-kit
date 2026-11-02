@@ -30,6 +30,7 @@ SETZBAR = {"titel", "status", "kunde", "externe_nr", "verantwortlich", "faellig"
 ENTSCHEIDUNGSFELDER = {"entscheidung", "entschieden_von", "entschieden_am", "entschiedenes_dokument"}
 DATUMSFELDER = ("faellig", "erstellt", "aktualisiert", "entschieden_am")
 NR_RE = re.compile(r"^V-\d{4,}$")
+EMPFEHLUNG_RE = re.compile(r"^### \d{4}-\d{2}-\d{2} · empfehlung · ([^\n]+)\n+(.*?)(?=^### |\Z)", re.M | re.S | re.I)
 ORDNER = ("offen", "erledigt", "_zur-loeschung")
 TEXT_ENDUNGEN = {".md", ".txt", ".eml", ".csv"}
 OFFICE_ENDUNGEN = {".docx", ".pptx", ".xlsx"}
@@ -315,6 +316,29 @@ def datei_text(f: Path) -> str:
         return ""
 
 
+def cmd_zitate_pruefen(a, ws: Path) -> tuple[int, dict]:
+    """A memo quotes the reviewers word for word: the first line of each reviewer's newest recommendation must stand
+    in the document as it stands in the case."""
+    _, meta, body = load(ws, a.nr)
+    pfad = Path(a.dokument) if Path(a.dokument).is_absolute() else ws / a.dokument
+    if not pfad.is_file():
+        raise VorgangFehler(f"Dokument {a.dokument} nicht gefunden")
+    roh = datei_text(pfad)
+    if pfad.suffix in OFFICE_ENDUNGEN:
+        roh = re.sub(r"<[^>]+>", "", re.sub(r"</w:p>", " ", roh))
+    doc = " ".join(roh.split())
+    neueste: dict[str, str] = {}
+    for m in EMPFEHLUNG_RE.finditer(body):
+        neueste[m.group(1).strip()] = m.group(2).strip().splitlines()[0]
+    fehlen = [{"von": von, "wortlaut": " ".join(z.split())} for von, z in neueste.items() if " ".join(z.split()) not in doc]
+    ok = bool(neueste) and not fehlen
+    meldungen = [f"Empfehlung von {f['von']} steht nicht wörtlich im Dokument: {f['wortlaut']}" for f in fehlen]
+    if not neueste:
+        meldungen.append(f"Vorgang {meta['nr']} hat keine Empfehlung, die zu prüfen wäre.")
+    return (0 if ok or not neueste else 1), {"ok": ok or not neueste, "nr": meta["nr"], "geprueft": sorted(neueste),
+                                             "abweichend": fehlen, "meldungen": meldungen}
+
+
 def cmd_loeschen_markieren(a, ws: Path) -> tuple[int, dict]:
     p, meta, body = load(ws, a.nr)
     nr = meta["nr"]
@@ -365,11 +389,13 @@ def parser() -> JsonParser:
     add("schliesse", "nr")
     add("loeschen-markieren", "nr")
     add("pruefe")
+    add("zitate-pruefen", "nr", "dokument")
     return ap
 
 
 COMMANDS = {"neu": cmd_neu, "eintrag": cmd_eintrag, "setze": cmd_setze, "entscheide": cmd_entscheide,
-            "schliesse": cmd_schliesse, "loeschen-markieren": cmd_loeschen_markieren, "pruefe": cmd_pruefe}
+            "schliesse": cmd_schliesse, "loeschen-markieren": cmd_loeschen_markieren, "pruefe": cmd_pruefe,
+            "zitate-pruefen": cmd_zitate_pruefen}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:

@@ -11,8 +11,8 @@ proj=$(slk_slashes "$(slk_project "$payload")")
 [ -n "$cwd" ] || cwd=$proj
 ws=$(slk_ws_from "$cwd") || ws=$(slk_ws_from "$proj") || ws=$(slk_ws_below "$proj") || ws=""
 
-block() { # $1 rule id, $2 message
-  [ -n "$ws" ] && slk_log "$ws" BLOCK "$1 tool=$tool agent=${agent:-<none>}"
+block() { # $1 rule id, $2 message, $3 what triggered it (optional, for the protocol)
+  [ -n "$ws" ] && slk_log "$ws" BLOCK "$1 tool=$tool agent=${agent:-<none>}${3:+ ausloeser=$3}"
   printf 'Service Leader Kit – gesperrt: %s\n' "$2" >&2
   exit 2
 }
