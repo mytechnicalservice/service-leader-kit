@@ -2,7 +2,7 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
-## Unveröffentlicht
+## 0.3.1 – 2026-11-02
 
 ### Behoben
 
