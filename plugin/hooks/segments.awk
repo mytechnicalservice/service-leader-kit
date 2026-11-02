@@ -16,7 +16,7 @@
 # With -v ps=1 (PowerShell, cmd) a backslash is always a path separator and a backtick escapes.
 # ">&" before a digit or "-" (2>&1, >&2, 2>&-) stays in its word: it duplicates a descriptor, no file.
 # With -v marks=1 each line is led by two marks and a TAB: "s" if the command runs inside a substitution, subshell
-# or wrapped command (its output may feed another command), else "-"; then "p" if it pipes its output into the
+# or wrapped command (its output may feed another command) or behind timeout or xargs -I {}, else "-"; then "p" if it pipes its output into the
 # next command, else "-". The shell guard uses them for its read exemption (T-1952).
 BEGIN {
   n = split("sudo command exec xargs env nohup time timeout nice builtin then do else elif if while until ! { } {}", a, " ")
@@ -25,7 +25,7 @@ BEGIN {
   for (i = 1; i <= n; i++) wrapper[a[i]] = 1
   SPECIAL = " \t'\"`;&|()<>"
 }
-function reset_cmd() { verb = ""; args = ""; fed = 0; pout = 0 }
+function reset_cmd() { verb = ""; args = ""; fed = 0; pout = 0; hidden = 0 }
 function reset_word() { word = ""; inw = 0; wv = 0; ww = 0; wq = 0 }
 function addch(ch) { if (ch == "\t" || ch == "\n") ch = " "; word = word ch; inw = 1 }
 function endword(   lx, b) {
@@ -33,8 +33,9 @@ function endword(   lx, b) {
   lx = tolower(word); b = lx
   sub(/^.*\//, "", b); sub(/\.exe$/, "", b)
   if (verb == "") {
-    if (b == "" || lx ~ /^[a-z_][a-z0-9_]*=/ || word ~ /^-/ || word ~ /^[0-9.]+[smhd]?$/ || (b in skip)) {
+    if (b == "" || lx ~ /^[a-z_][a-z0-9_]*=/ || word ~ /^-/ || word ~ /^[0-9]+([.][0-9]+)?[smhd]?$/ || (b in skip)) {
       if (b == "xargs") fed = 1
+      if (b == "timeout" || b == "{}") hidden = 1
       reset_word(); return
     }
     verb = b
@@ -49,7 +50,7 @@ function flush(   line) {
   if (verb != "") {
     line = verb args
     if (fed) line = line "\t100$xargs"
-    if (marks) line = ((sp > 0 || lvl > 0) ? "s" : "-") (pout ? "p" : "-") "\t" line
+    if (marks) line = ((sp > 0 || lvl > 0 || hidden) ? "s" : "-") (pout ? "p" : "-") "\t" line
     out = out line "\n"
     reset_cmd()
   } else args = ""   # no command yet: a pending pipe/xargs feed carries over (ls |<newline> rm)

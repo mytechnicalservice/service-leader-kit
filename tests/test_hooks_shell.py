@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from hookrun import NS, PAYLOADS, bash, echt, run_hook
@@ -557,6 +559,33 @@ def test_t2164_write_routes_are_refused(shell, kit_ws, command):
 
 
 @pytest.mark.parametrize("command", [
+    # timeout and xargs -I {} must not turn a reader into one the read exemption trusts
+    "timeout 5 ls 01_Vorgaenge; cp /tmp/x 0*/offen/V-0004.md",
+    f'timeout 5 cat {V}; cp /tmp/x "$f"',
+    "timeout 5 ls 01_Vorgaenge; python3 /tmp/b.py",
+    'ls 01_Vorgaenge | xargs -I {} cat {}; cp /tmp/x "$f"',
+])
+def test_t2164_wrapped_readers_get_no_read_exemption(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2, (command, err)
+
+
+@pytest.mark.parametrize("verb", ["sort", "awk", "bash", "cp", "mv", "rm", "ls"])
+def test_t2164_many_args_do_not_outrun_the_hook(shell, kit_ws, verb):
+    # hooks.json allows 15 seconds, and a hook that is cut off does not block.
+    start = time.monotonic()
+    code, err = pre(shell, kit_ws, bash(kit_ws, f"{verb} {'a ' * 5000}"))
+    assert code == 2 and time.monotonic() - start < 15, err
+    assert regel(kit_ws).startswith("shell-zu-lang tool=Bash")
+
+
+def test_t2164_the_argument_limit_leaves_long_build_scripts_alone(shell, kit_ws):
+    body = "\n".join(f"zeile_{i} = {i} + 1  # text mit Wörtern" for i in range(2000))
+    command = f"cat > /tmp/bau.py <<'EOF'\n{body}\nEOF"
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, "")
+
+
+@pytest.mark.parametrize("command", [
     # the same commands where nothing protected is written
     "touch 03_Berichte/x.md",
     "gzip -c 03_Berichte/x.md",
@@ -578,6 +607,8 @@ def test_t2164_write_routes_are_refused(shell, kit_ws, command):
     f"cd 01_Vorgaenge/offen && cat V-0004.md 2>/dev/null",
     "find 01_Vorgaenge -iname '*.md' -exec sed -n 1p {} +",
     "find 01_Vorgaenge -name '*.md' -exec grep -l hansa {} +",
+    "find 01_Vorgaenge -name sed -iname '*.md'",
+    f"sort -to -k1 {V}",
 ])
 def test_t2164_harmless_neighbours_pass(shell, kit_ws, command):
     assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command

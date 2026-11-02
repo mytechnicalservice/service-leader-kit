@@ -61,7 +61,10 @@ Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
   Anführungszeichen), gilt nicht mehr als Lesen und wird in den geschützten Ordnern gesperrt (T-1952).
 - **Schutz der geschützten Ordner erweitert:** Gesperrt sind jetzt auch weitere Schreibwege per Shell, darunter `touch`,
   `sort -o`, Umleitungen nach einem `cd` in den Ordner und Befehle, die eine Shell aus einer Pipe oder einem Heredoc
-  liest. Lesen bleibt erlaubt.
+  liest. Lesebefehle bleiben erlaubt; wer nach einem `cd` in den Ordner umleitet oder daneben `touch` oder `gzip` aufruft,
+  wird in manchen Fällen auch beim reinen Lesen gesperrt.
+- Befehle mit sehr vielen Argumenten werden gesperrt: Ihre Prüfung konnte das Zeitlimit des Schutzprogramms überschreiten,
+  und dann griff es nicht. Abhilfe: mehrere Aufrufe.
 
 ### Bekannte Grenze
 
