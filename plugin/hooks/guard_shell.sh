@@ -187,7 +187,23 @@ seg_git_rules() {
   esac
 }
 
-# Runs the rules of mode $1 (del = delete/find rules, git = git rules) on every simple command in $segs.
+# sed/perl editing in place: the flag must be this command's own, a grep -i beside sed -n is no sed -i (T-1952). A
+# $(…) or xargs can hand this command any flag, so with one of those a -i anywhere in the command still counts.
+seg_inplace_rules() {
+  for _slk_a in "$@"; do
+    _slk_t=${_slk_a#???}
+    case "$(slk_lower "$_slk_t")" in -i*|--in-place*) block shell-geschuetzt "$schutz" ;; esac
+    case "$_slk_t" in
+      *'$sub'*) ;;
+      '$xargs') case "$nq" in *xargs*) ;; *) continue ;; esac ;;   # a plain pipe only feeds stdin, never flags
+      *) continue ;;
+    esac
+    { has_flag '-i*' || has_flag '--in-place*'; } && block shell-geschuetzt "$schutz"
+  done
+  return 0
+}
+
+# Runs the rules of mode $1 (del = delete/find rules, git = git rules, inplace = sed/perl flags) on every simple command in $segs.
 check_segs() {
   _slk_mode=$1; _slk_ecwd=$cwd
   _slk_oifs=$IFS
@@ -201,6 +217,8 @@ check_segs() {
     _slk_vb=$1; shift
     if [ "$_slk_mode" = git ]; then
       [ "$_slk_vb" = git ] && seg_git_rules "$@"
+    elif [ "$_slk_mode" = inplace ]; then
+      case "$_slk_vb" in sed|perl) seg_inplace_rules "$@" ;; esac
     elif [ "$_slk_vb" = find ]; then
       seg_find_rules "$@"
     elif in_list "$_slk_vb" "cd chdir pushd set-location sl push-location"; then
@@ -288,7 +306,7 @@ lese_args() {
     _slk_skr=1
     for _slk_a in "$@"; do
       case "$(slk_lower "${_slk_a#???}")" in -i*|--in-place*|--expression*|--file*) return 0 ;; esac
-      case "${_slk_a#???}" in -e*|-f*|-*[ef]) return 0 ;; esac
+      case "${_slk_a#???}" in -e*|-f*|-*[ef]|*'$sub'*|'$xargs') return 0 ;; esac
     done
   fi
   for _slk_a in "$@"; do
@@ -370,7 +388,7 @@ erster_verb() { for v in "$@"; do case "$verbs" in *" $v "*) printf '%s' "$v"; r
 if [ "$named" = 1 ]; then
   # shellcheck disable=SC2086
   _slk_ausl=$(erster_verb $DEL $MOVE $COPY $INLINE) && gesperrt "Befehl $_slk_ausl"
-  has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && gesperrt "Ändern in der Datei (-i)"
+  has_verb sed perl && check_segs inplace
   has_verb git && has_word rm mv checkout restore reset stash && gesperrt "Git-Befehl, der Dateien ändert"
   has_verb uv && has_word python python3 && has_word -c && gesperrt "Inline-Code (uv run python -c)"
   printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&

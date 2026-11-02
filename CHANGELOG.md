@@ -57,6 +57,9 @@ Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
   Ordner und Inline-Code, der sie nennt, bleiben gesperrt; die Dokument-Skills sagen das nun ausdrücklich.
 - Eine Umleitung hinter `cp` (`2>/dev/null`) galt fälschlich als Ziel der Kopie; so ließ sich in
   `Unternehmen/vorlagen/` schreiben. Das ist jetzt gesperrt.
+- **Vorgänge lesen mit `sed -n` und `grep -i` (T-1952):** Das `-i` von `grep` galt als `sed -i`, wenn beide im selben
+  Aufruf standen. Die Schalter zählen jetzt je Einzelbefehl. Bekommt `sed` Schalter aus `$(…)` oder `xargs`, zählt jedes
+  `-i` im Aufruf weiter, und diese Form gilt nicht mehr als Lesen.
 
 ## 0.3.0 – 2026-10-08
 

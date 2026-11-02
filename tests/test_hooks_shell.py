@@ -500,3 +500,70 @@ def test_powershell_read_beside_inline_code_passes(shell, kit_ws):
 def test_reading_inside_a_protected_folder_beside_inline_code_stays_blocked(shell, kit_ws):
     p = bash(kit_ws, "cat profil.md; python3 -c \"print(1)\"", cwd=kit_ws / "Unternehmen")
     assert pre(shell, kit_ws, p)[0] == 2
+
+
+# T-1952, second finding: a flag belongs to its own simple command. grep -i beside sed -n is no sed -i.
+V = "01_Vorgaenge/offen/V-0004.md"
+
+
+def test_demo_overview_of_all_cases_passes(shell, kit_ws):
+    # The call refused on 2026-11-02: a loop over the cases (sed -n) plus grep -i, verbatim.
+    assert pre(shell, kit_ws, bash(kit_ws, demo("alle-vorgaenge", kit_ws))) == (0, "")
+
+
+@pytest.mark.parametrize("command", [
+    f"sed -n 1p {V}; grep -i hansa {V}",
+    # the loop names the folder outside any reading command, so the read exemption cannot hide the flag rule
+    'for f in 01_Vorgaenge/offen/V-*.md; do sed -n 1p "$f"; done; grep -i hansa 03_Berichte/x.md',
+    'for f in 01_Vorgaenge/offen/V-*.md; do grep -i hansa "$f" | sed -n 1p; done',
+    'for f in 01_Vorgaenge/offen/V-*.md; do sed -n "s/^titel: //p" "$f"; done; ls -I x 03_Berichte',
+    f'bash -c "sed -n 1p {V}; grep -i hansa {V}"',
+])
+def test_a_flag_of_another_command_is_not_an_in_place_edit(shell, kit_ws, command):
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
+
+
+@pytest.mark.parametrize("command", [
+    # sed and perl editing in place: their own flag, in every form the rule knows
+    f"sed -i '' s/a/b/ {V}",
+    f"sed -i.bak s/a/b/ {V}",
+    f"sed --in-place=.bak s/a/b/ {V}",
+    f'sed "-i" s/a/b/ {V}',
+    f"perl -i -pe s/a/b/ {V}",
+    f"perl -pi -e s/a/b/ {V}",
+    # ... wrapped, or in a substitution, loop or group
+    f'bash -c "sed -i s/a/b/ {V}"',
+    f"sh -c 'sed -i s/a/b/ {V}'",
+    f'eval "sed -i s/a/b/ {V}"',
+    f'bash -c "perl -i -pe s/a/b/ {V}"',
+    f'x=$(sed -i s/a/b/ {V})',
+    f"x=`sed -i s/a/b/ {V}`",
+    f"{{ sed -i s/a/b/ {V}; }}",
+    'for f in 01_Vorgaenge/offen/V-*.md; do sed -i s/a/b/ "$f"; done',
+    # ... beside the commands that must pass
+    f"sed -n 1p {V}; sed -i s/a/b/ {V}",
+    f"grep -i hansa {V}; sed -i s/a/b/ {V}",
+    f"sed -n 1p {V} && grep -i hansa {V} && sed -i s/a/b/ {V}",
+    # a flag that arrives from elsewhere cannot be attributed to a command, so any -i still counts
+    f"sed $(echo -i) s/a/b/ {V}",
+    f"echo -i | xargs sed s/a/b/ {V}",
+    # inline code and heredocs on the protected folders, read or write
+    f"python3 -c \"print(open('{V}').read())\"",
+    f"sed -n 1p {V}; python3 -c \"print(open('{V}').read())\"",
+    f"uv run python -c \"print(open('{V}').read())\"",
+    f"python3 - <<'EOF'\nprint(open('{V}').read())\nEOF",
+    f"grep -i hansa {V}; python3 - <<'EOF'\nprint(open('{V}').read())\nEOF",
+    f"cat <<EOF > {V}\nleer\nEOF",
+    # deletes, moves and redirects
+    f"rm {V}",
+    f"sed -n 1p {V}; rm {V}",
+    f"grep -i hansa {V}; mv {V} /tmp/x.md",
+    f"sed -n 1p {V}; grep -i hansa {V}; echo x > {V}",
+    f"grep -i hansa 03_Berichte/x.md >> {V}",
+    f"sed -n 1p 03_Berichte/x.md > {V}",
+    f"grep -i hansa {V} | tee {V}",
+    f"cp /tmp/x.md {V}",
+])
+def test_per_command_flags_keep_every_write_refused(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=Bash"), (command, err)
