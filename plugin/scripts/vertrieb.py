@@ -20,7 +20,7 @@ from slk_common import JsonParser, anzahl_text, demo_hinweis, run, zahl
 from vorgang import VorgangFehler, all_cases
 
 BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
-STANDARD = "Standardannahme des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 
 # Kit standards (Plan 4d, domain defaults 1–22). Every output names the ones it used.
 HORIZONT_MONATE = 6

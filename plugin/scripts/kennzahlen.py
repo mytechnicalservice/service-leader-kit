@@ -18,7 +18,7 @@ from slk_common import JsonParser, run, zahl
 
 PLUGIN = Path(__file__).resolve().parents[1]
 VORLAGEN = PLUGIN / "vorlagen" / "import"
-STANDARD_HINWEIS = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD_HINWEIS = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
 MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
           "November", "Dezember"]

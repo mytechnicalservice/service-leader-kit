@@ -38,7 +38,7 @@ RANG = {"gruen": 0, "gelb": 1, "rot": 2}
 ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
 VERBOTEN = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
-STANDARD_HINWEIS = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD_HINWEIS = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 KEINE_SCHAETZUNG = "Das Kit schätzt keine Werte: bitte die Angaben in projekt.md ergänzen oder korrigieren."
 
 
@@ -215,8 +215,18 @@ def termin(meta: dict, quelle: str, s: dict) -> dict:
     w = kennzahlen.wert("Terminverzug", tage[name], [f"{quelle}: meilensteine/{name}"],
                         formel="(Ist, sonst Prognose) − Plantermin; größter Verzug aller Meilensteine", einheit="Tage")
     ms = meta.get("vertragsstrafe_meilenstein")
+    abgenommen = meta.get("status") == "abgenommen"
     if ms is not None and tage[ms] > 0:
-        return {"ampel": "rot", "verzug": w, "grund": f"Vertragsstrafe droht: {ms} {anzahl_text(tage[ms], 'Tage')} nach Plan"}
+        # The headline is the milestone the penalty runs on, not the largest delay of any milestone.
+        w = kennzahlen.wert("Terminverzug", tage[ms], [f"{quelle}: meilensteine/{ms}"],
+                            formel="(Ist, sonst Prognose) − Plantermin; Meilenstein der Vertragsstrafe", einheit="Tage")
+        spaet = f"{ms} {anzahl_text(tage[ms], 'Tage')} nach Plan"
+        if abgenommen:
+            return {"ampel": "rot", "zustand": "Vertragsstrafe offen", "verzug": w,
+                    "grund": f"Vertragsstrafe offen: {spaet}; das Projekt ist abgenommen"}
+        return {"ampel": "rot", "verzug": w, "grund": f"Vertragsstrafe droht: {spaet}"}
+    if abgenommen:
+        return {"ampel": "gruen", "zustand": "abgenommen", "verzug": w, "grund": "abgenommen, keine Vertragsstrafe offen"}
     t = tage[name]
     ampel = "rot" if t >= s["termin_rot_ab_tage"] else "gelb" if t >= s["termin_gelb_ab_tage"] else "gruen"
     return {"ampel": ampel, "verzug": w, "grund": f"{name}: {anzahl_text(t, 'Tage')} Verzug" if t else "alle Meilensteine im Plan"}

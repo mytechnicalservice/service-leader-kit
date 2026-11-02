@@ -53,7 +53,8 @@ exactly what is missing (its name and the command that failed).
    - <datei of each project>; Formeln: Terminverzug, Kostenabweichung (formel of the values)
    - Schwellen: Termin Gelb ab <termin_gelb_ab_tage>, Rot ab <termin_rot_ab_tage> Tagen; Kosten Gelb ab
      <kosten_gelb_ab_prozent> %, Rot ab <kosten_rot_ab_prozent> %. If `schwellen.standard`: add
-     "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt".
+     "Kit-Standard – im Unternehmen nicht eigens festgelegt". If `termin.zustand` is set (accepted project), show it
+     instead of a schedule outlook: "Vertragsstrafe offen" is a claim to settle, not a penalty that threatens.
    ```
 
    Grau cells read `Grau – Daten fehlen`. Rows keep the script's order (red first). Leave out empty sections.

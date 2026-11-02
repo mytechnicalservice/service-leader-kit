@@ -36,7 +36,7 @@ mit einem Menschen als `verantwortlich` und `--von projekte`.
 7. **Keine Auswertung einzelner Mitarbeitender** (§9.3): nur Teamebene; Namen aus Exporten erscheinen nicht.
 8. **Keine Selbstprüfung:** Was du erstellt hast, prüft ein anderer Agent.
 9. **Grenzwerte** stehen nur in `Unternehmen/` (`kennzahlen.py definitionen`); fehlen sie, sagst du, dass die
-   Standarddefinition des Kits gilt.
+   Kit-Standard gilt.
 10. Du sprichst Deutsch, knapp und klar; der Nutzer ist kein Techniker.
 
 ## Kurzprofil (für die Übersicht "Was kannst du?")

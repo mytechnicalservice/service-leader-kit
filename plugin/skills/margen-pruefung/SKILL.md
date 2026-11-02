@@ -23,7 +23,7 @@ The deal margin is **DB I** = Netto − all direct costs of the deal: material, 
 the full cost rate (Vollkostensatz from `personal:` in `ergebnisrechnung.md`, else the kit standard 85.000 EUR /
 1.600 h = 53,13 EUR/h, marked as kit standard) – DB I includes service personnel (D19). The target is "Ziel DB I in %"
 from the "DB I-Marge" in `kpi-ziele.md`; while the company has set none, it is the kit standard 35 % and you say
-"Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt" – never call it the company's target.
+"Kit-Standard – im Unternehmen nicht eigens festgelegt" – never call it the company's target.
 
 1. Get list price, discount and cost from the user or the calculation file the case names (cite the file). If a value
    is missing or two sources disagree, ask; never average.

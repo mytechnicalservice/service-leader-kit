@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = ["openpyxl==3.1.5"]
 # ///
 """Routine status (decision D11). `erledigt` records that a routine ran, in Unternehmen/.kit-status, in exactly the
 format hooks/faellig.sh reads; `stand` says which routines are due, by the same rules as faellig.sh.
@@ -112,11 +112,11 @@ def letzter_monat(ws: Path, vorlage: str) -> str | None:
     return monate[-1] if monate else None
 
 
-def prozent_ziel(defs: dict, name: str) -> float | None:
-    """Target of a KPI of the same name in kpi-ziele.md, only when it is a percentage: a yearly EUR target is never
+def prozent_ziel(defs: dict, name: str, einheit: str = "%") -> float | None:
+    """Target of a KPI of the same name in kpi-ziele.md, only in the value's own unit: a yearly EUR target is never
     compared with one month (Plan 5 Review Focus 4)."""
     for k in defs["kpi-ziele"].get("kennzahlen") or []:
-        if (str(k.get("name", "")).strip().casefold() == name.casefold() and str(k.get("einheit", "")).strip() == "%"
+        if (str(k.get("name", "")).strip().casefold() == name.casefold() and str(k.get("einheit", "")).strip() == einheit
                 and k.get("ziel") not in (None, "")):
             return float(zahl(k["ziel"]))
     return None
@@ -124,11 +124,12 @@ def prozent_ziel(defs: dict, name: str) -> float | None:
 
 def mit_anzeige(w: dict, defs: dict) -> dict:
     prozent = w["einheit"] == "%"
-    ziel = prozent_ziel(defs, w["name"]) if prozent else None
+    ziel = prozent_ziel(defs, w["name"], w["einheit"]) if w["einheit"] in ("%", "Tage") else None
     # D19: the kit's standard KPI list carries targets (DB I-Marge 35 %) – never shown as the company's own target.
     std = "kennzahlen" in (defs["kpi-ziele"].get("standard_felder") or [])
-    return w | {"anzeige": f"{kennzahlen.deutsch(w['betrag'], 1 if prozent else 0)} {'%' if prozent else einheit_zu(w['betrag'], w['einheit'])}",
-                "ziel": ziel, "ziel_anzeige": None if ziel is None else f"{kennzahlen.deutsch(ziel, 1)} %",
+    stellen = 1 if w["einheit"] in ("%", "Tage") else 0
+    return w | {"anzeige": f"{kennzahlen.deutsch(w['betrag'], stellen)} {'%' if prozent else einheit_zu(w['betrag'], w['einheit'])}",
+                "ziel": ziel, "ziel_anzeige": None if ziel is None else f"{kennzahlen.deutsch(ziel, 1)} {w['einheit']}",
                 "ziel_quelle": None if ziel is None else kennzahlen.STANDARD_HINWEIS if std
                 else "Unternehmen/kpi-ziele.md"}
 
@@ -196,11 +197,66 @@ def kpi_blick(ws: Path, monat: str | None) -> dict:
                                      f"Anlagen mit Vertrag = ja / alle Anlagen × 100 (Stand "
                                      f"{kennzahlen.monatsname(stand)})", "%"))
 
+    def marge(kpi: str, feld: str) -> None:
+        import finanzen  # only here: its imports are not needed for the rest of this script
+
+        try:
+            r = finanzen.rechnung(ws, [monat], finanzen.definitionen(ws), [])
+        except finanzen.FinanzFehler as exc:
+            fehlt.append(f"{kpi}: {exc}")
+            return
+        db, u = r["ist"][feld], r["klassen"]["ist"]["umsatz"]
+        if db and u and u["betrag"]:
+            werte.append(kennzahlen.wert(kpi, db["betrag"] / u["betrag"] * 100, list(dict.fromkeys(db["quelle"] + u["quelle"])),
+                                         f"{'DB I' if feld == 'db1' else 'DB II'} / Serviceumsatz × 100", "%"))
+        else:
+            fehlt.append(f"{kpi} {name}: nicht berechenbar (Plan oder Positionen fehlen).")
+
+    def verrechenbarkeit(kpi: str) -> None:
+        std = kennzahlen.summe(kennzahlen.lade(ws, "auftraege", [monat]), "Stunden", "Auftragsstunden")
+        ist = kennzahlen.summe(kennzahlen.lade(ws, "kapazitaet", [monat]), "Ist_Stunden", "Ist-Stunden")
+        if ist["betrag"]:
+            werte.append(kennzahlen.wert(kpi, std["betrag"] / ist["betrag"] * 100, std["quelle"] + ist["quelle"],
+                                         "Auftragsstunden / Ist_Stunden × 100, alle Teams zusammen", "%"))
+
+    def durchlaufzeit(kpi: str) -> None:
+        tage, zeilen = [], []
+        for z in kennzahlen.lade(ws, "auftraege", [monat]):
+            try:
+                tage.append((dt.date.fromisoformat(str(z.get("Abschluss"))[:10]) - dt.date.fromisoformat(str(z.get("Eingang"))[:10])).days)
+                zeilen.append(z)
+            except ValueError:
+                continue
+        if not tage:
+            fehlt.append(f"{kpi} {name}: keine Aufträge mit Eingang und Abschluss.")
+            return
+        werte.append(kennzahlen.wert(kpi, sum(tage) / len(tage), _quelle(zeilen),
+                                     "Mittelwert (Abschluss − Eingang) in Tagen", "Tage"))
+
     for teil in (umsatz, lieferfaehigkeit, auslastung, vertragsquote):
         try:
             teil()
         except kennzahlen.KennzahlFehler as exc:
             fehlt.append(str(exc))
+    # The company's own list (kpi-ziele.md) on top of the four: what it defines is shown or named as not computable.
+    for k in defs["kpi-ziele"].get("kennzahlen") or []:
+        kpi = str(k.get("name", "")).strip() if isinstance(k, dict) else ""
+        form = re.sub(r"[^a-zäöüß0-9]+", " ", kpi.casefold()).strip()
+        if not kpi or form.startswith(("serviceumsatz", "umsatz", "lieferf", "auslastung", "vertragsquote")):
+            continue
+        try:
+            if re.match(r"(db|deckungsbeitrag) (i|1)\b", form):
+                marge(kpi, "db1")
+            elif re.match(r"(db|deckungsbeitrag) (ii|2)\b", form):
+                marge(kpi, "db2")
+            elif form.startswith("verrechenbar"):
+                verrechenbarkeit(kpi)
+            elif form.startswith("durchlaufzeit"):
+                durchlaufzeit(kpi)
+            else:
+                fehlt.append(f"{kpi}: steht in kpi-ziele.md, aber das Kit kann sie noch nicht berechnen.")
+        except kennzahlen.KennzahlFehler as exc:
+            fehlt.append(f"{kpi}: {exc}")
     return {"ok": True, "monat": monat, "kennzeichnung": kennzahlen.datenquelle(ws)["kennzeichnung"],
             "hinweis": defs["hinweis"], "kennzahlen": [mit_anzeige(w, defs) for w in werte], "fehlt": fehlt,
             "meldungen": list(fehlt)}

@@ -95,7 +95,7 @@ def test_scaffolds_produce_the_graded_numbers(tmp_path):
     assert any(t["datei"].endswith("mail-preisanfrage.eml") for t in out["auffaellige_anweisungen"])
     ws = baue("workflow-reklamation")
     out = qr.reklamation(ws, "V-0001", ursache="anders")
-    assert out["an_finanzen"] and "Freigabegrenze von 300 EUR" in out["empfehlung"]
+    assert out["an_finanzen"] and "Prüfschwelle von 300 EUR" in out["empfehlung"]
     ws = baue("audit-vorbereitung-sauber")
     assert qr.audit_vorbereitung(ws, qr.dt.date(2026, 10, 7))["werte"][2]["betrag"] == ERWARTET["audit_nachweise_sauber"]
     ws = baue("audit-vorbereitung-unordentlich")

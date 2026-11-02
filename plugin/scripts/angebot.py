@@ -20,9 +20,9 @@ from openpyxl import Workbook, load_workbook
 
 import arbeitsordner as ao
 from kennzahlen import KennzahlFehler, datenquelle, definitionen, deutsch, lade, summe, wert
-from slk_common import JsonParser, csv_sicher, run, zahl
+from slk_common import JsonParser, anzahl_text, csv_sicher, merke_hinweis, run, zahl
 
-STANDARD_HINWEIS = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD_HINWEIS = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
 SPALTEN = ["Artikelnr", "Bezeichnung", "Kategorie", "Einheit", "Preis_EUR", "Gueltig_ab", "Bemerkung"]
 PFLICHT = SPALTEN[:6]
@@ -222,7 +222,7 @@ def schreibe_liste(ziel: Path, zeilen, ergebnis, jahr: int, grundlage: str, anna
         ae.append([csv_sicher(r["artikelnr"]), csv_sicher(r["bezeichnung"]), csv_sicher(r["kategorie"]), r["alt"],
                    r["neu"], r["aenderung_prozent"], r["status"], r["grund"], r["quelle"]])
     hi = wb.create_sheet("Hinweis")
-    hi.append(["Entwurf – gilt erst nach Freigabe (Vorgang in 01_Vorgaenge)."])
+    hi.append(["Entwurf – gilt erst nach Freigabe. Den Vorgang dazu legt das Kit erst an, wenn du zustimmst."])
     hi.append(["Grundlage", grundlage])
     for k, v in annahmen.items():
         hi.append([k, v])
@@ -353,6 +353,32 @@ def vertraege(basis: Path, stichtag: dt.date) -> tuple[list[dict], list[str]]:
     return gefunden, hinweise
 
 
+def installed_base_stand(basis: Path, bis: str, hinweise: list[str]) -> list[dict]:
+    """The base is a snapshot, not a monthly series: the newest one at or before the period, or, if there is none, the
+    oldest later one. A snapshot of another month is named."""
+    monate = sorted(m.group(1) for p in (basis / "07_Daten").glob("installed_base_*.csv")
+                    if (m := re.fullmatch(r"installed_base_(\d{4}-\d{2})", p.stem)))
+    passend = [m for m in monate if m <= bis] or monate
+    if not passend:
+        return lade(basis, "installed_base", [bis])  # names what is missing, in kennzahlen's words
+    stand = passend[-1] if passend[-1] <= bis else passend[0]
+    if stand != bis:
+        hinweise.append(f"Installed Base: genutzt ist der Stand {stand}, für {bis} gibt es keinen eigenen.")
+    return lade(basis, "installed_base", [stand])
+
+
+def teile_kosten(teile: list[dict], hinweise: list[str]) -> dict | None:
+    """Parts cost from Einstandspreis_EUR when every row has one; a partial sum would overstate the margin."""
+    ohne = [z for z in teile if str(z.get("Einstandspreis_EUR") or "").strip() == ""]
+    if len(ohne) == len(teile):
+        return None
+    if ohne:
+        hinweise.append(f"Ersatzteile: {anzahl_text(len(ohne), 'Zeilen', 'Zeile')} ohne Einstandspreis – keine Marge berechnet.")
+        return None
+    return w("Kosten Ersatzteile", round(sum(zahl(z["Menge"]) * zahl(z["Einstandspreis_EUR"]) for z in teile), 2),
+             quelle_von(teile), "Σ Menge × Einstandspreis_EUR")
+
+
 def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
     alle = monate(bis, 12)
     h1, h2 = set(alle[:6]), set(alle[6:])
@@ -366,7 +392,8 @@ def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
                                 summe_von(im_zeitraum(zz, "Eingang", h1), "Umsatz_EUR", f"Umsatz {art} 1. Halbjahr"),
                                 summe_von(im_zeitraum(zz, "Eingang", h2), "Umsatz_EUR", f"Umsatz {art} 2. Halbjahr")))
     if teile:
-        produkte.append(produkt("Ersatzteile", "Ersatzteile", teile_umsatz(teile, "Umsatz Ersatzteile"), None,
+        produkte.append(produkt("Ersatzteile", "Ersatzteile", teile_umsatz(teile, "Umsatz Ersatzteile"),
+                                teile_kosten(teile, hinweise),
                                 teile_umsatz(im_zeitraum(teile, "Datum", h1), "Umsatz Ersatzteile 1. Halbjahr"),
                                 teile_umsatz(im_zeitraum(teile, "Datum", h2), "Umsatz Ersatzteile 2. Halbjahr")))
     gesamt = round(sum(p["umsatz"]["betrag"] for p in produkte), 2)
@@ -391,7 +418,7 @@ def portfolio(ws: Path, basis: Path, bis: str, heute: str) -> dict:
         hinweise.append("Keine laufenden Wartungsverträge gefunden (06_Kunden/<Kunde>/vertrag.md) – "
                         "Wartungsverträge fehlen im Portfolio")
     try:
-        ib = lade(basis, "installed_base", [bis])
+        ib = installed_base_stand(basis, bis, hinweise)
         mit = [z for z in ib if str(z.get("Vertrag")).strip() == "ja"]
         quote = prozent_wert("Vertragsdeckung Installed Base", len(mit), len(ib), quelle_von(ib),
                              "Anlagen mit Vertrag ÷ alle Anlagen")
@@ -450,7 +477,10 @@ def konzept(ws, basis, name, bis, stufen_texte, maschinentypen, kostensatz, heut
     alle = monate(bis, 12)
     st = stufen(stufen_texte)
     ziel, ziel_quelle = zielmarge(ws)
-    ib = lade(basis, "installed_base", [bis])
+    stand_hinweise: list[str] = []
+    ib = installed_base_stand(basis, bis, stand_hinweise)
+    for hinweis in stand_hinweise:
+        merke_hinweis(hinweis)
     typen = {t.strip() for t in maschinentypen}
     kand = [z for z in ib if str(z.get("Vertrag")).strip() == "nein"
             and (not typen or str(z.get("Maschinentyp")).strip() in typen)]

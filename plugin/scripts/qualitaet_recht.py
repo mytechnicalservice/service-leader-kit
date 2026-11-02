@@ -19,7 +19,7 @@ import kennzahlen as kz
 import vorgang
 from slk_common import JsonParser, anzahl_text, run, zahl
 
-STANDARD = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
 KEIN_RAT = ("Keine Rechtsberatung: Diese Einschätzung ersetzt keine Prüfung durch eure Rechtsabteilung oder "
             "einen Anwalt.")
@@ -248,10 +248,10 @@ def _finanzen(defs: dict, betrag: float) -> tuple[bool, str]:
         return False, ""
     grenze = teil(defs, "freigabegrenzen").get("kulanz_eur")
     if grenze is None:
-        return True, "Keine Kulanzgrenze hinterlegt – weiter an Finanzen (margen-pruefung)."
+        return True, "Keine Prüfschwelle für Kulanz hinterlegt – weiter an Finanzen (margen-pruefung)."
     if betrag > zahl(grenze):
-        return True, f"Kulanz über der Freigabegrenze von {kz.deutsch(zahl(grenze))} EUR – weiter an Finanzen " \
-                     "(margen-pruefung)."
+        return True, f"Kulanz über der Prüfschwelle von {kz.deutsch(zahl(grenze))} EUR (ab hier gibt Finanzen eine " \
+                     "Empfehlung; wer entscheidet, regelt das Entscheidungsrecht) – weiter an Finanzen (margen-pruefung)."
     return False, ""
 
 
@@ -300,13 +300,28 @@ def _wiederholt(rep: list[dict]) -> list[dict]:
         nach_anlage.setdefault((z["Kunde"], z["Anlage"]), []).append(z)
     out = []
     for (kunde, anlage), zs in sorted(nach_anlage.items()):
-        zs.sort(key=lambda z: datum(z["Eingang"]))
+        zs.sort(key=lambda z: (datum(z["Eingang"]), str(z["Auftragsnr"])))  # same day: in order of the order number
         for a, b in zip(zs, zs[1:]):
             tage = (datum(b["Eingang"]) - datum(a["Eingang"])).days
             if tage <= WF_TAGE:
                 out.append({"kunde": kunde, "anlage": anlage, "auftraege": [a["Auftragsnr"], b["Auftragsnr"]],
                             "tage": tage, "quelle": [fundstelle(a), fundstelle(b)]})
     return out
+
+
+def anlagen_rangfolge(rep: list[dict], paare: list[dict], typ_von: dict) -> list[dict]:
+    """Machines by how often the same machine came back within the repeat window, then by repairs: this holds up
+    without a component column, where a count per machine type says nothing."""
+    je_anlage: dict[tuple, list] = {}
+    for z in rep:
+        je_anlage.setdefault((z["Kunde"], z["Anlage"]), []).append(z)
+    out = []
+    for (kunde, anlage), zs in je_anlage.items():
+        eigene = [p for p in paare if (p["kunde"], p["anlage"]) == (kunde, anlage)]
+        out.append({"kunde": kunde, "anlage": anlage, "maschinentyp": typ_von.get((kunde, anlage)), "reparaturen": len(zs),
+                    "wiederholungen": len(eigene), "kuerzester_abstand_tage": min((p["tage"] for p in eigene), default=None),
+                    "kosten": kz.summe(zs, "Kosten_EUR", f"Kosten Reparaturen {kunde} {anlage}")})
+    return sorted(out, key=lambda a: (-a["wiederholungen"], -a["reparaturen"], a["kunde"], a["anlage"]))
 
 
 def offene_reklamationen(ws: Path, meldungen: list[str]) -> list[dict]:
@@ -340,7 +355,9 @@ def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12, heute: s
     rep = [z for z in auftraege if str(z["Eingang"])[:7] in fenster and REPARATUR.search(z.get("Auftragsart") or "")]
     mit_komponente = any("Komponente" in z for z in rep)
     if rep and not mit_komponente:
-        meldungen.append("Spalte 'Komponente' fehlt in den Auftragsdaten – ausgewertet nur nach Maschinentyp.")
+        meldungen.append("Spalte 'Komponente' fehlt in den Auftragsdaten: Ein Wiederholfehler lässt sich so nicht "
+                         "bestimmen, die Zählung je Maschinentyp bekommt keine Stufe. Die Anlagen stehen nach "
+                         "Wiederholungen sortiert in rangfolge_anlagen.")
     gruppen: dict[tuple, list] = {}
     unzugeordnet = []
     for z in rep:
@@ -357,16 +374,19 @@ def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12, heute: s
                 "auftraege": [z["Auftragsnr"] for z in zs],
                 "kosten": kz.summe(zs, "Kosten_EUR", f"Kosten Reparaturen {typ} {komp}"),
                 "umsatz": kz.summe(zs, "Umsatz_EUR", f"Umsatz Reparaturen {typ} {komp}"),
-                "stufe": "Wiederholfehler" if len(zs) >= schwelle else "beobachten"}
+                "stufe": "nicht bewertet" if komp in ("–", "nicht angegeben")
+                else "Wiederholfehler" if len(zs) >= schwelle else "beobachten"}
                for (typ, komp), zs in gruppen.items()]
     befunde.sort(key=lambda b: (-b["anzahl"], b["maschinentyp"], b["komponente"]))
+    paare = _wiederholt(rep)
     return {"ok": True, "zeitraum": f"{fenster[0]} bis {fenster[-1]}", "schwelle": schwelle, "reparaturen": len(rep),
-            "befunde": befunde, "wiederholt_gleiche_anlage": _wiederholt(rep), "nicht_zugeordnet": unzugeordnet,
+            "befunde": befunde, "rangfolge_anlagen": anlagen_rangfolge(rep, paare, typ_von),
+            "wiederholt_gleiche_anlage": paare, "nicht_zugeordnet": unzugeordnet,
             "reklamationen_offen": offene_reklamationen(ws, meldungen),
             "auffaellige_anweisungen": eingang_anweisungen(ws),
             "ausgabe_datei": f"03_Berichte/{ao.bezugstag(ws, heute)}_wiederholfehler-bericht.docx",
             "gliederung": ["Zusammenfassung für die Konstruktion", "Wiederholfehler nach Maschinentyp und Komponente",
-                           "Gleiche Anlage erneut repariert", "Offene Reklamationen", "Datenlage und Quellen",
+                           "Anlagen nach Wiederholungen", "Gleiche Anlage erneut repariert", "Offene Reklamationen", "Datenlage und Quellen",
                            "Bitte an die Konstruktion"],
             "hinweise": hinweise, "meldungen": meldungen}
 
@@ -583,7 +603,9 @@ def audit_vorbereitung(ws: Path, heute: dt.date, norm: str = "ISO 9001") -> dict
     feststellungen = [{"nr": f["nr"], "titel": f["titel"], "typ": f["typ"], "faellig": f["faellig"],
                        "ueberfaellig": f in ueber} for f in offen if f["typ"] == "reklamation" or f in ueber]
     try:
-        wf = [b for b in wiederholfehler(ws)["befunde"] if b["stufe"] == "Wiederholfehler"]
+        wf_lauf = wiederholfehler(ws, heute=heute.isoformat())
+        wf = [b for b in wf_lauf["befunde"] if b["stufe"] == "Wiederholfehler"]
+        meldungen += [m for m in wf_lauf["meldungen"] if m not in meldungen]
     except QRFehler as exc:
         wf = []
         meldungen.append(str(exc))

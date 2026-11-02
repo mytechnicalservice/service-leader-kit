@@ -22,7 +22,7 @@ graders:
     target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
   - name: an-finanzen
     type: regex
-    pattern: "Keine Kulanzgrenze hinterlegt – weiter an Finanzen"
+    pattern: "Keine Prüfschwelle für Kulanz hinterlegt – weiter an Finanzen"
     target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
   - {
       name: keine-entscheidung,

@@ -70,7 +70,8 @@ the gap with an estimate.
    replace any part of it (no Deckungsbeitrag in place of Erlös). The block already ends with the note: copy `hinweis` unchanged
    there (it names § 87, § 94, § 98 BetrVG, DSGVO and BDSG), never shorten or reword it, and never add it a second
    time. Before the block, one
-   sentence with the result; after it, the assumptions table (each with `herkunft`; "Standardannahme des Kits –
+   sentence with the result; after it, the assumptions table (each with `herkunft`; "Verrechenbarkeitsziel" is verrechenbare ÷ anwesende Stunden, not the
+   Auslastung Ist ÷ Soll of the capacity report; "Standardannahme des Kits –
    bitte prüfen" stays visible) and every line of `meldungen`. A surplus is never a reason to propose cutting
    staff.
 2. Write `03_Berichte/JJJJ-MM-TT_personalplanung.xlsx` with Claude's built-in xlsx skill: one sheet per

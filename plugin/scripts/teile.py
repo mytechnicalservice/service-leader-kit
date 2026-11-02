@@ -22,7 +22,7 @@ MONAT_RE = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
 MONATSNAMEN = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
                "November", "Dezember"]
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
-STANDARD = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 TREND_SCHWELLE = 5.0
 TOP_N = 10
 ABC_GRENZEN = (80.0, 95.0)
@@ -230,7 +230,7 @@ def review(ws: Path, bis: str | None = None) -> dict:
         meldungen.append(f"Ziel Lieferbereitschaft {kz.deutsch(lb['ziel_prozent'], 1)} %: {STANDARD}")
     return {"ok": True, "beispiel": q["beispiel"],
             "zeitraum": {"von": monate[0], "bis": bis, "monate_vorhanden": len(je_monat), "fehlende_monate": fehlend},
-            "umsatz": gesamt, "menge": kz.summe(alle, "Menge", "Stückzahl Ersatzteile"),
+            "umsatz": gesamt, "menge": kz.summe(alle, "Menge", "Stückzahl Ersatzteile") | {"einheit": "Stück"},
             "gutschriften": {"zeilen": len(gut), "summe": summe_umsatz("Gutschriften (negative Menge)", gut, alle)},
             "monate": [{"monat": m, "umsatz": w} for m, w in monatswerte.items()],
             "trend": trend(je_monat, monate), "top_teile": top,

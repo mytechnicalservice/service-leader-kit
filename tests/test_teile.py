@@ -192,7 +192,7 @@ def test_scores_and_recommendation(kit_ws):
     assert all({"name", "betrag", "quelle"} <= set(w) for w in r["werte"])
 
 
-STANDARD_TEXT = "Standarddefinition des Kits"
+STANDARD_TEXT = "Kit-Standard"
 
 
 def test_weeks_complaints_terms_and_null_limit(kit_ws, defs, capsys):

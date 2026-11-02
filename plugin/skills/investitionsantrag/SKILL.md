@@ -34,7 +34,7 @@ If that line is missing, use the output of `pwd`.
    A and B and show both; never average, never pick one.
 3. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/finanzen.py" investitionsantrag --ws "<workspace>" --titel "<Titel>" --invest "<Betrag>" --rueckfluss "<Betrag>" [--rueckfluss "<Betrag>" …] [--jahre N] [--restwert "<Betrag>"] [--zins "<x %>"] --quelle "<Quelle>"`
 4. Write `dokument` with Claude's docx skill (letterhead if present), chapters as `gliederung`; show `kapitalwert`
-   with its `formel` and the rate with its source ("Standarddefinition des Kits – …" if standard).
+   with its `formel` and the rate with its source ("Kit-Standard – …" if standard).
 5. State `entscheidung` (who decides). If the user wants it tracked: `vorgang.py neu --typ entscheidung --kunde
 intern --verantwortlich "<Entscheider/in>" --von finanzen --titel "Investitionsantrag <Titel>" --text "… Quelle:
 <dokument>"`. finanzen writes no recommendation on its own request; the human decides.

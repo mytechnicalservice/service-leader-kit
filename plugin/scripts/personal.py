@@ -28,7 +28,7 @@ BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
 STANDARD = {"netto_stunden": 1600.0, "auslastung": 0.75, "schwelle_einstellung": 0.5, "vollkosten_eur": 85000.0,
             "einmalkosten_eur": 15000.0, "vorlauf_monate": 5, "einarbeitung_monate": 3, "einarbeitung_quote": 0.5,
             "min_qualifiziert": 2, "min_teamgroesse": 3}  # plan 4h, domain defaults 1–15
-TEXT = {"netto_stunden": "Netto-Jahresarbeitszeit je FTE (Std)", "auslastung": "Auslastungsziel",
+TEXT = {"netto_stunden": "Netto-Jahresarbeitszeit je FTE (Std)", "auslastung": "Verrechenbarkeitsziel",
         "schwelle_einstellung": "Einstellungsschwelle (FTE)", "vollkosten_eur": "Vollkosten je Techniker und Jahr",
         "einmalkosten_eur": "Einmalkosten je Einstellung", "vorlauf_monate": "Vorlaufzeit Einstellung (Monate)",
         "einarbeitung_monate": "Einarbeitung (Monate)", "einarbeitung_quote": "Produktivität in der Einarbeitung"}
