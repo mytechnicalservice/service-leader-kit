@@ -35,7 +35,7 @@ TEXT_ENDUNGEN = {".md", ".txt", ".eml", ".csv"}
 OFFICE_ENDUNGEN = {".docx", ".pptx", ".xlsx"}
 AGENTEN = {"assistenz", "betrieb", "projekte", "vertrieb", "angebot", "teile", "personal", "finanzen",
            "qualitaet-recht", "system-architekt"}
-RESERVIERT = {"angelegt", "entscheidung", "erledigt"}  # events only neu / entscheide / schliesse write
+RESERVIERT = {"angelegt", "entscheidung", "erledigt", "änderung"}  # events only neu / entscheide / schliesse / setze write
 
 
 class VorgangFehler(Exception):
@@ -271,6 +271,7 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
     if a.feld == "verantwortlich":
         pruefe_mensch(a.wert, "verantwortlich")
     p, meta, body = load(ws, a.nr)
+    alt = meta.get(a.feld)
     if a.feld == "betrag_eur":
         try:
             meta[a.feld] = zahl(a.wert) if a.wert else None
@@ -279,6 +280,9 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
     else:
         meta[a.feld] = a.wert or None
     meta["aktualisiert"] = a.heute
+    if meta[a.feld] != alt:  # a change of the head stays visible in the ledger: old → new
+        text = f"{a.feld}: {'–' if alt is None else alt} → {'–' if meta[a.feld] is None else meta[a.feld]}"
+        body = body.rstrip("\n") + "\n" + event(a.heute, "änderung", a.von, text)
     p = save(ws, p, meta, body)
     return 0, {"ok": True, "nr": meta["nr"], "datei": rel(ws, p)}
 
@@ -295,8 +299,9 @@ def cmd_entscheide(a, ws: Path) -> tuple[int, dict]:
 
 def cmd_schliesse(a, ws: Path) -> tuple[int, dict]:
     p, meta, body = load(ws, a.nr)
-    meta["status"], meta["aktualisiert"] = "erledigt", a.heute
-    p = save(ws, p, meta, body.rstrip("\n") + "\n" + event(a.heute, "erledigt", "assistenz", "Vorgang geschlossen."))
+    text = "Vorgang geschlossen." + (f" Wartete zuletzt auf: {meta['wartet_auf']}." if meta.get("wartet_auf") else "")
+    meta["status"], meta["aktualisiert"], meta["wartet_auf"] = "erledigt", a.heute, None
+    p = save(ws, p, meta, body.rstrip("\n") + "\n" + event(a.heute, "erledigt", "assistenz", text))
     return 0, {"ok": True, "nr": meta["nr"], "datei": rel(ws, p)}
 
 
@@ -355,7 +360,7 @@ def parser() -> JsonParser:
     add("neu", "titel", "typ", "kunde", "verantwortlich", "von", "text",
         faellig={}, **{"externe-nr": {"dest": "externe_nr"}}, betrag={}, trotzdem={"action": "store_true"})
     add("eintrag", "nr", "art", "von", "text")
-    add("setze", "nr", "feld", "wert")
+    add("setze", "nr", "feld", "wert", von={"default": "assistenz"})
     add("entscheide", "nr", "von", "dokument", entscheidung={"required": True, "choices": sorted(ENTSCHEIDUNGEN)})
     add("schliesse", "nr")
     add("loeschen-markieren", "nr")

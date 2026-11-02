@@ -35,6 +35,20 @@ def zahl(v) -> float:
     raise ValueError(v)
 
 
+EINZAHL = {"Vorgänge": "Vorgang", "Tage": "Tag", "Jahre": "Jahr", "Monate": "Monat", "Aufträge": "Auftrag",
+           "Anlagen": "Anlage", "Verträge": "Vertrag", "Dateien": "Datei", "Arbeitstage": "Arbeitstag",
+           "Punkte": "Punkt", "Nachweise": "Nachweis", "Einstellungen": "Einstellung"}
+
+
+def anzahl_text(n, mehrzahl: str, einzahl: str | None = None) -> str:
+    """'1 Vorgang', '2 Vorgänge': the count with the word in the right number."""
+    return f"{n} {einheit_zu(n, mehrzahl, einzahl)}"
+
+
+def einheit_zu(n, mehrzahl: str, einzahl: str | None = None) -> str:
+    return (einzahl or EINZAHL.get(mehrzahl, mehrzahl)) if n == 1 else mehrzahl
+
+
 def ausgabe(obj: dict) -> None:
     """Prints exactly one JSON object as UTF-8, whatever the console code page is (Windows: cp1252)."""
     try:

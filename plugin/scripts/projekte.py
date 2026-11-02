@@ -17,7 +17,7 @@ from pathlib import Path
 
 import arbeitsordner as ao
 import kennzahlen
-from slk_common import JsonParser, run, write_atomic, zahl
+from slk_common import JsonParser, anzahl_text, run, write_atomic, zahl
 from vorgang import VorgangFehler, parse_case, pruefe_mensch, rel
 
 TYPEN = ("inbetriebnahme", "retrofit")
@@ -216,10 +216,10 @@ def termin(meta: dict, quelle: str, s: dict) -> dict:
                         formel="(Ist, sonst Prognose) − Plantermin; größter Verzug aller Meilensteine", einheit="Tage")
     ms = meta.get("vertragsstrafe_meilenstein")
     if ms is not None and tage[ms] > 0:
-        return {"ampel": "rot", "verzug": w, "grund": f"Vertragsstrafe droht: {ms} {tage[ms]} Tage nach Plan"}
+        return {"ampel": "rot", "verzug": w, "grund": f"Vertragsstrafe droht: {ms} {anzahl_text(tage[ms], 'Tage')} nach Plan"}
     t = tage[name]
     ampel = "rot" if t >= s["termin_rot_ab_tage"] else "gelb" if t >= s["termin_gelb_ab_tage"] else "gruen"
-    return {"ampel": ampel, "verzug": w, "grund": f"{name}: {t} Tage Verzug" if t else "alle Meilensteine im Plan"}
+    return {"ampel": ampel, "verzug": w, "grund": f"{name}: {anzahl_text(t, 'Tage')} Verzug" if t else "alle Meilensteine im Plan"}
 
 
 def kosten(meta: dict, quelle: str, s: dict) -> dict:
@@ -360,21 +360,21 @@ def optionen_fuer(meta: dict, quelle: str, a, bezug: str, v: int, mehr: float, k
 
     titel_b = "Beschleunigen (Zusatzkapazität, Überstunden, Fremdmontage)"
     liste = [option("A", "Weiterlaufen lassen, neuen Termin mitteilen", 0, strafe(v),
-                    f"{bezug} {v} Tage später als vereinbart" + (", Vertragsstrafe wird fällig" if klausel and v else ""),
+                    f"{bezug} {anzahl_text(v, 'Tage')} später als vereinbart" + (", Vertragsstrafe wird fällig" if klausel and v else ""),
                     "keine")]
     if a.beschleunigung_eur is not None:
         rest = max(0, v - a.beschleunigung_tage)
         liste.append(option("B", titel_b, a.beschleunigung_eur, strafe(rest),
-                            f"{bezug} {rest} Tage später als vereinbart" if rest else f"{bezug} zum vereinbarten Termin",
+                            f"{bezug} {anzahl_text(rest, 'Tage')} später als vereinbart" if rest else f"{bezug} zum vereinbarten Termin",
                             f"Kapazität verfügbar; Kosten und Zeitgewinn laut Angabe ({d(a.beschleunigung_eur)} EUR, "
-                            f"{a.beschleunigung_tage} Tage)"))
+                            f"{anzahl_text(a.beschleunigung_tage, 'Tage')})"))
     else:
         liste.append(offen("B", titel_b, "Mehrkosten der Beschleunigung (EUR) und aufgeholte Tage angeben",
                            "Verzug sinkt um die aufgeholten Tage", "Kapazität verfügbar"))
     if klausel:
         liste.append(option("C", "Neuen Termin mit dem Kunden vereinbaren (Verzicht auf die Vertragsstrafe)", 0,
                             kennzahlen.wert("Vertragsstrafe", 0, [f"{quelle}: vertragsstrafe_meilenstein"], formel="Verzicht des Kunden"),
-                            f"{bezug} {v} Tage später, neuer Termin schriftlich vereinbart",
+                            f"{bezug} {anzahl_text(v, 'Tage')} später, neuer Termin schriftlich vereinbart",
                             "schriftliche Zustimmung des Kunden – ohne sie gilt Option A"))
     titel_d = "Nachtrag an den Kunden"
     if a.nachtrag_eur is not None:

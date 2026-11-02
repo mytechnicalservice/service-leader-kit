@@ -18,7 +18,7 @@ from pathlib import Path
 import kennzahlen as kz
 from arbeitsordner import bezugstag, lies_konfig
 from daten_pruefen import ImportFehler, datum, leer, lese, monat, personen_spalten
-from slk_common import JsonParser, csv_sicher, run, write_atomic, zahl
+from slk_common import JsonParser, anzahl_text, csv_sicher, run, write_atomic, zahl
 
 HINWEIS = ("Hinweis: Personalthemen können die Mitbestimmung des Betriebsrats (§ 87 Abs. 1 Nr. 6, § 94 und § 98 "
            "BetrVG) und den Beschäftigtendatenschutz (DSGVO, BDSG) berühren. Bitte Betriebsrat und "
@@ -277,7 +277,7 @@ def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
     if ohne:
         w = summe(ohne, "Stunden", "Auftragsstunden ohne Team", "Std")
         werte.append(w)
-        meldungen.append(f"{len(ohne)} Aufträge ohne Team ({kz.deutsch(w['betrag'])} Std) – keinem Team zugeordnet, "
+        meldungen.append(f"{anzahl_text(len(ohne), 'Aufträge')} ohne Team ({kz.deutsch(w['betrag'])} Std) – keinem Team zugeordnet, "
                          "nicht verteilt.")
     meldungen += [f"Team {t} hat Aufträge, aber keine Kapazitätszeile für {bis}." for t in
                   sorted({str(r["Team"]) for r in auf if not leer(r.get("Team"))} - set(teams))]
@@ -520,7 +520,7 @@ def cmd_skill_matrix(a, ws: Path) -> tuple[int, dict]:
                       f"Summe (mindestens {mind} − qualifiziert) über Zellen mit Aufträgen", "Anzahl")]
     meldungen = kleine_teams(lade_optional(ws, "kapazitaet", [bis]))
     if ohne:
-        meldungen.append(f"{len(ohne)} Aufträge ohne Team oder ohne Maschinentyp in der Installed Base – nicht in "
+        meldungen.append(f"{anzahl_text(len(ohne), 'Aufträge')} ohne Team oder ohne Maschinentyp in der Installed Base – nicht in "
                          "der Matrix.")
     meldungen += [f"Maschinentyp {m}: in keinem Team jemand qualifiziert." for m in ohne_abdeckung]
     gl = kopf(k) + [
@@ -665,13 +665,13 @@ def cmd_abgang(a, ws: Path) -> tuple[int, dict]:
                    f"({z['stufe_nachher']}), Firma danach {z['firma_nachher']}" for z in out_z]),
         abschnitt("Auswirkung", werte),
         abschnitt("Kunden mit betroffenen Maschinentypen",
-                  [f"{x['kunde']}: {x['anlagen']} Anlagen, {x['mit_vertrag']} mit Vertrag"
+                  [f"{x['kunde']}: {anzahl_text(x['anlagen'], 'Anlagen')}, {x['mit_vertrag']} mit Vertrag"
                    + (f", frühestes Vertragsende {x['vertragsende_frueh']}" if x["vertragsende_frueh"] else "")
                    for x in kunden]),
         abschnitt("Optionen", [f"Schulung abschließen: {s['anzahl']} in Schulung ({s['maschinentyp']} · {s['auftragsart']})"
                                for s in schulung]
                   + [f"Abordnung aus Team {o['team']} ({o['qualifiziert']} qualifiziert)" for o in abordnung]
-                  + [f"Einstellung: einsatzbereit frühestens {bereit} – {luecke} Monate ohne Abdeckung",
+                  + [f"Einstellung: einsatzbereit frühestens {bereit} – {anzahl_text(luecke, 'Monate')} ohne Abdeckung",
                      "Überbrückung durch Herstellerservice oder Fremdleistung"]),
         abschnitt(f"Wissenstransfer bis {letzter}", WISSENSTRANSFER),
         abschnitt("Hinweise", meldungen + kleine_teams(lade_optional(ws, "kapazitaet", [bis])) + [k["hinweis"]])]

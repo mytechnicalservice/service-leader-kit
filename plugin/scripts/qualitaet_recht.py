@@ -17,7 +17,7 @@ from pathlib import Path
 import arbeitsordner as ao
 import kennzahlen as kz
 import vorgang
-from slk_common import JsonParser, run, zahl
+from slk_common import JsonParser, anzahl_text, run, zahl
 
 STANDARD = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
@@ -351,7 +351,7 @@ def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12, heute: s
         komp = ((z.get("Komponente") or "").strip() or "nicht angegeben") if mit_komponente else "–"
         gruppen.setdefault((typ, komp), []).append(z)
     if unzugeordnet:
-        meldungen.append(f"{len(unzugeordnet)} Reparatur(en) an Anlagen ohne Eintrag in der Installed Base – nicht "
+        meldungen.append(f"{anzahl_text(len(unzugeordnet), 'Reparaturen', 'Reparatur')} an Anlagen ohne Eintrag in der Installed Base – nicht "
                          "zugeordnet.")
     befunde = [{"maschinentyp": typ, "komponente": komp, "anzahl": len(zs), "kunden": len({z["Kunde"] for z in zs}),
                 "auftraege": [z["Auftragsnr"] for z in zs],

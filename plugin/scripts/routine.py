@@ -15,7 +15,7 @@ from pathlib import Path
 import arbeitsordner as ao
 import kennzahlen
 import vorgang
-from slk_common import JsonParser, run, write_atomic, zahl
+from slk_common import JsonParser, einheit_zu, run, write_atomic, zahl
 
 ROUTINEN = ["tagesstart", "wochenstart", "monatsabschluss", "quartal", "jahresplanung"]
 WOCHENTAGE = ["mo", "di", "mi", "do", "fr"]
@@ -127,7 +127,7 @@ def mit_anzeige(w: dict, defs: dict) -> dict:
     ziel = prozent_ziel(defs, w["name"]) if prozent else None
     # D19: the kit's standard KPI list carries targets (DB I-Marge 35 %) – never shown as the company's own target.
     std = "kennzahlen" in (defs["kpi-ziele"].get("standard_felder") or [])
-    return w | {"anzeige": f"{kennzahlen.deutsch(w['betrag'], 1 if prozent else 0)} {'%' if prozent else w['einheit']}",
+    return w | {"anzeige": f"{kennzahlen.deutsch(w['betrag'], 1 if prozent else 0)} {'%' if prozent else einheit_zu(w['betrag'], w['einheit'])}",
                 "ziel": ziel, "ziel_anzeige": None if ziel is None else f"{kennzahlen.deutsch(ziel, 1)} %",
                 "ziel_quelle": None if ziel is None else kennzahlen.STANDARD_HINWEIS if std
                 else "Unternehmen/kpi-ziele.md"}

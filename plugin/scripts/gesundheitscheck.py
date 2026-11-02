@@ -13,7 +13,7 @@ from typing import Callable
 
 import arbeitsordner as ao
 import vorgang
-from slk_common import JsonParser, run, write_atomic
+from slk_common import JsonParser, anzahl_text, run, write_atomic
 
 # schema n -> function returning the values for schema n+1. Empty while schema 1 is the only schema.
 MIGRATIONEN: dict[int, Callable[[dict[str, str]], dict[str, str]]] = {}
@@ -134,7 +134,8 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
         meldungen.append("Aufbewahrungsfrist noch nicht bestätigt (Unternehmen/aufbewahrung.md, Onboarding). "
                          "Bis dahin schlägt das Kit nichts zum Löschen vor.")
     if liste:
-        meldungen.append(f"{len(liste)} erledigte Vorgänge sind älter als {jahre} Jahre: " +
+        wer = "1 erledigter Vorgang ist" if len(liste) == 1 else f"{len(liste)} erledigte Vorgänge sind"
+        meldungen.append(f"{wer} älter als {anzahl_text(jahre, 'Jahre')}: " +
                          ", ".join(f"{x['nr']} (abgeschlossen {x['abgeschlossen']})" for x in liste) +
                          ". Vorschlag: zum Löschen vormerken (\"merk V-… zum Löschen vor\").")
     aktualisiert = False

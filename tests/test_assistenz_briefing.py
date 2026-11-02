@@ -28,7 +28,7 @@ def test_briefing_sections_order_and_content(kit_ws):
     assert out["summe_freigaben"]["betrag"] == 17300
     text = lies(kit_ws, out)
     assert [z for z in text.splitlines() if z.startswith("## ")] == [
-        "## 1. Dringend heute", "## 2. Termine heute", "## 3. Entscheidungen offen", "## 4. Diese Woche fällig",
+        "## 1. Dringend heute", "## 2. Termine heute", "## 3. Entscheidungen offen", "## 4. Fällig in den nächsten 7 Tagen (bis 14.10.2026)",
         "## 5. Wartet auf andere", "## 6. Eingang"]
     assert f"{alt} · Reklamation Spindel" in text and "überfällig seit 02.10.2026" in text
     assert "17.300 €" in text and "Kein Kalender verbunden – Termine bitte selbst prüfen." in text

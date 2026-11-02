@@ -21,7 +21,7 @@ import arbeitsordner as ao
 import kennzahlen
 import vorgang
 from kennzahlen import deutsch, wert
-from slk_common import JsonParser, run, zahl
+from slk_common import JsonParser, einheit_zu, run, zahl
 
 STANDARD = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
@@ -77,7 +77,7 @@ def zahltext(w: dict) -> str:
 def fmt(w: dict | None) -> str:
     if w is None:
         return "–"
-    return f"{zahltext(w)} {'€' if w['einheit'] == 'EUR' else w['einheit']}"
+    return f"{zahltext(w)} {'€' if w['einheit'] == 'EUR' else einheit_zu(w['betrag'], w['einheit'])}"
 
 
 def zeilen_quelle(zeilen: list[dict]) -> list[str]:
