@@ -547,6 +547,17 @@ def test_a_flag_of_another_command_is_not_an_in_place_edit(shell, kit_ws, comman
     # a flag that arrives from elsewhere cannot be attributed to a command, so any -i still counts
     f"sed $(echo -i) s/a/b/ {V}",
     f"echo -i | xargs sed s/a/b/ {V}",
+    'for f in 01_Vorgaenge/offen/V-*.md; do for o in -i; do sed "$o" s/a/b/ "$f"; done; done',
+    "cd 01_Vorgaenge/offen; o=$(echo -i); sed $o s/a/b/ V-0004.md",
+    f"for o in -i; do sed $o s/a/b/ {V}; done",
+    f"o=$(echo -i); sed $o s/a/b/ {V}",
+    # ... and an in-place edit the rule cannot see as sed's own still counts beside a harmless sed -n
+    "sed -n 1p 03_Berichte/x.md; find 01_Vorgaenge -name '*.md' -exec sed -i s/a/b/ {} +",
+    f"sed -n 1p 03_Berichte/x.md; bash -c \"bash -c 'sed -i s/a/b/ {V}'\"",
+    f"sed -n 1p 03_Berichte/x.md; timeout 5 sed -i s/a/b/ {V}",
+    f"sed -n 1p 03_Berichte/x.md; sh <<'EOF'\nsed -i s/a/b/ {V}\nEOF",
+    # ... also when a reader's own -i sits inside a quoted substitution
+    f'echo "$(grep -i x 03_Berichte/x.md)"; sed -n 1p 03_Berichte/x.md; timeout 5 sed -i s/a/b/ {V}',
     # inline code and heredocs on the protected folders, read or write
     f"python3 -c \"print(open('{V}').read())\"",
     f"sed -n 1p {V}; python3 -c \"print(open('{V}').read())\"",
