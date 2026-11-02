@@ -57,7 +57,8 @@ user names one.
 1. **Bericht <Monat>:** file; Serviceumsatz Ist vs Plan and Ergebnis Ist vs Plan as printed; reconciliation result;
    action cases created (number, owner, date) or "keine Maßnahme" with reason; conflicts between sources with both
    values.
-2. **Verlängerungen:** urgent and expired contracts first, then the rest of the horizon.
+2. **Verlängerungen:** urgent and expired contracts first, then the rest of the horizon; each with its action date,
+   and whether it ends or renews unless cancelled.
 3. **Kapazität:** red teams first, then the total.
 4. Offer: "Soll ich daraus die Präsentation und die Begleitmail machen?" (workflow Monatsbericht).
 5. **Nicht erledigt:** every failed step with its message — only if there is one.

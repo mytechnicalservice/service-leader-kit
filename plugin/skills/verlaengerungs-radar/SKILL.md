@@ -1,6 +1,6 @@
 ---
 name: verlaengerungs-radar
-description: Lists the service contracts that expire within the next months (contract end in the installed base), with the value at stake per contract and which ones are urgent. Use for "Welche Verträge laufen aus?", "Verlängerungs-Radar", "Vertragsverlängerungen", and in the monthly close (monatsabschluss).
+description: Lists the service contracts that end or come up for notice within the next months, from the contract end in the installed base and the renewal terms in the contract, with the action date, the value per contract and which ones are urgent. Use for "Welche Verträge laufen aus?", "Verlängerungs-Radar", "Vertragsverlängerungen", and in the monthly close (monatsabschluss).
 ---
 
 # Verlängerungs-Radar (spec §5, §8 Routine monatsabschluss)
@@ -28,9 +28,13 @@ inline code (`python -c`, `python - <<EOF`) that names them is refused by the gu
 1. Run `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vertrieb.py" verlaengerungs-radar --ws "<workspace>"`. Add
    `--monate <n>` only if the user names a horizon. If `ok` is false, explain `fehler` and stop.
 2. Write `ziel` with the built-in Excel skill:
-   - one row per entry of `vertraege`, in the given order: Kunde, Anlagen, Vertragsende, Status, Vertragsjahreswert,
-     Serviceumsatz 12 Monate, Wert im Risiko, Quelle;
-   - a total row with `summe.betrag` as a value, not a formula;
+   - one row per entry of `vertraege`, in the given order: Kunde, Anlagen, Art ("endet" / "verlängert sich, wenn nicht
+     gekündigt" / "unklar", from `art`), Aktionsdatum (`aktionsdatum`), Vertragsende, Kündigung bis (`kuendigung_bis`),
+     Status, Vertragsjahreswert, Serviceumsatz 12 Monate, Wert im Risiko (`wert_im_risiko`) or Vertragswert bei
+     Kündigung (`wert_bei_kuendigung`), Quelle;
+   - one total row with `summe.betrag` (contracts that end or are unclear) and, if not 0, one with
+     `summe_verlaengert_sich.betrag`, as values, not formulas. The two are never added: a contract that renews unless
+     cancelled does not end by itself;
    - a second sheet "Hinweise" with `annahmen`, `meldungen` and `ohne_vertragsende`;
    - if `beispiel` is true, the first row says "Beispieldaten – Muster Maschinenbau GmbH".
 3. Answer in German: the lines of `zusammenfassung`, then every entry of `meldungen` and `ohne_vertragsende`.
@@ -38,4 +42,6 @@ inline code (`python -c`, `python - <<EOF`) that names them is refused by the gu
 4. Ask: "Soll ich für die dringenden und abgelaufenen Verträge Vorgänge anlegen?" Only after a yes, for each such
    contract:
    `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" neu --ws "<workspace>" --titel "Vertragsverlängerung <Kunde> (Ende <TT.MM.JJJJ>)" --typ aufgabe --kunde "<Kunde>" --verantwortlich "<Person>" --von vertrieb --faellig <faellig_vorschlag> --betrag <wert_im_risiko.betrag> --text "Quelle: <ziel>"`
+   For `art` "verlaengert_sich" the title is "Kündigungsfrist <Kunde> (bis <aktionsdatum als TT.MM.JJJJ>)" and the
+   amount `wert_bei_kuendigung.betrag`. Never call such a contract "gefährdet" or "läuft aus".
    `--verantwortlich` is a person the user names. Exit code 3: propose an `eintrag` on the existing case instead.

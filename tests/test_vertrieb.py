@@ -273,7 +273,7 @@ def test_quote_price_build_up_and_review_trigger(vws):
     assert r["ziel"] == "04_Angebote/Nordmetall GmbH/2026-10-06_angebot-wartungsvertrag.docx"
     assert [a["anlage"] for a in r["anlagen"]] == ["Anlage 1", "Anlage 2"]
     assert any("Anlage 1" in m and "30.11.2026" in m for m in r["meldungen"])
-    assert len(r["klauseln"]) == 10 and r["gliederung"][-1].startswith("Vermerk")
+    assert len(r["klauseln"]) == 10 and r["gliederung"][-1].startswith("Gültigkeit")
     assert r["aufruf"] == 'grossangebot --kunde "Nordmetall GmbH" --typ "MM-400" --anzahl 2'
     assert "Angebotswert über 3 Jahre: 27.360 EUR" in " ".join(r["zusammenfassung"])
 
@@ -385,7 +385,8 @@ def test_contract_clauses_follow_the_level_in_leistungen_md(vws):
     k, r = klauseln("Basis")
     assert len(k) == 10
     assert "1 Wartung pro Jahr, Hotline werktags 8–17 Uhr, Reaktionszeit 72 h" in k["Leistungsumfang"]
-    assert "Unternehmen/leistungen.md" in k["Leistungsumfang"]
+    assert "Unternehmen/leistungen.md" not in k["Leistungsumfang"]  # the source is in the internal annex (K2)
+    assert "Unternehmen/leistungen.md, Wartungsvertrag Basis" in r["intern_text"]
     alles = " ".join(k.values()) + " " + " ".join(r["gliederung"])
     for falsch in ("48 Stunden", "10 % Rabatt", "2 planmäßige", "2 Wartungsbesuche"):
         assert falsch not in alles, falsch
@@ -393,7 +394,7 @@ def test_contract_clauses_follow_the_level_in_leistungen_md(vws):
     k, _ = klauseln("Premium")
     assert "Reaktionszeit 24 h, 10 % auf Ersatzteile" in k["Leistungsumfang"]
     k, r = klauseln("Standard")  # no row in leistungen.md: no invented numbers, a message instead
-    assert "nicht gefunden" in k["Leistungsumfang"] and not re.search(r"\d+\s*(h\b|Stunden|%|Wartung)", " ".join(k[t] for t in ("Leistungsumfang", "Reaktionszeit", "Ersatzteile")))
+    assert "Vor dem Versand ergänzen" in k["Leistungsumfang"] and not re.search(r"\d+\s*(h\b|Stunden|%|Wartung)", " ".join(k[t] for t in ("Leistungsumfang", "Reaktionszeit", "Ersatzteile")))
     assert any("Wartungsvertrag Standard MM-400" in m and "leistungen.md" in m for m in r["meldungen"])
 
 

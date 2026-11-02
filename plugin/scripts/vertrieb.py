@@ -8,14 +8,15 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import zipfile
 from pathlib import Path
 
 from openpyxl import load_workbook
 
 import arbeitsordner as ao
-from daten_pruefen import monatsname
+from daten_pruefen import monat_im_namen, monatsname
 from kennzahlen import KennzahlFehler, datenquelle, definitionen, deutsch, lade, summe, wert
-from slk_common import JsonParser, run, zahl
+from slk_common import JsonParser, anzahl_text, demo_hinweis, run, zahl
 from vorgang import VorgangFehler, all_cases
 
 BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
@@ -36,6 +37,10 @@ GUELTIG_TAGE = 30
 BEZEICHNUNG = {"auftraege": "Aufträge", "ersatzteile": "Ersatzteilverkäufe"}
 FRONT = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 LEER = {"", "null", "~"}
+VERLAENGERUNG_ZEILE = re.compile(r"^\|?\s*Verlängerung\s*[|:]\s*(.+?)\s*\|?\s*$", re.M | re.I)
+KEINE_VERLAENGERUNG = re.compile(r"keine\s+(automatische\s+|stillschweigende\s+)?verlängerung|verlängerung\s+nur\s+durch", re.I)
+AUTO_VERLAENGERUNG = re.compile(r"(?:automatisch|stillschweigend)\D*?(\d+)\s*monat", re.I)
+KUENDIGUNGSFRIST = re.compile(r"kündig\w*\D*?(\d+)\s*monat|(\d+)\s*monat\w*\s+vor\s+(?:ablauf|ende|vertragsende)", re.I)
 
 
 class VertriebFehler(Exception):
@@ -186,13 +191,30 @@ def vertragsdaten(ws: Path, kunde: str) -> dict:
     p = datenordner(ws) / "06_Kunden" / ordnername(kunde) / "vertrag.md"
     if not p.is_file():
         return {}
-    m = FRONT.match(p.read_text(encoding="utf-8-sig").replace("\r\n", "\n"))
+    roh = p.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+    m = FRONT.match(roh)
     out = {"_datei": rel(ws, p)}
     for zeile in m.group(1).splitlines() if m else []:
         k, sep, v = zeile.partition(":")
         if sep and k.strip() and not zeile[0].isspace() and not zeile.startswith(("-", "#")):
             out[k.strip()] = v.split(" #")[0].strip().strip("\"'")
+    # The renewal terms: a field in the head, or the contract's own line "Verlängerung | …" in the text.
+    if not out.get("verlaengerung") and (z := VERLAENGERUNG_ZEILE.search(roh[m.end() if m else 0:])):
+        out["verlaengerung"] = z.group(1)
     return out
+
+
+def verlaengerungsart(v: dict) -> dict:
+    """What the contract says about its end: 'endet' (fixed end), 'verlaengert_sich' (renews unless cancelled, with
+    months and notice period) or 'unbekannt' (nothing readable). Words only; nothing is assumed."""
+    t = text(v.get("verlaengerung"))
+    if KEINE_VERLAENGERUNG.search(t):
+        return {"art": "endet", "monate": None, "frist": None, "text": t}
+    if m := AUTO_VERLAENGERUNG.search(t):
+        f = KUENDIGUNGSFRIST.search(t)
+        return {"art": "verlaengert_sich", "monate": int(m.group(1)), "text": t,
+                "frist": int(f.group(1) or f.group(2)) if f else None}
+    return {"art": "unbekannt", "monate": None, "frist": None, "text": t}
 
 
 # --- installed base -----------------------------------------------------------------------------------------------
@@ -219,7 +241,19 @@ def installed_base(ws: Path) -> tuple[list[dict], dict]:
             meldungen.append(f"Widerspruch: {key[0]} / {key[1]} steht mit unterschiedlichen Angaben in {stelle} – "
                              "nicht bewertet, bitte im Export klären.")
     anlagen = [z for k, z in erste.items() if k not in widerspruch]
-    return anlagen, {"monat": monat, "stichtag": monatsende(monat), "meldungen": meldungen}
+    return anlagen, {"monat": monat, "stichtag": monatsende(monat), "meldungen": herkunft(ws, monat) + meldungen}
+
+
+def herkunft(ws: Path, monat: str) -> list[str]:
+    """The file's month is the month of the import (daten_pruefen, Stichtag templates): say when the original's name
+    points to another month, so nobody takes the import month for the date of the data."""
+    out = []
+    for p in sorted((datenordner(ws) / "07_Daten" / "original").glob(f"installed_base_{monat}__*")):
+        genannt = monat_im_namen(p.name.split("__")[-1])
+        if genannt and genannt != monat:
+            out.append(f"Installed Base {monat}: die Quelle {p.name.split('__')[-1]} nennt den Monat {genannt}. Der Dateiname "
+                       "kommt vom Monat des Imports – bitte den Datenstand prüfen.")
+    return out
 
 
 # --- verlaengerungs-radar -----------------------------------------------------------------------------------------
@@ -248,6 +282,68 @@ def vertragswert(ws: Path, kunde: str, ende: dt.date, meldungen: list[str]) -> t
     return None, widerspruch
 
 
+def verlaengerungsplan(ws: Path, kunde: str, ende: dt.date, tag: dt.date, dringend_bis: dt.date,
+                       meldungen: list[str]) -> dict:
+    """Action date and status of one contract from its renewal terms. Renews unless cancelled: the notice deadline is
+    the action date; once it has passed, the next deadline of the renewed term. Otherwise: the contract end."""
+    v = vertragsdaten(ws, kunde)
+    b = verlaengerungsart(v)
+    stelle = v.get("_datei", f"06_Kunden/{ordnername(kunde)}/vertrag.md")
+    plan = {"art": b["art"], "verlaengerung_text": b["text"] or None, "verlaengerung_monate": b["monate"],
+            "kuendigungsfrist_monate": b["frist"], "aktuelles_ende": ende, "kuendigung_bis": None,
+            "naechste_kuendigung_bis": None, "aktionsdatum": ende,
+            "status": "abgelaufen" if ende < tag else "dringend" if ende <= dringend_bis else "planen"}
+    if b["art"] == "unbekannt":
+        hinweis = (f"{kunde}: Verlängerungsbedingung nicht lesbar ({stelle}) – bitte im Vertrag prüfen; vorsorglich als "
+                   "endend geführt.")
+        if hinweis not in meldungen:
+            meldungen.append(hinweis)
+    if b["art"] != "verlaengert_sich":
+        return plan
+    aktuell = ende
+    while aktuell < tag:  # the installed base still names an earlier end: by its terms the contract has renewed
+        aktuell = plus_monate(aktuell, b["monate"])
+    if aktuell != ende:
+        meldungen.append(f"{kunde}: Vertragsende {ende:%d.%m.%Y} liegt vor dem Stichtag; laut {stelle} verlängert bis "
+                         f"{aktuell:%d.%m.%Y}, sofern nicht gekündigt – bitte Installed Base prüfen.")
+    plan["aktuelles_ende"], plan["aktionsdatum"] = aktuell, aktuell
+    if b["frist"] is None:
+        meldungen.append(f"{kunde}: Verlängerung ohne lesbare Kündigungsfrist ({stelle}) – bitte im Vertrag prüfen.")
+        plan["status"] = "dringend" if aktuell <= dringend_bis else "planen"
+        return plan
+    bis = plus_monate(aktuell, -b["frist"])
+    plan["kuendigung_bis"] = bis
+    if bis < tag:
+        plan["naechste_kuendigung_bis"] = plus_monate(plus_monate(aktuell, b["monate"]), -b["frist"])
+        plan["aktionsdatum"], plan["status"] = plan["naechste_kuendigung_bis"], "frist vorbei"
+    else:
+        plan["aktionsdatum"], plan["status"] = bis, "dringend" if bis <= dringend_bis else "planen"
+    return plan
+
+
+def plan_text(plan: dict) -> dict:
+    """The plan's dates as ISO text for the JSON output."""
+    return {k: v.isoformat() if isinstance(v, dt.date) else v for k, v in plan.items()}
+
+
+def radar_zeile(v: dict) -> str:
+    anlagen = anzahl_text(len(v["anlagen"]), "Anlagen")
+    if v["art"] != "verlaengert_sich":
+        wie = "endet ohne neue Vereinbarung" if v["art"] == "endet" else "Verlängerung unklar"
+        return (f"{v['kunde']}: Vertragsende {datum(v['vertragsende']):%d.%m.%Y} ({v['status']}), {wie}, {anlagen}, "
+                f"Wert im Risiko {deutsch(v['wert_im_risiko']['betrag'])} EUR")
+    jahr = f"verlängert sich bis {datum(v['aktuelles_ende']):%d.%m.%Y}"
+    if v["kuendigung_bis"] is None:
+        frist = "Kündigungsfrist unklar"
+    elif v["naechste_kuendigung_bis"]:
+        frist = (f"Kündigung bis {datum(v['kuendigung_bis']):%d.%m.%Y} ist vorbei, nächste Frist "
+                 f"{datum(v['naechste_kuendigung_bis']):%d.%m.%Y}")
+    else:
+        frist = f"Kündigung bis {datum(v['kuendigung_bis']):%d.%m.%Y}"
+    return (f"{v['kunde']}: {jahr}, wenn nicht gekündigt; {frist} ({v['status']}), {anlagen}, Vertragswert bei "
+            f"Kündigung {deutsch(v['wert_bei_kuendigung']['betrag'])} EUR")
+
+
 def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | None = None,
                          heute: str | None = None) -> dict:
     annahmen = []
@@ -258,11 +354,12 @@ def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | No
         raise VertriebFehler("--monate muss zwischen 1 und 36 liegen")
     tag_heute = heute_von(ws, heute)
     anlagen, ib = installed_base(ws)
-    tag = pruefe_datum(stichtag, "--stichtag") if stichtag else ib["stichtag"]
+    tag = pruefe_datum(stichtag, "--stichtag") if stichtag else min(ib["stichtag"], tag_heute)
     grenze, dringend_bis = plus_monate(tag, monate), plus_monate(tag, DRINGEND_MONATE)
     auf, luecken = lade_zeitraum(ws, "auftraege", zeitraum(ws))
     meldungen = ib["meldungen"] + luecken
     gruppen: dict[tuple[str, dt.date], list[dict]] = {}
+    plaene: dict[tuple[str, dt.date], dict] = {}
     ohne_ende = []
     for a in anlagen:
         if not gleich(a.get("Vertrag"), "ja"):
@@ -274,10 +371,13 @@ def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | No
         if ende is None:
             ohne_ende.append(f"{text(a['Kunde'])} / {text(a['Anlage'])}: Vertrag ja, aber kein Vertragsende "
                              f"({ort(a)})")
-        elif ende <= grenze:
-            gruppen.setdefault((text(a["Kunde"]), ende), []).append(a)
+        else:
+            key = (text(a["Kunde"]), ende)
+            plan = plaene.setdefault(key, verlaengerungsplan(ws, key[0], ende, tag, dringend_bis, meldungen))
+            if plan["kuendigung_bis"] <= grenze if plan["kuendigung_bis"] else ende <= grenze:
+                gruppen.setdefault(key, []).append(a)
     vertraege = []
-    for (kunde, ende), liste in sorted(gruppen.items(), key=lambda x: (x[0][1], x[0][0])):
+    for (kunde, ende), liste in sorted(gruppen.items(), key=lambda x: (plaene[x[0]]["aktionsdatum"], x[0][0])):
         namen = sorted({text(a["Anlage"]) for a in liste})
         zeilen = [z for z in auf if text(z.get("Kunde")) == kunde and text(z.get("Anlage")) in namen]
         umsatz = summe_oder_null(zeilen, "Umsatz_EUR", f"Serviceumsatz 12 Monate {kunde} ({', '.join(namen)})",
@@ -286,21 +386,30 @@ def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | No
         teile = [jw, umsatz] if jw else [umsatz]
         formel = ("Vertragsjahreswert + Serviceumsatz der Vertragsanlagen (12 Monate)" if jw
                   else "Serviceumsatz der Vertragsanlagen (12 Monate); Vertragsjahreswert fehlt")
+        plan = plaene[(kunde, ende)]
+        verlaengert = plan["art"] == "verlaengert_sich"
+        wert_feld = ("wert_bei_kuendigung", f"Vertragswert bei Kündigung {kunde}") if verlaengert \
+            else ("wert_im_risiko", f"Wert im Risiko {kunde}")
         vertraege.append({
-            "kunde": kunde, "vertragsende": ende.isoformat(), "anlagen": namen, "teile": teile,
-            "status": "abgelaufen" if ende < tag else "dringend" if ende <= dringend_bis else "planen",
-            "wert_im_risiko": addiere(f"Wert im Risiko {kunde}", teile, formel), "widerspruch": widerspruch,
-            "faellig_vorschlag": max(ende - dt.timedelta(days=VORLAUF_TAGE),
+            "kunde": kunde, "vertragsende": ende.isoformat(), "anlagen": namen, "teile": teile, **plan_text(plan),
+            wert_feld[0]: addiere(wert_feld[1], teile, formel), "widerspruch": widerspruch,
+            "faellig_vorschlag": max(plan["aktionsdatum"] - dt.timedelta(days=VORLAUF_TAGE),
                                      tag_heute + dt.timedelta(days=7)).isoformat()})
-    gesamt = addiere("Wert im Risiko gesamt", [v["wert_im_risiko"] for v in vertraege], "Σ Wert im Risiko je Vertrag")
-    zeilen_text = [f"Stichtag {tag:%d.%m.%Y}, Horizont {monate} Monate (bis {grenze:%d.%m.%Y}): {len(vertraege)} "
-                   f"Verträge, Wert im Risiko {deutsch(gesamt['betrag'])} EUR."]
-    zeilen_text += [f"{v['kunde']}: Vertragsende {datum(v['vertragsende']):%d.%m.%Y} ({v['status']}), "
-                    f"{len(v['anlagen'])} Anlage(n), Wert im Risiko {deutsch(v['wert_im_risiko']['betrag'])} EUR"
-                    for v in vertraege]
+    gesamt = addiere("Wert im Risiko gesamt", [v["wert_im_risiko"] for v in vertraege if "wert_im_risiko" in v],
+                     "Σ Wert im Risiko je endendem Vertrag")
+    verlaengern = [v for v in vertraege if "wert_bei_kuendigung" in v]
+    zusammen = addiere("Vertragswert der Verträge, die sich verlängern", [v["wert_bei_kuendigung"] for v in verlaengern],
+                       "Σ Vertragswert bei Kündigung je Vertrag")
+    kopfzeile = (f"Stichtag {tag:%d.%m.%Y}, Horizont {anzahl_text(monate, 'Monate')} (bis {grenze:%d.%m.%Y}): "
+                 f"{anzahl_text(len(vertraege), 'Verträge')}, Wert im Risiko {deutsch(gesamt['betrag'])} EUR.")
+    if verlaengern:
+        kopfzeile += (f" Davon {'verlängert sich' if len(verlaengern) == 1 else 'verlängern sich'} "
+                      f"{anzahl_text(len(verlaengern), 'Verträge')}, wenn nicht gekündigt wird (nicht im Wert im Risiko): "
+                      f"{deutsch(zusammen['betrag'])} EUR.")
+    zeilen_text = [kopfzeile] + [radar_zeile(v) for v in vertraege]
     return ergebnis(ws, {
         "stichtag": tag.isoformat(), "horizont_monate": monate, "vertraege": vertraege, "ohne_vertragsende": ohne_ende,
-        "summe": gesamt, "annahmen": annahmen, "meldungen": meldungen,
+        "summe": gesamt, "summe_verlaengert_sich": zusammen, "annahmen": annahmen, "meldungen": meldungen,
         "ziel": f"03_Berichte/{tag_heute.isoformat()}_verlaengerungs-radar.xlsx"}, zeilen_text)
 
 
@@ -375,7 +484,7 @@ def installed_base_potenziale(ws: Path, kunde: str | None = None, stichtag: str 
                               heute: str | None = None) -> dict:
     tag_heute = heute_von(ws, heute)
     anlagen, ib = installed_base(ws)
-    tag = pruefe_datum(stichtag, "--stichtag") if stichtag else ib["stichtag"]
+    tag = pruefe_datum(stichtag, "--stichtag") if stichtag else min(ib["stichtag"], tag_heute)
     preise = preisliste(ws)
     meldungen = list(ib["meldungen"])
     if not preise["zeilen"]:
@@ -539,6 +648,7 @@ def key_account_review(ws: Path, kunde: str | None = None, top: int | None = Non
 
 # --- grossangebot -------------------------------------------------------------------------------------------------
 
+# The customer document only. Sources, script calls, limits and the draft note go into the internal annex (K2).
 GLIEDERUNG = [
     "Anschreiben mit Bezug auf die Anfrage (Datum, Absender)",
     "Leistungsumfang je Anlage (Klausel „Leistungsumfang“)",
@@ -546,9 +656,11 @@ GLIEDERUNG = [
     "Preise: Preis je Anlage und Jahr, Anzahl, Jahreswert vor Rabatt, Rabatt, Jahreswert, Angebotswert über die Laufzeit",
     "Vertragsbedingungen (Rahmenvertrag, siehe Klauseln)",
     "Gültigkeit des Angebots: 30 Tage",
-    "Quellen aller Zahlen",
-    "Vermerk: Entwurf – nicht versendet; Freigabe und Unterschrift durch die verantwortliche Person",
 ]
+# Never in a customer document (checked by `pruefe-kundenfassung`).
+NUR_INTERN = ("freigabegrenze", "rabattgrenze", "entwurf", "nicht versendet", "vertrieb.py", "unternehmen/", "07_daten",
+              "04_angebote", "preisliste_", "quelle:", "quellen", "standardannahme", "kit-standard", "annahme der kalkulation")
+FALLNUMMER = re.compile(r"(?<![a-z0-9-])v-\d{4,}")
 KLAUSELN = [
     {"titel": "Vertragsgegenstand", "text": "Wartung der in der Anlagenliste genannten Maschinen."},
     # Leistungsumfang, Reaktionszeit and Ersatzteile depend on the contract level: filled by stufenklauseln()
@@ -556,10 +668,11 @@ KLAUSELN = [
     {"titel": "Reaktionszeit", "text": ""},
     {"titel": "Ersatzteile", "text": ""},
     {"titel": "Preisanpassung", "text": "Jährlich, höchstens 5 %, mit 3 Monaten Ankündigung."},
-    {"titel": "Laufzeit und Kündigung", "text": "3 Jahre, danach Verlängerung um je 12 Monate; Kündigung 3 Monate vor Ablauf."},
+    # Filled by stufenklauseln() with the quote's term. No automatic renewal (owner's decision, K1).
+    {"titel": "Laufzeit", "text": ""},
     {"titel": "Zahlung", "text": "Jährlich im Voraus, 30 Tage netto."},
     {"titel": "Ausschlüsse", "text": "Bedienfehler, Fremdeingriffe, Verschleißteile außerhalb des Satzes, Verbrauchsmaterial."},
-    {"titel": "Haftung", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen; im Entwurf keine Abweichung."},
+    {"titel": "Haftung", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen."},
     {"titel": "Gerichtsstand und AGB", "text": "Gemäß unseren Allgemeinen Geschäftsbedingungen."},
 ]
 
@@ -588,27 +701,70 @@ def leistung(ws: Path, position: str | None, typ: str) -> dict | None:
     return None
 
 
-def stufenklauseln(ws: Path, position: str | None, typ: str, meldungen: list[str]) -> list[dict]:
+def stufenklauseln(ws: Path, position: str | None, typ: str, laufzeit: int, meldungen: list[str],
+                   quellen: list[str]) -> list[dict]:
     """KLAUSELN with the level-dependent clauses taken word for word from leistungen.md (never fixed numbers that
-    could contradict the company's own levels)."""
+    could contradict the company's own levels). Customer text only: where it came from goes into `quellen`."""
     zeile = leistung(ws, position, typ)
+    luecke = "[Vor dem Versand ergänzen.]"
     if zeile:
-        q = f"({LEISTUNGEN}, {zeile['leistung']})"
-        texte = {"Leistungsumfang": f"{zeile['inhalt']} {q}.",
-                 "Reaktionszeit": f"Wie im Leistungsumfang {q}.",
-                 "Ersatzteile": f"Wie im Leistungsumfang {q}; ist dort nichts genannt, gibt es keinen Rabatt auf "
-                                "Ersatzteile."}
+        quellen.append(f"Leistungsumfang, Reaktionszeit, Ersatzteile: {LEISTUNGEN}, {zeile['leistung']}")
+        texte = {"Leistungsumfang": f"{zeile['inhalt']}.",
+                 "Reaktionszeit": "Wie im Leistungsumfang.",
+                 "Ersatzteile": "Wie im Leistungsumfang; ist dort nichts genannt, gibt es keinen Rabatt auf Ersatzteile."}
     elif position is None:  # no price-list row: the price was calculated from visits per year
-        texte = {"Leistungsumfang": f"{BESUCHE_JE_JAHR} planmäßige Wartungsbesuche pro Jahr (Annahme der "
-                                    "Kalkulation).",
-                 "Reaktionszeit": f"Laut {LEISTUNGEN} – vor dem Versand ergänzen.",
-                 "Ersatzteile": f"Laut {LEISTUNGEN} – vor dem Versand ergänzen."}
+        texte = {"Leistungsumfang": f"{BESUCHE_JE_JAHR} planmäßige Wartungsbesuche pro Jahr.",
+                 "Reaktionszeit": luecke, "Ersatzteile": luecke}
+        meldungen.append(f"Kein Listenpreis: Reaktionszeit und Ersatzteil-Konditionen laut {LEISTUNGEN} im Angebot vor "
+                         "dem Versand ergänzen.")
     else:
-        luecke = f"Laut {LEISTUNGEN} für „{position}“ – dort nicht gefunden, vor dem Versand ergänzen."
         texte = dict.fromkeys(("Leistungsumfang", "Reaktionszeit", "Ersatzteile"), luecke)
         meldungen.append(f"„{position}“ steht nicht in {LEISTUNGEN}: Leistungsumfang, Reaktionszeit und "
-                         "Ersatzteil-Konditionen im Entwurf vor dem Versand ergänzen.")
+                         "Ersatzteil-Konditionen im Angebot vor dem Versand ergänzen.")
+    texte["Laufzeit"] = (f"{anzahl_text(laufzeit, 'Jahre')}. Keine automatische Verlängerung; die Laufzeit endet zum "
+                         "genannten Datum, Verlängerung nur durch neue Vereinbarung.")
     return [k | {"text": texte[k["titel"]]} if k["titel"] in texte else k for k in KLAUSELN]
+
+
+def interne_anlage(kunde: str, typ: str, ziel: str, werte: dict, quellen: list[str], annahmen: list[str],
+                   meldungen: list[str], pr: dict, aufruf: str, beispiel: bool) -> str:
+    """The internal annex of a quote: everything the customer document must not show (K2)."""
+    md = [f"# Interne Anlage zum Angebot {kunde}, {typ}", "", "**Nicht an den Kunden. Gehört zu:** " + ziel, ""]
+    md += [f"**{demo_hinweis()}**", ""] if demo_hinweis() else []
+    md += [f"**{BEISPIEL_HINWEIS}**", ""] if beispiel else []
+    md += ["**Entwurf – nicht versendet.** Freigabe und Unterschrift durch die verantwortliche Person.", ""]
+    md += ["## Prüfung und Freigabegrenzen", ""]
+    md += [f"- Finanzen: {g}" for g in pr["finanzen"]] + [f"- Qualität & Recht: {g}" for g in pr["qualitaet_recht"]]
+    md += [f"- {h}" for h in pr["hinweise"]]
+    if not pr["noetig"]:
+        md.append("- Unter allen Freigabegrenzen, keine Abweichung – keine Prüfung nötig.")
+    md += ["", "## Zu klären vor dem Versand", ""] + ([f"- {m}" for m in meldungen] or ["- Nichts offen."])
+    md += ["", "## Kalkulation", "", f"- `vertrieb.py {aufruf}`"]
+    md += [f"- {w['name']}: {deutsch(w['betrag'])} EUR" + (f" – {w['formel']}" if w.get("formel") else "")
+           + f"; Quelle: {', '.join(w['quelle'])}" for w in werte.values()]
+    md += ["", "## Quellen der Klauseln", ""] + ([f"- {q}" for q in quellen] or ["- Keine Angabe aus Unternehmen/leistungen.md."])
+    md += ["", "## Annahmen", ""] + ([f"- {a}" for a in annahmen] or ["- Keine."])
+    return "\n".join(md) + "\n"
+
+
+def pruefe_kundenfassung(ws: Path, datei: str) -> dict:
+    """Refuses a customer document that shows internal notes, and names what is still open in it."""
+    p = ws / datei
+    if not p.is_file():
+        raise VertriebFehler(f"{datei} nicht gefunden.")
+    try:
+        with zipfile.ZipFile(p) as z:
+            roh = " ".join(z.read(n).decode("utf-8", "ignore") for n in z.namelist()
+                           if re.fullmatch(r"word/(document|header\d*|footer\d*)\.xml", n))
+        inhalt = re.sub(r"<[^>]+>", "", re.sub(r"</w:p>", "\n", roh))
+    except zipfile.BadZipFile:
+        inhalt = p.read_text(encoding="utf-8", errors="ignore")
+    klein = inhalt.casefold()
+    fund = sorted({w for w in NUR_INTERN if w in klein} | set(FALLNUMMER.findall(klein)))
+    offen = len(re.findall(r"\[Vor dem Versand ergänzen\.\]", inhalt))
+    meldungen = [f"Interner Vermerk im Kundendokument: {w}" for w in fund]
+    meldungen += [f"Noch {anzahl_text(offen, 'Klauseln', 'Klausel')} ohne Inhalt: vor dem Versand ergänzen."] if offen else []
+    return {"ok": not fund, "datei": datei, "interne_vermerke": fund, "offene_klauseln": offen, "meldungen": meldungen}
 
 
 def grenzen(ws: Path) -> dict:
@@ -691,7 +847,7 @@ def listenpreis(preise: dict, typ: str, annahmen: list[str], stufe: str | None =
 
 def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | None = None,
                  rabatt: float | None = None, abweichungen: list[str] | tuple = (), heute: str | None = None,
-                 stufe: str | None = None) -> dict:
+                 stufe: str | None = None, neue_anlagen: bool = False) -> dict:
     kunde, typ, abweichungen = kunde.strip(), typ.strip(), [a.strip() for a in abweichungen if a.strip()]
     stufe = (stufe or "").strip() or None
     if not 1 <= anzahl <= 500:
@@ -714,6 +870,7 @@ def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | No
     if not 0 <= rabatt <= 50:
         raise VertriebFehler("--rabatt-prozent muss zwischen 0 und 50 liegen")
     aufruf += f' --stufe "{stufe}"' if stufe else ""
+    aufruf += " --neue-anlagen" if neue_anlagen else ""
     aufruf += "".join(f' --abweichung "{a}"' for a in abweichungen)
     je, position = listenpreis(preisliste(ws), typ, annahmen, stufe)
     brutto = wert("Jahreswert vor Rabatt", round(je["betrag"] * anzahl, 2), je["quelle"],
@@ -724,15 +881,20 @@ def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | No
                 formel="Jahreswert vor Rabatt − Rabatt je Jahr")
     gesamt = wert("Angebotswert", round(jahr["betrag"] * laufzeit, 2), je["quelle"],
                   formel=f"Jahreswert × {laufzeit} Jahre")
-    try:
-        eigene = [a for a in installed_base(ws)[0] if gleich(a.get("Kunde"), kunde) and gleich(a.get("Maschinentyp"), typ)]
-    except VertriebFehler as exc:
-        eigene = []
-        meldungen.append(f"{exc} Anlagenliste bitte von Hand ergänzen.")
+    eigene = []
+    if neue_anlagen:  # machines still to be delivered: machines of the same type in the base are unrelated
+        meldungen.append(f"Angebot für {anzahl_text(anzahl, 'neue Anlagen', 'neue Anlage')}: kein Abgleich mit der Installed "
+                         "Base; Anlagenliste nach Lieferung ergänzen.")
+    else:
+        try:
+            eigene = [a for a in installed_base(ws)[0]
+                      if gleich(a.get("Kunde"), kunde) and gleich(a.get("Maschinentyp"), typ)]
+        except VertriebFehler as exc:
+            meldungen.append(f"{exc} Anlagenliste bitte von Hand ergänzen.")
     anlagen = [{"anlage": text(a.get("Anlage")), "typ": typ, "baujahr": jahrtext(a),
                 "vertrag": text(a.get("Vertrag")), "vertragsende": text(a.get("Vertragsende")), "quelle": ort(a)}
                for a in sorted(eigene, key=lambda a: text(a.get("Anlage")))]
-    if len(anlagen) != anzahl:
+    if len(anlagen) != anzahl and not neue_anlagen:
         meldungen.append(f"In der Installed Base stehen {len(anlagen)} Anlagen {typ} von {kunde}; angefragt sind "
                          f"{anzahl} – Anlagenliste im Vertrag bitte prüfen.")
     for a in anlagen:
@@ -748,14 +910,18 @@ def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | No
               f"Angebotswert über {laufzeit} Jahre: {deutsch(gesamt['betrag'])} EUR (gültig bis {gueltig:%d.%m.%Y}).",
               ("Prüfung nötig: " + " ".join(pr["finanzen"] + pr["qualitaet_recht"])) if pr["noetig"]
               else "Unter allen Freigabegrenzen, keine Abweichung – keine Prüfung nötig."]
+    werte = {"preis_je_anlage": je, "jahreswert_vor_rabatt": brutto, "rabatt": nachlass, "jahreswert": jahr,
+             "angebotswert": gesamt}
+    quellen: list[str] = []
+    klauseln = stufenklauseln(ws, position, typ, laufzeit, meldungen, quellen)
+    ziel = f"04_Angebote/{ordnername(kunde)}/{tag_heute.isoformat()}_angebot-wartungsvertrag.docx"
     return ergebnis(ws, {
-        "kunde": kunde, "typ": typ, "anzahl": anzahl, "stufe": position,
-        "werte": {"preis_je_anlage": je, "jahreswert_vor_rabatt": brutto, "rabatt": nachlass, "jahreswert": jahr,
-                  "angebotswert": gesamt},
+        "kunde": kunde, "typ": typ, "anzahl": anzahl, "stufe": position, "neue_anlagen": neue_anlagen, "werte": werte,
         "rabatt_prozent": rabatt, "laufzeit_jahre": laufzeit, "gueltig_bis": gueltig.isoformat(), "anlagen": anlagen,
-        "gliederung": GLIEDERUNG, "klauseln": stufenklauseln(ws, position, typ, meldungen), "pruefung": pr, "aufruf": aufruf, "annahmen": annahmen,
-        "meldungen": meldungen,
-        "ziel": f"04_Angebote/{ordnername(kunde)}/{tag_heute.isoformat()}_angebot-wartungsvertrag.docx"}, zeilen)
+        "gliederung": GLIEDERUNG, "klauseln": klauseln, "pruefung": pr, "aufruf": aufruf, "annahmen": annahmen,
+        "meldungen": meldungen, "ziel": ziel, "ziel_intern": ziel.replace(".docx", "_intern.md"),
+        "intern_text": interne_anlage(kunde, typ, ziel, werte, quellen, annahmen, meldungen, pr, aufruf,
+                                      bool(datenquelle(ws)["beispiel"]))}, zeilen)
 
 
 def prozent(s: str | None) -> float | None:
@@ -796,6 +962,9 @@ def parser() -> JsonParser:
     g.add_argument("--laufzeit-jahre", dest="laufzeit", type=int)
     g.add_argument("--rabatt-prozent", dest="rabatt")
     g.add_argument("--abweichung", action="append", default=[])
+    g.add_argument("--neue-anlagen", dest="neue_anlagen", action="store_true")
+    f = add("pruefe-kundenfassung")
+    f.add_argument("--datei", required=True)
     return ap
 
 
@@ -804,7 +973,8 @@ BEFEHLE = {
     "installed-base-potenziale": lambda a, ws: installed_base_potenziale(ws, a.kunde, a.stichtag, a.heute),
     "key-account-review": lambda a, ws: key_account_review(ws, a.kunde, a.top, a.heute),
     "grossangebot": lambda a, ws: grossangebot(ws, a.kunde, a.typ, a.anzahl, a.laufzeit, prozent(a.rabatt),
-                                               a.abweichung, a.heute, a.stufe),
+                                               a.abweichung, a.heute, a.stufe, a.neue_anlagen),
+    "pruefe-kundenfassung": lambda a, ws: pruefe_kundenfassung(ws, a.datei),
 }
 
 
@@ -814,7 +984,8 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     try:
         if not (ws / "Unternehmen").is_dir():
             raise VertriebFehler(f"{ws} ist kein Kit-Arbeitsordner (Unternehmen/ fehlt).")
-        return 0, BEFEHLE[a.cmd](a, ws)
+        out = BEFEHLE[a.cmd](a, ws)
+        return (0 if out["ok"] else 1), out
     except StufeFehlt as exc:
         return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)], "stufen": exc.stufen}
     except (VertriebFehler, KennzahlFehler) as exc:

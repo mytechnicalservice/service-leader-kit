@@ -34,7 +34,8 @@ inline code (`python -c`, `python - <<EOF`) that names them is refused by the gu
 2. Write `ziel` with the built-in Word document skill, one chapter per entry of `konten`:
    - revenue 12 months (`umsatz_12m`, split `service` / `ersatzteile`, a table of `monate`);
    - installed base (`anlagen`: machine, type, year, age, contract, end);
-   - contract (`vertrag`, plus `verlaengerung` with status and value at stake);
+   - contract (`vertrag`, plus `verlaengerung`: whether it ends or renews unless cancelled (`art`), action date
+     (`aktionsdatum`), status and value);
    - open cases (`vorgaenge`: number, title, due date);
    - potential (`potenzial`: machines without contract, retrofit candidates, both sums separately, `nicht_bewertet`).
 

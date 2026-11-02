@@ -75,6 +75,12 @@ def fmt_de(x: float) -> str:
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def monat_im_namen(name: str) -> str | None:
+    """JJJJ-MM named in a file name (2026-09, 2026_09, 202609); None if it names none."""
+    m = re.search(r"(?<!\d)(20\d{2})[-_]?(0[1-9]|1[0-2])(?!\d)", name)
+    return f"{m.group(1)}-{m.group(2)}" if m else None
+
+
 def monatsname(periode: str) -> str:
     y, m = periode.split("-")
     return f"{MONATE[int(m) - 1]} {y}"
@@ -297,6 +303,9 @@ def _pruefe(ws, datei, vorlage, kontrollsumme, zuordnung, uebernehmen, heute, du
         raise ImportFehler("Datei enthält mehrere Monate: " + ", ".join(sorted(perioden)))
     periode = perioden.pop()
     result["periode"], result["zeilen"] = periode, len(norm)
+    if tpl["periode"].get("stichtag") and (genannt := monat_im_namen(datei.name)) and genannt != periode:
+        result["meldungen"].append(f"Der Dateiname nennt {genannt}, abgelegt wird die Datei als Stand {periode} (Monat "
+                                   "des Imports). Bitte den Datenstand prüfen.")
     if tpl["summe"]:
         result["summe"] = round(sum(r[tpl["summe"]] or 0 for r in norm), 2)
         if export_summe is not None and abs(export_summe - result["summe"]) > 0.005:
