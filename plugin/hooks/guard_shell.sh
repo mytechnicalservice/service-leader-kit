@@ -22,6 +22,9 @@ nq=$(printf '%s' "$full" | tr -d "\"'")                                    # quo
 _slk_ps=0; [ "$tool" = PowerShell ] && _slk_ps=1
 segs=$(printf '%s\n' "$cmd" | awk -v ps="$_slk_ps" -f "$SLK_HOOKS/segments.awk")
 verbs=$(printf '%s\n' "$segs" | awk -F '\t' '{ printf " %s", $1 } END { print " " }')
+# Too many arguments to check in time: the per-argument rules take seconds per thousand. Heredoc text is no argument.
+[ "$(printf '%s\n' "$segs" | awk -F '\t' '{ n += NF - 1 } END { print n + 0 }')" -gt 500 ] &&
+  block shell-zu-lang "Der Befehl hat zu viele Argumente zum Prüfen. Teile ihn in mehrere Aufrufe auf."
 words=" $(printf '%s' "$bare" | tr '\n\t' '  ') "
 
 has_verb() { for v in "$@"; do case "$verbs" in *" $v "*) return 0 ;; esac; done; return 1; }
@@ -194,8 +197,9 @@ seg_git_rules() {
 ist_inplace() {
   case "$1" in
     -*'$sub'*) return 0 ;;
-    --*) case "$(slk_lower "$1")" in --i*) return 0 ;; esac; return 1 ;;
-    -*) case "$(slk_lower "${1%%[ef]*}")" in -*i*) return 0 ;; esac ;;
+    --[iI]*) return 0 ;;
+    --*) return 1 ;;
+    -*) case "${1%%[ef]*}" in -*[iI]*) return 0 ;; esac ;;
   esac
   return 1
 }
@@ -214,14 +218,17 @@ seg_inplace_rules() {
 seg_schreib_rules() {
   _slk_v=$1; shift; _slk_x=0
   for _slk_a in "$@"; do
-    _slk_t=${_slk_a#???}; _slk_l=$(slk_lower "$_slk_t")
+    _slk_t=${_slk_a#???}
     case "$_slk_v" in
-      awk|gawk) case "$_slk_l" in -i*|--include*) block shell-geschuetzt "$schutz" ;; esac ;;
-      sort) case "$_slk_t" in --output*) block shell-geschuetzt "$schutz" ;; --*) ;; -*o*) block shell-geschuetzt "$schutz" ;; esac ;;
-      find) # sed or perl run by -exec
-        if [ "$_slk_x" = 1 ]; then ist_inplace "$_slk_t" && block shell-geschuetzt "$schutz"
-        else case "${_slk_l##*/}" in sed|perl) _slk_x=1 ;; esac
-        fi ;;
+      awk|gawk) case "$_slk_t" in -i*|-I*|--include*) block shell-geschuetzt "$schutz" ;; esac ;;
+      sort) case "$_slk_t" in --output*) block shell-geschuetzt "$schutz" ;; --*|-t*|-k*) ;; -*o*) block shell-geschuetzt "$schutz" ;; esac ;;
+      find) # sed or perl run by -exec, up to the end of that -exec
+        case "$_slk_x:$_slk_t" in
+          *:-exec|*:-execdir|*:-ok|*:-okdir) _slk_x=1 ;;
+          1:*) case "${_slk_t##*/}" in sed|SED|perl|PERL) _slk_x=2 ;; *) _slk_x=0 ;; esac ;;
+          2:\;|2:+) _slk_x=0 ;;
+          2:*) ist_inplace "$_slk_t" && block shell-geschuetzt "$schutz" ;;
+        esac ;;
       *) [ "$_slk_t" = '$xargs' ] && block shell-geschuetzt "$schutz" ;;   # a shell reading its commands from a pipe
     esac
   done
@@ -416,9 +423,6 @@ if [ "$named" = 1 ]; then
   # shellcheck disable=SC2086
   has_verb $DEL $MOVE $COPY $INLINE && block shell-geschuetzt "$schutz"
   has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && block shell-geschuetzt "$schutz"
-  check_segs inplace
-  # A shell fed from a heredoc runs its body, which no rule above sees as commands.
-  case "$full" in *"<<"*) has_verb bash sh zsh dash ksh && block shell-geschuetzt "$schutz" ;; esac
   has_verb git && has_word rm mv checkout restore reset stash apply && block shell-geschuetzt "$schutz"
   has_verb uv && has_word python python3 && has_word -c && block shell-geschuetzt "$schutz"
   printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&
@@ -427,6 +431,9 @@ if [ "$named" = 1 ]; then
     printf '%s' "$nq" | sed -E 's/[0-9]*>>?[[:space:]]*(&[0-9-]?|\/dev\/null)//g' | grep -q '>' &&
       block shell-geschuetzt "$schutz"
   fi
+  check_segs inplace
+  # A shell fed from a heredoc runs its body, which no rule above sees as commands.
+  case "$full" in *"<<"*) has_verb bash sh zsh dash ksh && block shell-geschuetzt "$schutz" ;; esac
 fi
 
 # 3b. Git that throws away work, anywhere in the workspace.
