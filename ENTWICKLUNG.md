@@ -126,6 +126,18 @@ Dateisandbox außerhalb ihrer erlaubten Bereiche verwendet; alte Sandbox-Flags k
 | Agentenspezifische Werkzeugliste | Technische Einschränkung in Claude | Advisory, in Codex nicht übernommen |
 | Zugriff außerhalb erlaubter Dateibereiche | Host-Sandbox | Enforced durch das tatsächlich aktive Host-Profil |
 
+## Bezugsdatum und Demo-Datum
+
+`arbeitsordner.bezugstag(ws, explizit)` ist die eine Quelle des Bezugsdatums: `--heute`, dann `demo_datum` aus gültigen
+Einstellungen, dann das Systemdatum. `session-start.sh` wendet dieselbe Regel an, `routine.faellig` und `slk_faellig`
+bleiben Zwillinge (Paritätstest). `slk_common.run` setzt `demo_datum` und den Hinweis an den Anfang von `meldungen`,
+`hinweise` und `zusammenfassung`; ohne Demo-Datum bleibt die Ausgabe unverändert. Protokoll und Sicherung behalten
+bewusst die echte Zeit: Sie belegen, wann etwas wirklich geschah. Kundenfassungen tragen den Hinweis nicht.
+
+`demo_datum` ist der erste optionale Schlüssel im Schema (`demo_datum?=…`), deshalb bleibt es bei `schema=1`, und alte
+Einstellungen bleiben gültig. Grenze: Ein Kit vor dieser Änderung kennt den Schlüssel nicht und behandelt die
+Einstellungen als ungültig (sicheres Verhalten). Das Demo-Datum also erst nach dem Update setzen.
+
 ## Was das Kit nicht verhindert
 
 Die Hooks (`plugin/hooks/`) halten versehentliche und eingeschleuste Schäden auf, keinen entschlossenen Menschen
@@ -137,7 +149,9 @@ Die Hooks (`plugin/hooks/`) halten versehentliche und eingeschleuste Schäden au
   Befehl (`cat`, `ls`, `head`, `grep`, `sed` ohne `-i` …) bekommt, zählt nicht als Nennen der geschützten Ordner,
   solange dessen Ausgabe nur den Bildschirm erreicht (keine Befehlsersetzung, Umleitung oder Pipe in einen
   schreibenden Befehl) und derselbe Text sonst nirgends im Befehl steht (T-1952). Inline-Code, der die Ordner nennt,
-  bleibt gesperrt, auch zum Lesen.
+  bleibt gesperrt, auch zum Lesen. Ein wörtlich zitiertes Argument eines lesenden Befehls (`grep 'a > b'`) zählt nicht
+  als Umleitung. `awk` gehört nicht zu den lesenden Befehlen: `print > "./" "Unternehmen/x"` schreibt aus dem Programm
+  heraus, das lässt sich an der Shell nicht sicher von einem Vergleich unterscheiden.
 - **Absichtliche Verschleierung wird nicht erkannt.** Ein Skript, das einen Pfad aus Teilen zusammensetzt (z. B. eine
   Python-Datei in `$TMPDIR`, die `Unternehmen/` intern adressiert), oder ein kodierter Befehl läuft an der
   Wort-Prüfung vorbei. Im Eval-Lauf 0.2.1 las ein Modell so `Unternehmen/` aus einem Temp-Skript – das ist Lesen und

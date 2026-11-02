@@ -16,9 +16,9 @@ import sys
 from pathlib import Path
 
 import kennzahlen as kz
-from arbeitsordner import lies_konfig
+from arbeitsordner import bezugstag, lies_konfig
 from daten_pruefen import ImportFehler, datum, leer, lese, monat, personen_spalten
-from slk_common import JsonParser, csv_sicher, run, write_atomic, zahl
+from slk_common import JsonParser, anzahl_text, csv_sicher, run, write_atomic, zahl
 
 HINWEIS = ("Hinweis: Personalthemen können die Mitbestimmung des Betriebsrats (§ 87 Abs. 1 Nr. 6, § 94 und § 98 "
            "BetrVG) und den Beschäftigtendatenschutz (DSGVO, BDSG) berühren. Bitte Betriebsrat und "
@@ -28,7 +28,7 @@ BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
 STANDARD = {"netto_stunden": 1600.0, "auslastung": 0.75, "schwelle_einstellung": 0.5, "vollkosten_eur": 85000.0,
             "einmalkosten_eur": 15000.0, "vorlauf_monate": 5, "einarbeitung_monate": 3, "einarbeitung_quote": 0.5,
             "min_qualifiziert": 2, "min_teamgroesse": 3}  # plan 4h, domain defaults 1–15
-TEXT = {"netto_stunden": "Netto-Jahresarbeitszeit je FTE (Std)", "auslastung": "Auslastungsziel",
+TEXT = {"netto_stunden": "Netto-Jahresarbeitszeit je FTE (Std)", "auslastung": "Verrechenbarkeitsziel",
         "schwelle_einstellung": "Einstellungsschwelle (FTE)", "vollkosten_eur": "Vollkosten je Techniker und Jahr",
         "einmalkosten_eur": "Einmalkosten je Einstellung", "vorlauf_monate": "Vorlaufzeit Einstellung (Monate)",
         "einarbeitung_monate": "Einarbeitung (Monate)", "einarbeitung_quote": "Produktivität in der Einarbeitung"}
@@ -277,7 +277,7 @@ def cmd_personalplanung(a, ws: Path) -> tuple[int, dict]:
     if ohne:
         w = summe(ohne, "Stunden", "Auftragsstunden ohne Team", "Std")
         werte.append(w)
-        meldungen.append(f"{len(ohne)} Aufträge ohne Team ({kz.deutsch(w['betrag'])} Std) – keinem Team zugeordnet, "
+        meldungen.append(f"{anzahl_text(len(ohne), 'Aufträge')} ohne Team ({kz.deutsch(w['betrag'])} Std) – keinem Team zugeordnet, "
                          "nicht verteilt.")
     meldungen += [f"Team {t} hat Aufträge, aber keine Kapazitätszeile für {bis}." for t in
                   sorted({str(r["Team"]) for r in auf if not leer(r.get("Team"))} - set(teams))]
@@ -520,7 +520,7 @@ def cmd_skill_matrix(a, ws: Path) -> tuple[int, dict]:
                       f"Summe (mindestens {mind} − qualifiziert) über Zellen mit Aufträgen", "Anzahl")]
     meldungen = kleine_teams(lade_optional(ws, "kapazitaet", [bis]))
     if ohne:
-        meldungen.append(f"{len(ohne)} Aufträge ohne Team oder ohne Maschinentyp in der Installed Base – nicht in "
+        meldungen.append(f"{anzahl_text(len(ohne), 'Aufträge')} ohne Team oder ohne Maschinentyp in der Installed Base – nicht in "
                          "der Matrix.")
     meldungen += [f"Maschinentyp {m}: in keinem Team jemand qualifiziert." for m in ohne_abdeckung]
     gl = kopf(k) + [
@@ -665,13 +665,13 @@ def cmd_abgang(a, ws: Path) -> tuple[int, dict]:
                    f"({z['stufe_nachher']}), Firma danach {z['firma_nachher']}" for z in out_z]),
         abschnitt("Auswirkung", werte),
         abschnitt("Kunden mit betroffenen Maschinentypen",
-                  [f"{x['kunde']}: {x['anlagen']} Anlagen, {x['mit_vertrag']} mit Vertrag"
+                  [f"{x['kunde']}: {anzahl_text(x['anlagen'], 'Anlagen')}, {x['mit_vertrag']} mit Vertrag"
                    + (f", frühestes Vertragsende {x['vertragsende_frueh']}" if x["vertragsende_frueh"] else "")
                    for x in kunden]),
         abschnitt("Optionen", [f"Schulung abschließen: {s['anzahl']} in Schulung ({s['maschinentyp']} · {s['auftragsart']})"
                                for s in schulung]
                   + [f"Abordnung aus Team {o['team']} ({o['qualifiziert']} qualifiziert)" for o in abordnung]
-                  + [f"Einstellung: einsatzbereit frühestens {bereit} – {luecke} Monate ohne Abdeckung",
+                  + [f"Einstellung: einsatzbereit frühestens {bereit} – {anzahl_text(luecke, 'Monate')} ohne Abdeckung",
                      "Überbrückung durch Herstellerservice oder Fremdleistung"]),
         abschnitt(f"Wissenstransfer bis {letzter}", WISSENSTRANSFER),
         abschnitt("Hinweise", meldungen + kleine_teams(lade_optional(ws, "kapazitaet", [bis])) + [k["hinweis"]])]
@@ -766,7 +766,7 @@ def parser() -> JsonParser:
         sp = sub.add_parser(name)
         if ws:
             sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         if fenster_args:
             sp.add_argument("--bis")
             sp.add_argument("--monate", type=int, default=12)
@@ -805,6 +805,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     if getattr(a, "monate", 1) < 1:
         return 1, fehler("--monate muss mindestens 1 sein.")
     ws = Path(a.ws) if getattr(a, "ws", None) else None
+    a.heute = bezugstag(ws, a.heute)
     try:
         return BEFEHLE[a.cmd](a, ws)
     except (kz.KennzahlFehler, ImportFehler, ValueError) as exc:

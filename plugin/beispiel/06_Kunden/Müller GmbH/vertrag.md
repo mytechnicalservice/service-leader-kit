@@ -26,7 +26,7 @@ Reaktionszeit: 48 h
 | Preis je Anlage und Jahr | 7.800 EUR |
 | Jahreswert | 93.600 EUR |
 | Laufzeit bis | 31.03.2027 |
-| Verlängerung | automatisch um 12 Monate, Kündigung 3 Monate vor Ablauf |
+| Verlängerung | keine automatische Verlängerung; Laufzeit endet zum genannten Datum, Verlängerung nur durch neue Vereinbarung |
 | Reaktionszeit | 48 Stunden ab Störungsmeldung |
 | Leistungen | 2 Wartungen pro Jahr, Hotline werktags 7–19 Uhr, 5 % Rabatt auf Ersatzteile |
 | Preisgleitklausel | jährlich nach Lohnkostenindex, höchstens 5 % |

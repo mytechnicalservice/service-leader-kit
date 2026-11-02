@@ -57,10 +57,11 @@ Variances without `massnahme_pruefen` are explained in the report only.
 Write `dokument` (path from the script) with Claude's docx skill, using `Unternehmen/vorlagen/briefkopf.docx` when
 present. Chapters exactly as `gliederung`; page 1 = `kernzahlen` and the three largest `abweichungen`. On page 1 the
 margin target belongs to DB I (D19: DB I after service personnel): show "DB I in % vom Umsatz Monat" next to
-"Ziel DB I in %" and its source (kit standard 35 % labelled as such); "DB II in % vom Umsatz Monat" stands ohne Ziel. Every number appears with its `anzeige` text; sources go into
+"Ziel DB I in %" and its source (kit standard 35 % labelled as such). "DB II in % vom Umsatz Monat" stands next to
+"Ziel DB II in %" when `kernzahlen` holds that target from `kpi-ziele.md`, and only otherwise "ohne Ziel". Every number appears with its `anzeige` text; sources go into
 a "Quelle" column or footnote; calculated values show `formel`. If `beispiel` is true, the first line is
 "Beispieldaten – Muster Maschinenbau GmbH". Chapter "Verwendete Definitionen" lists `definitionen` and says
-"Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt" where `standard` is true. `konflikte` and
+"Kit-Standard – im Unternehmen nicht eigens festgelegt" where `standard` is true. `konflikte` and
 `quellenvergleich` go into "Datenlage und Quellen" with both values. No names of technicians; capacity only per team.
 
 ## 4. Abgleich – not a self-review (§8 Regel 3)

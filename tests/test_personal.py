@@ -92,7 +92,7 @@ def test_angaben_im_gespraech_ersetzen_standards(pws):
     code, out = lauf("personalplanung", "--ws", pws, "--bis", "2026-09", "--monate", 3, "--auslastung-prozent", 80)
     assert wert(out, "FTE-Bedarf Süd") == 5.6
     herkunft = {a["name"]: a["herkunft"] for a in out["annahmen"]}
-    assert herkunft["Auslastungsziel"] == "Angabe im Gespräch"
+    assert herkunft["Verrechenbarkeitsziel"] == "Angabe im Gespräch"
 
 
 def test_auslastungsziel_liest_verrechenbarkeit(pws):
@@ -102,7 +102,7 @@ def test_auslastungsziel_liest_verrechenbarkeit(pws):
         '  - {"name": "Verrechenbarkeit", "ziel": 70}\n---\n\n# KPIs und Ziele\n', encoding="utf-8")
     code, out = lauf("personalplanung", "--ws", pws, "--bis", "2026-09", "--monate", 3)
     assert code == 0, out
-    ziel = next(a for a in out["annahmen"] if a["name"] == "Auslastungsziel")
+    ziel = next(a for a in out["annahmen"] if a["name"] == "Verrechenbarkeitsziel")
     assert ziel["wert"] == 0.7 and ziel["anzeige"] == "70 %" and ziel["herkunft"] == "Unternehmen/kpi-ziele.md"
     assert wert(out, "FTE-Bedarf Süd") == 6.4
 

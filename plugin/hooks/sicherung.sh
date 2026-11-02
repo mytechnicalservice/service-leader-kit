@@ -8,7 +8,7 @@ gd=$(git -C "$ws" rev-parse --absolute-git-dir 2>/dev/null) || gd="$ws/.git"
 _slk_git() { # git <subcommand and options> restricted to the files a backup should cover
   git -C "$ws" -c core.quotepath=false "$@" -- . ':(exclude)~$*' ':(exclude)**/~$*' ':(exclude)*.tmp' \
     ':(exclude)**/.*.tmp' ':(exclude)Unternehmen/.kit-protokoll*' ':(exclude)Unternehmen/.kit-stand' \
-    ':(exclude)Unternehmen/.kit-letzter-stop' ':(exclude).DS_Store' ':(exclude)**/.DS_Store'
+    ':(exclude)Unternehmen/.kit-letzter-stop' ':(exclude)Unternehmen/.kit-*.jetzt' ':(exclude).DS_Store' ':(exclude)**/.DS_Store'
 }
 aenderungen=$(_slk_git status --porcelain -uall 2>/dev/null)
 if [ "$(slk_get "$cfg" git_auto)" = ja ]; then

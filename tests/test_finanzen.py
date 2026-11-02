@@ -248,7 +248,8 @@ def bericht(ws):
 
 
 def abgleich(ws, out, *extra):
-    return rufe("abgleich", "--ws", ws, "--zahlen", out["zahlen"], "--heute", HEUTE, *extra)
+    nur = () if "--dokument" in extra else ("--nur-zahlen",)
+    return rufe("abgleich", "--ws", ws, "--zahlen", out["zahlen"], "--heute", HEUTE, *nur, *extra)
 
 
 def test_second_source_is_flagged_never_averaged(fin_ws):
@@ -450,7 +451,7 @@ def test_investment_names_the_company_decision_right(kit_ws):
         "---\n\n# Ergebnisrechnung Service\n", encoding="utf-8")
     _, out = rufe("investitionsantrag", "--ws", kit_ws, "--titel", "X", "--invest", "100.000", "--rueckfluss", "30.000",
                   "--jahre", 5, "--quelle", "Eingabe")
-    assert out["entscheidung"] == "Entscheidung durch Geschäftsführung (über 15.000 EUR)"
+    assert out["entscheidung"] == "Entscheidung durch Geschäftsführung (Entscheidungsrecht: über 15.000 EUR)"
 
 
 def angebotsfall(ws, von="vertrieb"):
@@ -569,9 +570,9 @@ def test_workflow_chains_are_in_the_skills():
 def test_skills_carry_the_db1_target():
     """D19 in the skill texts: DB I (after service personnel) is the target margin everywhere."""
     mr, bp, mp = (skill(n)[1] for n in ("management-report", "budgetplanung", "margen-pruefung"))
-    assert "DB I in % vom Umsatz" in mr and "Ziel DB I in %" in mr and "Ziel DB II" not in mr
+    assert "DB I in % vom Umsatz" in mr and "Ziel DB I in %" in mr and "only otherwise \"ohne Ziel\"" in " ".join(mr.split())
     assert "Umsatz, DB I %" in bp and "DB II %" not in bp
-    for teil in ("DB I", "--material", "--fremdleistung", "--stunden", "Vollkostensatz", "Standarddefinition"):
+    for teil in ("DB I", "--material", "--fremdleistung", "--stunden", "Vollkostensatz", "Kit-Standard"):
         assert teil in mp, teil
 
 

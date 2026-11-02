@@ -58,7 +58,7 @@ Run the step-1 command again with all `--annahme` flags.
 
 1. Write `dokument` with Claude's xlsx skill: sheet "Übersicht" (`kernzahlen`, base vs budget), sheet "Positionen",
    sheet "Monate" (`positionen[].monate`), sheet "Annahmen" (each with source), sheet "Definitionen"
-   (`definitionen`, kit standards marked "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt").
+   (`definitionen`, kit standards marked "Kit-Standard – im Unternehmen nicht eigens festgelegt").
    Sample data → first line "Beispieldaten – Muster Maschinenbau GmbH". Numbers exactly as `anzeige`/`betrag`.
 2. Reconcile (§8 Regel 3, not a self-review): `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/finanzen.py" abgleich --ws "<workspace>" --zahlen "<zahlen>" --dokument "<dokument>"`.
    Fix only document text; any data deviation → stop and tell the user. You write no recommendation on the budget.

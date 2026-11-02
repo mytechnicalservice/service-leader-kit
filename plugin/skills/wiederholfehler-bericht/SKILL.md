@@ -32,9 +32,12 @@ inline code (`python -c`, `python - <<EOF`) that names them is refused by the gu
 3. Write `ausgabe_datei` with the docx document skill; sections = `gliederung`. Per finding: machine type,
    component, number of repairs, customers, order numbers, costs and revenue with their `quelle`. Add every line of
    `meldungen` (missing months, missing component column, unassigned repairs) under "Datenlage und Quellen". Label
-   "Beispieldaten – Muster Maschinenbau GmbH" if `hinweise` contains it.
+   "Beispieldaten – Muster Maschinenbau GmbH" if `hinweise` contains it. A finding with `stufe` "nicht bewertet" is a
+   count per machine type without a component: never call it a recurring fault. The section on machines lists the
+   first 10 of `rangfolge_anlagen` (customer, machine, type, repairs, repeats, shortest gap, costs); of
+   `wiederholt_gleiche_anlage` only those machines' pairs, and the total number of pairs.
 4. Chat answer (German): for each finding with `stufe` "Wiederholfehler": machine type, component, number of
-   repairs (digits) and costs in German number format; then "gleiche Anlage erneut repariert" with the days; then
-   the messages; then the file path.
+   repairs (digits) and costs in German number format; then the first 5 of `rangfolge_anlagen` with repairs and
+   repeats; then the messages; then the file path.
 5. Offer a follow-up case per recurring fault (`vorgang` skill, `--typ aufgabe`, responsible person named by the
    user). Open it only when the user names that person.

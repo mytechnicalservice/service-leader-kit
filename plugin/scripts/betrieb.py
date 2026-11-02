@@ -17,12 +17,14 @@ import sys
 from pathlib import Path
 
 import daten_pruefen
+import arbeitsordner as ao
 import kennzahlen
 import vorgang
 from kennzahlen import deutsch, wert
-from slk_common import JsonParser, run, zahl
+from slk_common import JsonParser, einheit_zu, run, zahl
 
-STANDARD = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
+AUSLASTUNG_DEFINITION = "Auslastung = Ist-Stunden ÷ Soll-Stunden; nicht die Verrechenbarkeit, mit der die Personalplanung rechnet."
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
 AUSLASTUNG_ZIEL = 85.0  # % – kit standard while kpi-ziele.md names no "Auslastung" (D9)
 BAND_GRUEN, BAND_GELB = 10.0, 20.0  # percentage points distance to the target
@@ -76,7 +78,7 @@ def zahltext(w: dict) -> str:
 def fmt(w: dict | None) -> str:
     if w is None:
         return "–"
-    return f"{zahltext(w)} {'€' if w['einheit'] == 'EUR' else w['einheit']}"
+    return f"{zahltext(w)} {'€' if w['einheit'] == 'EUR' else einheit_zu(w['betrag'], w['einheit'])}"
 
 
 def zeilen_quelle(zeilen: list[dict]) -> list[str]:
@@ -290,8 +292,16 @@ def ist_offen(r: dict, stichtag: dt.date) -> bool:
             and str(r.get("Status") or "").strip().casefold() not in ERLEDIGT)
 
 
+def datenstand(auftraege: list[dict]) -> dt.date | None:
+    """Last day of the newest order export: orders are open or old only as far as the export knows."""
+    monate = [m.group(1) for r in auftraege if (m := re.search(r"(\d{4}-\d{2})\.csv$", str(r.get("_datei"))))]
+    return monatsende(max(monate)) if monate else None
+
+
 def rueckstand(auftraege: list[dict], linien: dict, soll: dict[str, dict], stichtag: dt.date) -> dict:
     offen = [r for r in auftraege if ist_offen(r, stichtag)]
+    stand = datenstand(auftraege)
+    bezug = min(stichtag, stand) if stand else stichtag
     gruppen: dict[str, list[dict]] = {}
     for r in offen:
         t = OHNE_TEAM if leer(r.get("Team")) else str(r["Team"]).strip()
@@ -303,7 +313,7 @@ def rueckstand(auftraege: list[dict], linien: dict, soll: dict[str, dict], stich
     leer_q = "07_Daten/auftraege_*.csv: keine offenen Aufträge"
 
     def block(name: str, rows: list[dict]) -> dict:
-        alt = [r for r in rows if (stichtag - tag(r["Eingang"])).days > ALT_TAGE]
+        alt = [r for r in rows if (bezug - tag(r["Eingang"])).days > ALT_TAGE]
         std = summe(rows, "Stunden", f"Rückstand Stunden {name}", "h", leer_q)
         s, reich = soll.get(name), None
         if s and s["betrag"] > 0:
@@ -312,11 +322,12 @@ def rueckstand(auftraege: list[dict], linien: dict, soll: dict[str, dict], stich
                          f"Rückstand Stunden / (Soll-Stunden des Monats / {ARBEITSTAGE} Arbeitstage)", "Tage")
         return {"team": name, "auftraege": anzahl(f"Offene Aufträge {name}", rows, formel, "Aufträge", leer_q),
                 "aelter": anzahl(f"Offene Aufträge {name} älter als {ALT_TAGE} Tage", alt,
-                                 f"{formel}, Eingang mehr als {ALT_TAGE} Tage vor dem Stichtag", "Aufträge", leer_q),
+                                 f"{formel}, Eingang mehr als {ALT_TAGE} Tage vor dem Datenstand {bezug:%d.%m.%Y}",
+                                 "Aufträge", leer_q),
                 "stunden": std, "reichweite": reich}
 
-    return {"stichtag": stichtag.isoformat(), "teams": [block(t, rows) for t, rows in gruppen.items()],
-            "gesamt": block("Gesamt", offen)}
+    return {"stichtag": stichtag.isoformat(), "datenstand": bezug.isoformat(),
+            "teams": [block(t, rows) for t, rows in gruppen.items()], "gesamt": block("Gesamt", offen)}
 
 
 def vergleich(ws: Path, datei: str, monat: str, ist: dict, heute: str) -> dict:
@@ -337,7 +348,7 @@ def vergleich(ws: Path, datei: str, monat: str, ist: dict, heute: str) -> dict:
 
 
 def cmd_kapazitaet_lage(ws: Path, a, defs: dict) -> dict:
-    hinweise: list[str] = []
+    hinweise: list[str] = [AUSLASTUNG_DEFINITION]
     if a.monat and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", a.monat):
         raise BetriebFehler(f"--monat '{a.monat}' ist kein Monat (JJJJ-MM).")
     kap = lade(ws, "kapazitaet", [])
@@ -533,7 +544,7 @@ def pruefung(texte: list[str], betrag: dict | None, defs: dict) -> dict:
     pruefer, grenze = ["qualitaet-recht"], None
     if betrag is not None:
         if fg.get("kulanz_eur") is not None:
-            grenze = wert("Freigabegrenze Kulanz", z(fg["kulanz_eur"]), ["Unternehmen/freigabegrenzen.md (kulanz_eur)"],
+            grenze = wert("Prüfschwelle Kulanz", z(fg["kulanz_eur"]), ["Unternehmen/freigabegrenzen.md (kulanz_eur)"],
                           None, "EUR")
         if grenze is None or betrag["betrag"] > grenze["betrag"]:
             pruefer.append("finanzen")
@@ -843,6 +854,10 @@ def cmd_teamleiter_runde(ws: Path, a, defs: dict) -> dict:
         lage, linien = kapazitaet_monat(kap, monat, ziel)
         soll = {t["team"]: t["soll"] for t in [*lage["teams"], lage["gesamt"]]}
         rs = rueckstand(lade(ws, "auftraege", hinweise), linien, soll, heute)
+        if rs["datenstand"] < a.heute:
+            hinweise.append(f"Datenstand der Aufträge: {de_datum(rs['datenstand'])}. Offene Aufträge und „älter als "
+                            f"{ALT_TAGE} Tage“ gelten für diesen Tag, nicht für die Runde am {de_datum(a.heute)}. Für "
+                            "den aktuellen Stand bitte den neuen Export einspielen.")
         rs_je = {t["team"]: t for t in [*rs["teams"], rs["gesamt"]]}
         zeilen = []
         for t in [*lage["teams"], lage["gesamt"]]:
@@ -860,6 +875,7 @@ def cmd_teamleiter_runde(ws: Path, a, defs: dict) -> dict:
         if any(linie != t for t, linie in linien.items()):
             hinweise.append(PERSONENSCHUTZ)
         standard = standards(ziel_standard)
+        hinweise.append(AUSLASTUNG_DEFINITION)
     else:
         kap_abs = ["Keine Kapazitätsdaten in 07_Daten/ – Kapazität bitte in der Runde je Team abfragen."]
     keine = ["Keine."]
@@ -890,7 +906,7 @@ def parser() -> JsonParser:
     for name, (_, optionen) in BEFEHLE.items():
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         sp.add_argument("--pruefe")
         for o, kw in optionen.items():
             sp.add_argument(f"--{o}", **kw)
@@ -903,6 +919,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     try:
         if not (ws / "Unternehmen" / ".kit-config").is_file():
             raise BetriebFehler(f"{ws} ist kein Kundendienst-Ordner (Unternehmen/.kit-config fehlt).")
+        a.heute = ao.bezugstag(ws, a.heute)
         try:
             dt.date.fromisoformat(a.heute)
         except ValueError:

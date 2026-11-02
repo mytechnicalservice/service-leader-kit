@@ -49,7 +49,7 @@ def test_routine_calls_the_spec_steps_in_order_and_ends_with_erledigt(name):
     pos = [schritte.find(s) for s in SCHRITTE[name]]
     assert -1 not in pos, (name, dict(zip(SCHRITTE[name], pos)))
     assert pos == sorted(pos), (name, pos)
-    erledigt = f'routine.py" erledigt --ws "<workspace>" --routine {name} --heute JJJJ-MM-TT'
+    erledigt = f'routine.py" erledigt --ws "<workspace>" --routine {name} [--heute JJJJ-MM-TT]'
     assert erledigt in schritte and schritte.find(erledigt) > max(pos)
     katalog = {e["name"] for e in eintraege()}
     for genannt in re.findall(r"[Ss]kill `([a-z-]+)`", body):

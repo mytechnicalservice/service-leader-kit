@@ -13,11 +13,12 @@ import re
 import sys
 from pathlib import Path
 
+import arbeitsordner as ao
 from slk_common import JsonParser, run, zahl
 
 PLUGIN = Path(__file__).resolve().parents[1]
 VORLAGEN = PLUGIN / "vorlagen" / "import"
-STANDARD_HINWEIS = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD_HINWEIS = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
 MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
           "November", "Dezember"]
@@ -308,15 +309,19 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap = JsonParser(prog="kennzahlen")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("quelle", "definitionen"):
-        sub.add_parser(name).add_argument("--ws", required=True)
+        sp = sub.add_parser(name)
+        sp.add_argument("--ws", required=True)
+        sp.add_argument("--heute")
     s = sub.add_parser("summe")
     s.add_argument("--ws", required=True)
+    s.add_argument("--heute")
     s.add_argument("--vorlage", required=True)
     s.add_argument("--spalte", required=True)
     s.add_argument("--monat", action="append", default=[])
     s.add_argument("--filter", action="append", default=[])
     s.add_argument("--gruppe")
     a = ap.parse_args(argv)
+    ao.bezugstag(Path(a.ws), a.heute)  # these commands use no date; an active demo date is still announced
     try:
         return {"quelle": cmd_quelle, "definitionen": cmd_definitionen, "summe": cmd_summe}[a.cmd](a)
     except KennzahlFehler as exc:

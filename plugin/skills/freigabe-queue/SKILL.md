@@ -19,13 +19,15 @@ exactly what is missing (its name and the command that failed).
 an absent user is no decision: say "Entscheiden kannst nur du – sag mir je Vorgang ‚freigeben' oder ‚ablehnen'."
 If this skill runs inside a sub-agent, never call `entscheide` (the hook blocks it).
 
-Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`).
+Date: leave `--heute` out (the script uses today or the folder's Demo-Datum); only a reference date the user names goes in as `--heute JJJJ-MM-TT`.
 
 ## Steps
 
-1. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" freigabe-queue --ws "<workspace>" --heute JJJJ-MM-TT`
-2. Show the queue in its order: Nr · Titel · Kunde · Betrag · fällig · Empfehlung (urteil, von, Datum) · Dokument,
-   then the total exactly as printed (`summe`) and the file (`datei`). Then "Noch ohne Empfehlung" with the offer to
+1. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" freigabe-queue --ws "<workspace>" [--heute JJJJ-MM-TT]`
+2. Show the queue in its order: Nr · Titel · Kunde · Betrag · fällig · every entry of `empfehlungen` (urteil, von,
+   Datum) · Dokument; where `abweichung` is true say "Prüfer weichen ab". Then the total exactly as printed (`summe`)
+   and the file (`datei`). Then "Liegt bei anderen" from `liegt_bei` (Nr, Titel, bei wem, Grund): these are not the
+   user's decision today and are not in the total. Then "Noch ohne Empfehlung" with the offer to
    ask the reviewer (spec §8 rule 1): agent `finanzen` for amounts, margins, goodwill cost; `qualitaet-recht` for
    warranty, liability, product safety, contract deviations. Damaged files (`defekt`): name them.
 3. When the user decides one named case:

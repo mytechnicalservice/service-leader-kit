@@ -268,6 +268,8 @@ lese_segs() {
           n = split(l[i], a, "\t"); bad = 0
           for (j = 2; j <= n; j++) {
             t = substr(a[j], 4)
+            # A literal quoted argument of a reading command (a grep pattern with >) is text, never a redirection.
+            if (substr(a[j], 1, 1) == "0" && substr(a[j], 3, 1) == "1") continue
             if (t !~ /[<>]/ || t ~ /^[0-9]*>>?(&[0-9-]|\/dev\/null)$/) continue
             if (t ~ /^[0-9]*>>?$/ && j < n && substr(a[j + 1], 4) == "/dev/null") { j++; continue }
             bad = 1
@@ -291,6 +293,7 @@ lese_args() {
   fi
   for _slk_a in "$@"; do
     _slk_t=${_slk_a#???}; _slk_pv=$_slk_vor; _slk_vor=$_slk_t
+    case "$_slk_a" in 0?1*) _slk_vor="" ;; esac   # a literal quoted argument is text, no redirection for the next one
     case "$_slk_t" in -*) continue ;; esac
     if [ "$_slk_skr" = 1 ]; then _slk_skr=0; continue; fi
     case "$_slk_a" in 1??*) continue ;; esac
@@ -361,17 +364,20 @@ printf '%s\n' "$nqs" | grep -Eq "(^|$vorher)(01_vorgaenge|unternehmen)($nachher|
 lcwd=$(slk_lower "$cwd")/
 case "$lcwd" in "$lws"/01_vorgaenge/*|"$lws"/unternehmen/*) named=1; incwd=1 ;; esac
 schutz="01_Vorgaenge/ und Unternehmen/ sind geschützt: kein Löschen, Verschieben, Überschreiben oder Inline-Code per Shell. Vorgänge ändert vorgang.py (zum Löschen: vorgang.py loeschen-markieren), Unternehmen/ der System-Architekt."
+# The refusal names what triggered it and the way to read (the protocol gets the same word, never the command text).
+gesperrt() { block shell-geschuetzt "$schutz Auslöser: $1. Nur lesen geht mit cat, grep oder sed -n ohne Umleitung; awk kann selbst schreiben und zählt nicht dazu." "$1"; }
+erster_verb() { for v in "$@"; do case "$verbs" in *" $v "*) printf '%s' "$v"; return 0 ;; esac; done; return 1; }
 if [ "$named" = 1 ]; then
   # shellcheck disable=SC2086
-  has_verb $DEL $MOVE $COPY $INLINE && block shell-geschuetzt "$schutz"
-  has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && block shell-geschuetzt "$schutz"
-  has_verb git && has_word rm mv checkout restore reset stash && block shell-geschuetzt "$schutz"
-  has_verb uv && has_word python python3 && has_word -c && block shell-geschuetzt "$schutz"
+  _slk_ausl=$(erster_verb $DEL $MOVE $COPY $INLINE) && gesperrt "Befehl $_slk_ausl"
+  has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && gesperrt "Ändern in der Datei (-i)"
+  has_verb git && has_word rm mv checkout restore reset stash && gesperrt "Git-Befehl, der Dateien ändert"
+  has_verb uv && has_word python python3 && has_word -c && gesperrt "Inline-Code (uv run python -c)"
   printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&
-    block shell-geschuetzt "$schutz"
+    gesperrt "Zeichen > vor einem geschützten Ordner (Umleitung)"
   if [ "$incwd" = 1 ]; then
     printf '%s' "$nq" | sed -E 's/[0-9]*>>?[[:space:]]*(&[0-9-]?|\/dev\/null)//g' | grep -q '>' &&
-      block shell-geschuetzt "$schutz"
+      gesperrt "Zeichen > im geschützten Ordner (Umleitung)"
   fi
 fi
 

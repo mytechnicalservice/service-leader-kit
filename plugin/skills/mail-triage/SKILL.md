@@ -19,12 +19,12 @@ file moves once and never overwrites another.
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
-Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`).
+Date: leave `--heute` out (the script uses today or the folder's Demo-Datum); only a reference date the user names goes in as `--heute JJJJ-MM-TT`.
 
 ## Steps
 
-1. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" mail-triage --ws "<workspace>" --heute JJJJ-MM-TT`
-   Pasted mail text: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" mail-triage --ws "<workspace>" --heute JJJJ-MM-TT --text '<Text>'`
+1. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" mail-triage --ws "<workspace>" [--heute JJJJ-MM-TT]`
+   Pasted mail text: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" mail-triage --ws "<workspace>" [--heute JJJJ-MM-TT] --text '<Text>'`
    (single quotes; write each `'` in the text as `'\''`).
 2. Show one line per file: Datei · Kategorie · zuständiger Agent · Ziel · passender Vorgang · Hinweis.
    - `verdacht`: stays; tell the user. `art: export`: not filed — offer `daten-pruefen`.
@@ -32,9 +32,9 @@ Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`).
    - `ziel` empty: take the customer from the sender's company, using the exact spelling of an existing
      `06_Kunden/` folder or case; ask if unclear. `.msg`: ask the user to save it as `.eml` or PDF.
 3. If the user asked to sort: file every remaining mail and document once:
-   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" ablegen --ws "<workspace>" --heute JJJJ-MM-TT --datei "00_Eingang/<Datei>" --ziel "<Ordner>"`
+   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" ablegen --ws "<workspace>" [--heute JJJJ-MM-TT] --datei "00_Eingang/<Datei>" --ziel "<Ordner>"`
    A taken name becomes "… (2)"; "gleiche Datei liegt schon" → tell the user, leave it. Pasted text worth keeping:
-   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" mail-speichern --ws "<workspace>" --heute JJJJ-MM-TT --text '<Text>' --betreff "<Betreff>" --ziel "<Ordner>"`
+   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" mail-speichern --ws "<workspace>" [--heute JJJJ-MM-TT] --text '<Text>' --betreff "<Betreff>" --ziel "<Ordner>"`
 4. Cases only after filing, citing the final path (`nach` / `datei`) as `Quelle: …`:
    - a matching open case (`vorgaenge`): `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" eintrag --ws "<workspace>" --nr V-… --art notiz --von assistenz --text "… Quelle: <nach>"`;
    - a new case only when the user asks or a follow-up/decision is needed:

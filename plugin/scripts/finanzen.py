@@ -19,11 +19,12 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import daten_pruefen as dp
+import arbeitsordner as ao
 import kennzahlen as kz
 import vorgang
-from slk_common import JsonParser, run, write_atomic, zahl
+from slk_common import JsonParser, merke_hinweis, run, write_atomic, zahl
 
-STANDARD_HINWEIS = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD_HINWEIS = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 BEISPIEL_HINWEIS = "Beispieldaten – Muster Maschinenbau GmbH"
 # Lane-only settings: front-matter key -> (file in Unternehmen/, kit standard). Plan 4b, domain defaults 5, 6, 17, 20.
 ZUSATZ = {
@@ -45,7 +46,7 @@ NAMEN = {"umsatz": "Umsatz", "material": "Material", "fremdleistung": "Fremdleis
          "personal": "Personalkosten Service", "gewaehrleistung": "Gewährleistung", "sonstige": "Sonstige Kosten"}
 STANDARD_DB = {"db1": "Umsatz - Material - Fremdleistung - Personalkosten Service", "db2": "DB I - Gewährleistung"}
 KAPITEL = [
-    ("Auf einen Blick", "kernzahlen (DB I in % mit Ziel, DB II in % ohne Ziel) und die drei größten Abweichungen "
+    ("Auf einen Blick", "kernzahlen (DB I in % mit Ziel, DB II in % {db2_ziel}) und die drei größten Abweichungen "
                         "(Seite 1)"),
     ("Ergebnisrechnung", "guv.monat und guv.kumuliert: je Zeile Ist, Plan, Abweichung"),
     ("Abweichungen und Maßnahmen", "abweichungen: je Zeile Ist, Plan, Differenz, Ursache (vom Nutzer, sonst "
@@ -241,6 +242,21 @@ def db1_ziel(defs: dict) -> tuple[float, bool]:
     return DB1_ZIEL_STANDARD, True
 
 
+def db2_ziel(defs: dict) -> float | None:
+    """The company's own DB II % target from kpi-ziele; None if it set none. Kept apart from the DB I target (D19)."""
+    kpi = defs["kpi-ziele"]
+    if "kennzahlen" in (kpi.get("standard_felder") or []):
+        return None
+    for k in kpi.get("kennzahlen") or []:
+        if not isinstance(k, dict):
+            continue
+        name = re.sub(r"[^a-z0-9%]+", " ", str(k.get("name", "")).casefold())
+        if (re.search(r"\b(db|deckungsbeitrag)\s*(ii|2)\b", name) and str(k.get("einheit", "")).strip() == "%"
+                and k.get("ziel") not in (None, "")):
+            return float(zahl(k["ziel"]))
+    return None
+
+
 def ziel_quelle(std: bool) -> list[str]:
     return [STANDARD_HINWEIS if std else "Unternehmen/kpi-ziele.md"]
 
@@ -368,7 +384,7 @@ def kernzahlen(r: dict, ry: dict | None, defs: dict) -> list[dict]:
             if x is not None:
                 out.append(dict(x, name=name))
     u = r["klassen"]["ist"]["umsatz"]
-    # D19: the margin target belongs to DB I %; DB II % is shown without a target.
+    # D19: the 35 % margin target belongs to DB I %; DB II % has a target only if the company set one itself.
     for key, label in (("db1", "DB I"), ("db2", "DB II")):
         db = r["ist"][key]
         if db and u and u["betrag"]:
@@ -376,6 +392,8 @@ def kernzahlen(r: dict, ry: dict | None, defs: dict) -> list[dict]:
                          f"{label} / Umsatz × 100", "%", 1))
     ziel, std = db1_ziel(defs)
     out.append(w("Ziel DB I in %", ziel, ziel_quelle(std), None, "%", 1))
+    if (ziel2 := db2_ziel(defs)) is not None:
+        out.append(w("Ziel DB II in %", ziel2, ziel_quelle(False), None, "%", 1))
     return out
 
 
@@ -581,10 +599,16 @@ def cmd_abgleich(a, ws: Path) -> tuple[int, dict]:
         befund = original_pruefen(ws, datei, cache[datei], a.heute)
         if befund:
             (abw if befund[0] == "abweichung" else hinweise).append(befund[1])
-    if a.dokument:
-        text = dokument_text(ws / a.dokument)
-        abw += [f"{k['name']} ({k['anzeige']}) steht nicht im Dokument {a.dokument}"
+    dokument = a.dokument or z.get("dokument")
+    if a.nur_zahlen:
+        hinweise.append("Nur die Zahlen wurden geprüft, nicht das Dokument (--nur-zahlen).")
+    elif dokument and (a.dokument or (ws / dokument).is_file()):
+        text = dokument_text(ws / dokument)
+        abw += [f"{k['name']} ({k['anzeige']}) steht nicht im Dokument {dokument}"
                 for k in z["kernzahlen"] if not zahl_im_text(k, text)]
+    elif dokument:
+        abw.append(f"Das Dokument {dokument} gibt es noch nicht – abgeglichen sind nur die Zahlen. Bitte das Dokument "
+                   "schreiben und den Abgleich wiederholen.")
     else:
         hinweise.append("Kein Dokument angegeben – nur die Zahlen wurden geprüft")
     ok = not abw
@@ -758,8 +782,8 @@ def entscheider(defs: dict, thema: str, b: float) -> str:
     if grenze in (None, ""):
         return f"Entscheidung durch {wer}"
     g = float(zahl(grenze))
-    return (f"Leitung Kundendienst entscheidet allein (bis {de(g)} EUR)" if b <= g
-            else f"Entscheidung durch {wer} (über {de(g)} EUR)")
+    return (f"Leitung Kundendienst entscheidet allein (Entscheidungsrecht bis {de(g)} EUR)" if b <= g
+            else f"Entscheidung durch {wer} (Entscheidungsrecht: über {de(g)} EUR)")
 
 
 def slug(text: str) -> str:
@@ -1008,9 +1032,13 @@ def cmd_margen_pruefung(a, ws: Path) -> tuple[int, dict]:
 # ---------- files ----------
 
 def freier_name(ws: Path, ordner: str, stamm: str, endung: str) -> tuple[str, str]:
-    """A document name that exists neither as document nor as numbers file (never overwrite)."""
+    """A document name that exists neither as document nor as numbers file (never overwrite). The numbers file comes
+    before its document (abgleich needs it), so a leftover without a document is named instead of used up silently."""
     n, k = 1, stamm
     while (ws / ordner / f"{k}{endung}").exists() or (ws / ordner / f"{k}.zahlen.json").exists():
+        if not (ws / ordner / f"{k}{endung}").exists():
+            merke_hinweis(f"{ordner}/{k}.zahlen.json stammt von einem Lauf, dessen Dokument nie geschrieben wurde; "
+                          "die neue Fassung bekommt einen eigenen Namen.")
         n += 1
         k = f"{stamm}-{n}"
     return f"{ordner}/{k}{endung}", f"{ordner}/{k}.zahlen.json"
@@ -1052,7 +1080,8 @@ def cmd_management_report(a, ws: Path) -> tuple[int, dict]:
         "quellenvergleich": quellenvergleich(r, b, defs), "konflikte": konflikte, "datenlage": datenlage,
         "definitionen": verwendet(defs, ("ergebnisrechnung", "kpi-ziele"),
                                   std + (["geschaeftsjahr_beginn_monat"] if beginn_std else [])),
-        "gliederung": [{"kapitel": k, "inhalt": i} for k, i in KAPITEL],
+        "gliederung": [{"kapitel": k, "inhalt": i.replace("{db2_ziel}", "ohne Ziel" if db2_ziel(defs) is None else "mit Ziel")}
+                       for k, i in KAPITEL],
         "dokument": dokument, "zahlen": zahlen,
         "naechster_schritt": f"Dokument schreiben, dann: finanzen.py abgleich --zahlen \"{zahlen}\" --dokument \"{dokument}\"",
     }
@@ -1067,13 +1096,14 @@ def parser() -> JsonParser:
     def add(name: str):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         return sp
 
     sp = add("management-report")
     sp.add_argument("--monat", required=True)
     sp.add_argument("--zweitquelle", action="append", default=[])
     sp = add("abgleich")
+    sp.add_argument("--nur-zahlen", dest="nur_zahlen", action="store_true")
     sp.add_argument("--zahlen", required=True)
     sp.add_argument("--dokument")
     sp = add("budgetplanung")
@@ -1111,6 +1141,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ws = Path(a.ws)
     if not (ws / "Unternehmen").is_dir():
         return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner (Unternehmen/ fehlt)"]}
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         return COMMANDS[a.cmd](a, ws)
     except (FinanzFehler, kz.KennzahlFehler, vorgang.VorgangFehler, ValueError) as exc:

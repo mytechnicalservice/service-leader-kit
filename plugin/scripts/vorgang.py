@@ -14,6 +14,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+import arbeitsordner as ao
 from slk_common import JsonParser, run, write_atomic, zahl
 
 FIELDS = ["nr", "titel", "typ", "status", "kunde", "externe_nr", "verantwortlich", "bearbeitet_von", "faellig",
@@ -29,12 +30,13 @@ SETZBAR = {"titel", "status", "kunde", "externe_nr", "verantwortlich", "faellig"
 ENTSCHEIDUNGSFELDER = {"entscheidung", "entschieden_von", "entschieden_am", "entschiedenes_dokument"}
 DATUMSFELDER = ("faellig", "erstellt", "aktualisiert", "entschieden_am")
 NR_RE = re.compile(r"^V-\d{4,}$")
+EMPFEHLUNG_RE = re.compile(r"^### \d{4}-\d{2}-\d{2} · empfehlung · ([^\n]+)\n+(.*?)(?=^### |\Z)", re.M | re.S | re.I)
 ORDNER = ("offen", "erledigt", "_zur-loeschung")
 TEXT_ENDUNGEN = {".md", ".txt", ".eml", ".csv"}
 OFFICE_ENDUNGEN = {".docx", ".pptx", ".xlsx"}
 AGENTEN = {"assistenz", "betrieb", "projekte", "vertrieb", "angebot", "teile", "personal", "finanzen",
            "qualitaet-recht", "system-architekt"}
-RESERVIERT = {"angelegt", "entscheidung", "erledigt"}  # events only neu / entscheide / schliesse write
+RESERVIERT = {"angelegt", "entscheidung", "erledigt", "änderung"}  # events only neu / entscheide / schliesse / setze write
 
 
 class VorgangFehler(Exception):
@@ -270,6 +272,7 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
     if a.feld == "verantwortlich":
         pruefe_mensch(a.wert, "verantwortlich")
     p, meta, body = load(ws, a.nr)
+    alt = meta.get(a.feld)
     if a.feld == "betrag_eur":
         try:
             meta[a.feld] = zahl(a.wert) if a.wert else None
@@ -278,6 +281,9 @@ def cmd_setze(a, ws: Path) -> tuple[int, dict]:
     else:
         meta[a.feld] = a.wert or None
     meta["aktualisiert"] = a.heute
+    if meta[a.feld] != alt:  # a change of the head stays visible in the ledger: old → new
+        text = f"{a.feld}: {'–' if alt is None else alt} → {'–' if meta[a.feld] is None else meta[a.feld]}"
+        body = body.rstrip("\n") + "\n" + event(a.heute, "änderung", a.von, text)
     p = save(ws, p, meta, body)
     return 0, {"ok": True, "nr": meta["nr"], "datei": rel(ws, p)}
 
@@ -294,8 +300,9 @@ def cmd_entscheide(a, ws: Path) -> tuple[int, dict]:
 
 def cmd_schliesse(a, ws: Path) -> tuple[int, dict]:
     p, meta, body = load(ws, a.nr)
-    meta["status"], meta["aktualisiert"] = "erledigt", a.heute
-    p = save(ws, p, meta, body.rstrip("\n") + "\n" + event(a.heute, "erledigt", "assistenz", "Vorgang geschlossen."))
+    text = "Vorgang geschlossen." + (f" Wartete zuletzt auf: {meta['wartet_auf']}." if meta.get("wartet_auf") else "")
+    meta["status"], meta["aktualisiert"], meta["wartet_auf"] = "erledigt", a.heute, None
+    p = save(ws, p, meta, body.rstrip("\n") + "\n" + event(a.heute, "erledigt", "assistenz", text))
     return 0, {"ok": True, "nr": meta["nr"], "datei": rel(ws, p)}
 
 
@@ -307,6 +314,29 @@ def datei_text(f: Path) -> str:
             return " ".join(z.read(n).decode("utf-8", errors="ignore") for n in z.namelist() if n.endswith(".xml"))
     except (zipfile.BadZipFile, OSError):
         return ""
+
+
+def cmd_zitate_pruefen(a, ws: Path) -> tuple[int, dict]:
+    """A memo quotes the reviewers word for word: the first line of each reviewer's newest recommendation must stand
+    in the document as it stands in the case."""
+    _, meta, body = load(ws, a.nr)
+    pfad = Path(a.dokument) if Path(a.dokument).is_absolute() else ws / a.dokument
+    if not pfad.is_file():
+        raise VorgangFehler(f"Dokument {a.dokument} nicht gefunden")
+    roh = datei_text(pfad)
+    if pfad.suffix in OFFICE_ENDUNGEN:
+        roh = re.sub(r"<[^>]+>", "", re.sub(r"</w:p>", " ", roh))
+    doc = " ".join(roh.split())
+    neueste: dict[str, str] = {}
+    for m in EMPFEHLUNG_RE.finditer(body):
+        neueste[m.group(1).strip()] = m.group(2).strip().splitlines()[0]
+    fehlen = [{"von": von, "wortlaut": " ".join(z.split())} for von, z in neueste.items() if " ".join(z.split()) not in doc]
+    ok = bool(neueste) and not fehlen
+    meldungen = [f"Empfehlung von {f['von']} steht nicht wörtlich im Dokument: {f['wortlaut']}" for f in fehlen]
+    if not neueste:
+        meldungen.append(f"Vorgang {meta['nr']} hat keine Empfehlung, die zu prüfen wäre.")
+    return (0 if ok or not neueste else 1), {"ok": ok or not neueste, "nr": meta["nr"], "geprueft": sorted(neueste),
+                                             "abweichend": fehlen, "meldungen": meldungen}
 
 
 def cmd_loeschen_markieren(a, ws: Path) -> tuple[int, dict]:
@@ -344,7 +374,7 @@ def parser() -> JsonParser:
     def add(name: str, *req: str, **opt: dict):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         for r in req:
             sp.add_argument(f"--{r}", required=True)
         for o, kw in opt.items():
@@ -354,20 +384,23 @@ def parser() -> JsonParser:
     add("neu", "titel", "typ", "kunde", "verantwortlich", "von", "text",
         faellig={}, **{"externe-nr": {"dest": "externe_nr"}}, betrag={}, trotzdem={"action": "store_true"})
     add("eintrag", "nr", "art", "von", "text")
-    add("setze", "nr", "feld", "wert")
+    add("setze", "nr", "feld", "wert", von={"default": "assistenz"})
     add("entscheide", "nr", "von", "dokument", entscheidung={"required": True, "choices": sorted(ENTSCHEIDUNGEN)})
     add("schliesse", "nr")
     add("loeschen-markieren", "nr")
     add("pruefe")
+    add("zitate-pruefen", "nr", "dokument")
     return ap
 
 
 COMMANDS = {"neu": cmd_neu, "eintrag": cmd_eintrag, "setze": cmd_setze, "entscheide": cmd_entscheide,
-            "schliesse": cmd_schliesse, "loeschen-markieren": cmd_loeschen_markieren, "pruefe": cmd_pruefe}
+            "schliesse": cmd_schliesse, "loeschen-markieren": cmd_loeschen_markieren, "pruefe": cmd_pruefe,
+            "zitate-pruefen": cmd_zitate_pruefen}
 
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     a = parser().parse_args(argv)
+    a.heute = ao.bezugstag(Path(a.ws), a.heute)
     try:
         return COMMANDS[a.cmd](a, Path(a.ws))
     except VorgangFehler as exc:

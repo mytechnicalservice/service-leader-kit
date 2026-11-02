@@ -180,7 +180,7 @@ def fremde_beispieldateien(b: Path) -> list[str]:
 def cmd_anlegen(a) -> tuple[int, dict]:
     ws = Path(a.ordner).expanduser()
     try:
-        heute = dt.date.fromisoformat(a.heute)
+        dt.date.fromisoformat(dt.date.today().isoformat() if a.heute is None else a.heute)
     except ValueError:
         return fehler(f"--heute '{a.heute}' ist kein gültiges Datum (JJJJ-MM-TT).")
     if not ws.is_dir():
@@ -191,6 +191,10 @@ def cmd_anlegen(a) -> tuple[int, dict]:
     gegeben = {k: getattr(a, k) for k in (*FRAGEN, "git_auto") if getattr(a, k) is not None}
     laufzeit = "codex" if ao.kit_variante() == "codex" else "claude-code"
     neu = alt | gegeben | {"schema": str(ao.SCHEMA_VERSION), "laufzeit": laufzeit}
+    if a.demo_datum == "aus":
+        neu.pop("demo_datum", None)
+    elif a.demo_datum:
+        neu["demo_datum"] = a.demo_datum
     fehlend = [k for k in FRAGEN if k not in neu]
     if fehlend:
         return fehler("Diese Fragen fehlen noch: " + ", ".join(fehlend), fehlende_fragen=fehlend)
@@ -256,11 +260,19 @@ def cmd_anlegen(a) -> tuple[int, dict]:
         meldungen.append("Der Ordner Beispiel/ mit der Musterfirma ist noch da. Soll ich ihn löschen? "
                          "(Alles in Beispiel/ wird gelöscht; deine Dateien außerhalb von Beispiel/ bleiben unberührt.)")
     geaendert = {k: [alt.get(k), v] for k, v in neu.items() if alt.get(k) != v and k in alt}
+    if alt.get("demo_datum") != neu.get("demo_datum"):
+        geaendert["demo_datum"] = [alt.get("demo_datum"), neu.get("demo_datum")]
     if geaendert or ao.lies_konfig(ws)[1]:
         ao.schreibe_konfig(ws, neu)
+    if neu.get("demo_datum"):
+        meldungen.append(f"Demo-Datum aktiv: Das Kit rechnet in diesem Ordner mit dem {ao.de_tag(neu['demo_datum'])} statt "
+                         "mit dem Systemdatum. Zurück zum Systemdatum: --demo-datum aus.")
+    elif "demo_datum" in geaendert:
+        meldungen.append("Demo-Datum entfernt: Das Kit rechnet wieder mit dem Systemdatum.")
     U = ws / "Unternehmen"
     if ao.schreibe_falls_fehlt(U / ".kit-version", ao.kit_version() + "\n"):
         angelegt.append("Unternehmen/.kit-version")
+    heute = dt.date.fromisoformat(a.heute or neu.get("demo_datum") or dt.date.today().isoformat())
     if ao.schreibe_falls_fehlt(U / ".kit-status", ao.status_start(heute)):
         angelegt.append("Unternehmen/.kit-status")
 
@@ -299,8 +311,10 @@ def cmd_zeigen(a) -> tuple[int, dict]:
 def parser() -> JsonParser:
     ap = JsonParser(prog="einrichtung")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("pruefen").add_argument("--ordner", required=True)
-    sub.add_parser("zeigen").add_argument("--ordner", required=True)
+    for name in ("pruefen", "zeigen"):
+        sp = sub.add_parser(name)
+        sp.add_argument("--ordner", required=True)
+        sp.add_argument("--heute")
     an = sub.add_parser("anlegen")
     an.add_argument("--ordner", required=True)
     for k in FRAGEN:
@@ -308,7 +322,8 @@ def parser() -> JsonParser:
     an.add_argument("--git-auto", dest="git_auto")
     an.add_argument("--repo")
     an.add_argument("--beispiel-loeschen", dest="beispiel_loeschen", action="store_true")
-    an.add_argument("--heute", default=dt.date.today().isoformat())
+    an.add_argument("--demo-datum", dest="demo_datum")
+    an.add_argument("--heute")
     return ap
 
 

@@ -16,6 +16,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+import arbeitsordner as ao
 from slk_common import JsonParser, csv_sicher, run, write_atomic, zahl
 
 VORLAGEN = Path(__file__).resolve().parents[1] / "vorlagen" / "import"
@@ -72,6 +73,12 @@ TYPNAME = {"zahl": "keine Zahl", "datum": "kein Datum", "monat": "kein Monat", "
 
 def fmt_de(x: float) -> str:
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def monat_im_namen(name: str) -> str | None:
+    """JJJJ-MM named in a file name (2026-09, 2026_09, 202609); None if it names none."""
+    m = re.search(r"(?<!\d)(20\d{2})[-_]?(0[1-9]|1[0-2])(?!\d)", name)
+    return f"{m.group(1)}-{m.group(2)}" if m else None
 
 
 def monatsname(periode: str) -> str:
@@ -296,6 +303,9 @@ def _pruefe(ws, datei, vorlage, kontrollsumme, zuordnung, uebernehmen, heute, du
         raise ImportFehler("Datei enthält mehrere Monate: " + ", ".join(sorted(perioden)))
     periode = perioden.pop()
     result["periode"], result["zeilen"] = periode, len(norm)
+    if tpl["periode"].get("stichtag") and (genannt := monat_im_namen(datei.name)) and genannt != periode:
+        result["meldungen"].append(f"Der Dateiname nennt {genannt}, abgelegt wird die Datei als Stand {periode} (Monat "
+                                   "des Imports). Bitte den Datenstand prüfen.")
     if tpl["summe"]:
         result["summe"] = round(sum(r[tpl["summe"]] or 0 for r in norm), 2)
         if export_summe is not None and abs(export_summe - result["summe"]) > 0.005:
@@ -355,9 +365,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap.add_argument("--zuordnung", action="append", default=[])
     ap.add_argument("--uebernehmen", action="store_true")
     ap.add_argument("--duplikate-behalten", action="store_true", dest="duplikate_behalten")
-    ap.add_argument("--heute", default=dt.date.today().isoformat())
+    ap.add_argument("--heute")
     a = ap.parse_args(argv)
-    r = pruefe(Path(a.ws), Path(a.datei), a.vorlage, a.kontrollsumme, a.zuordnung, a.uebernehmen, a.heute,
+    r = pruefe(Path(a.ws), Path(a.datei), a.vorlage, a.kontrollsumme, a.zuordnung, a.uebernehmen,
+               ao.bezugstag(Path(a.ws), a.heute),
                a.duplikate_behalten)
     return (0 if r["ok"] else 1), r
 

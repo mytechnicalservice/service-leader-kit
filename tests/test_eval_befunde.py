@@ -80,7 +80,7 @@ def test_given_assumptions_are_not_asked_again():
 def test_a_quote_draft_is_not_held_back_by_open_points():
     # grossangebot-sauber: the model asked three questions (machines, a name, the clauses) instead of the draft.
     _, body = skill("grossangebot")
-    assert "Open points never hold back a draft the user asked for" in body and "Zu klären: …" in body
+    assert "Open points never hold back a draft the user asked for" in body and "Zu klären vor dem Versand" in body
 
 
 def test_answering_a_price_request_is_a_mail_draft():

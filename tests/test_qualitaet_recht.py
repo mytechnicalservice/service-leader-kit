@@ -92,13 +92,13 @@ def test_goodwill_above_limit_routes_to_finanzen(qws):
     setze_front(qws, "freigabegrenzen.md", "kulanz_eur", "300")
     out = qr.reklamation(qws, "V-0001", ursache="anders")
     assert (out["art"], out["an_finanzen"]) == ("kulanz", True)
-    assert "Kulanz über der Freigabegrenze von 300 EUR – weiter an Finanzen (margen-pruefung)." in out["empfehlung"]
+    assert "Kulanz über der Prüfschwelle von 300 EUR" in out["empfehlung"]
 
 
 def test_missing_limit_always_routes_to_finanzen(qws):
     setze_front(qws, "freigabegrenzen.md", "kulanz_eur", "null")
     out = qr.reklamation(qws, "V-0001")
-    assert out["an_finanzen"] is True and "Keine Kulanzgrenze hinterlegt" in out["empfehlung"]
+    assert out["an_finanzen"] is True and "Keine Prüfschwelle für Kulanz hinterlegt" in out["empfehlung"]
 
 
 def test_limit_in_german_format(qws):

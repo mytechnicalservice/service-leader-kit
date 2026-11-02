@@ -53,7 +53,9 @@ to open exactly that folder in VS Code (Datei → Ordner öffnen) and stop.
    and add the content below its header. Without the docx skill: **Ohne Dokument-Skill** above, the script opens
    the letterhead copy with `Document(...)`.
 5. **Check:** `layout.py pruefe-datei --ws "<workspace>" --datei "<datei>" --erwarte "<Betrag>"` with the case
-   amount in German format. Fix and re-check until `ok` is true.
+   amount in German format. Fix and re-check until `ok` is true. Then
+   `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" zitate-pruefen --ws "<workspace>" --nr V-… --dokument "<datei>"`: every
+   reviewer's recommendation must stand word for word in the memo. Fix any entry of `abweichend` and check again.
 6. **Record the exact version:** `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" eintrag --ws "<workspace>" --nr V-… --art vorlage --von <agent> --text "Entscheidungsvorlage: <version aus pruefe-datei>"`.
 7. Tell the user where the memo is, the recommendations in one line each, and the exact words to decide:
    "Wenn du entscheidest, sag z. B. 'gib V-… frei' oder 'lehne V-… ab' – ich trage dann diese Fassung ein:

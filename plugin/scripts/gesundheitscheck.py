@@ -13,7 +13,7 @@ from typing import Callable
 
 import arbeitsordner as ao
 import vorgang
-from slk_common import JsonParser, run, write_atomic
+from slk_common import JsonParser, anzahl_text, run, write_atomic
 
 # schema n -> function returning the values for schema n+1. Empty while schema 1 is the only schema.
 MIGRATIONEN: dict[int, Callable[[dict[str, str]], dict[str, str]]] = {}
@@ -103,9 +103,10 @@ def abgelaufen(ws: Path, jahre: int, heute: dt.date) -> list[dict]:
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap = JsonParser(prog="gesundheitscheck")
     ap.add_argument("--ws", required=True)
-    ap.add_argument("--heute", default=dt.date.today().isoformat())
+    ap.add_argument("--heute")
     a = ap.parse_args(argv)
-    ws, heute = Path(a.ws).expanduser(), dt.date.fromisoformat(a.heute)
+    ws = Path(a.ws).expanduser()
+    heute = dt.date.fromisoformat(ao.bezugstag(ws, a.heute))
     if not ao.ist_arbeitsordner(ws):
         text = f"'{ws}' ist kein Kundendienst-Ordner. Bitte zuerst \"richte den Kundendienst ein\" ausführen."
         return 1, {"ok": False, "fehler": [text], "meldungen": [text]}
@@ -133,7 +134,8 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
         meldungen.append("Aufbewahrungsfrist noch nicht bestätigt (Unternehmen/aufbewahrung.md, Onboarding). "
                          "Bis dahin schlägt das Kit nichts zum Löschen vor.")
     if liste:
-        meldungen.append(f"{len(liste)} erledigte Vorgänge sind älter als {jahre} Jahre: " +
+        wer = "1 erledigter Vorgang ist" if len(liste) == 1 else f"{len(liste)} erledigte Vorgänge sind"
+        meldungen.append(f"{wer} älter als {anzahl_text(jahre, 'Jahre')}: " +
                          ", ".join(f"{x['nr']} (abgeschlossen {x['abgeschlossen']})" for x in liste) +
                          ". Vorschlag: zum Löschen vormerken (\"merk V-… zum Löschen vor\").")
     aktualisiert = False

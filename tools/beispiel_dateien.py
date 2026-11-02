@@ -155,7 +155,7 @@ Reaktionszeit: {REAKTION[stufe].split()[0]} h
 | Preis je Anlage und Jahr | {deutsch(preis)} EUR |
 | Jahreswert | {deutsch(preis * anzahl)} EUR |
 | Laufzeit bis | {ende[8:10]}.{ende[5:7]}.{ende[:4]} |
-| Verlängerung | automatisch um 12 Monate, Kündigung 3 Monate vor Ablauf |
+| Verlängerung | keine automatische Verlängerung; Laufzeit endet zum genannten Datum, Verlängerung nur durch neue Vereinbarung |
 | Reaktionszeit | {REAKTION[stufe]} ab Störungsmeldung |
 | Leistungen | {LEISTUNG[stufe]} |
 | Preisgleitklausel | jährlich nach Lohnkostenindex, höchstens 5 % |

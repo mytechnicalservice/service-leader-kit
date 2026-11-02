@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = ["openpyxl==3.1.5"]
 # ///
 """Routine status (decision D11). `erledigt` records that a routine ran, in Unternehmen/.kit-status, in exactly the
 format hooks/faellig.sh reads; `stand` says which routines are due, by the same rules as faellig.sh.
@@ -15,10 +15,45 @@ from pathlib import Path
 import arbeitsordner as ao
 import kennzahlen
 import vorgang
-from slk_common import JsonParser, run, write_atomic, zahl
+from slk_common import JsonParser, einheit_zu, run, write_atomic, zahl
 
 ROUTINEN = ["tagesstart", "wochenstart", "monatsabschluss", "quartal", "jahresplanung"]
 WOCHENTAGE = ["mo", "di", "mi", "do", "fr"]
+
+
+# What each step leaves behind: (step, file pattern in the workspace). Only for showing gaps: a routine may be recorded
+# after a failed step (spec), and the user sees which steps left no file in the period.
+SCHRITTE = {
+    "tagesstart": [("morgen-briefing", "03_Berichte/*_morgen-briefing*"), ("freigabe-queue", "03_Berichte/*_freigabe-queue*")],
+    "wochenstart": [("teamleiter-runde", "03_Berichte/*_teamleiter-runde*")],
+    "monatsabschluss": [("management-report", "03_Berichte/*_management-report*"),
+                        ("verlaengerungs-radar", "03_Berichte/*_verlaengerungs-radar*"),
+                        ("kapazitaet-lage", "03_Berichte/*_kapazitaet-lage*")],
+    "quartal": [("key-account-review", "03_Berichte/*_key-account-review*"), ("portfolio-review", "03_Berichte/*_portfolio-review*"),
+                ("besprechung", "06_Kunden/*/*_besprechung-vorbereitung*")],
+    "jahresplanung": [("budgetplanung", "03_Berichte/*_budgetplanung*"), ("personalplanung", "03_Berichte/*_personalplanung*"),
+                      ("preisliste-update", "04_Angebote/*_preisliste-update*"), ("strategie", "03_Berichte/*_strategie-*")],
+}
+DATEI_TAG = re.compile(r"(\d{4}-\d{2}-\d{2})_")
+
+
+def beginn(heute: dt.date, routine: str) -> dt.date:
+    """First day of the period a routine covers."""
+    q_monat = (heute.month - 1) // 3 * 3 + 1
+    return {"tagesstart": heute, "wochenstart": heute - dt.timedelta(days=heute.weekday()),
+            "monatsabschluss": heute.replace(day=1), "quartal": dt.date(heute.year, q_monat, 1),
+            "jahresplanung": dt.date(heute.year, 1, 1)}[routine]
+
+
+def schritte(ws: Path, routine: str, heute: dt.date) -> list[dict]:
+    """Per step the files dated in the routine's period; none means a gap."""
+    von, bis = beginn(heute, routine).isoformat(), heute.isoformat()
+    out = []
+    for schritt, muster in SCHRITTE[routine]:
+        dateien = sorted(p.relative_to(ws).as_posix() for p in ws.glob(muster)
+                         if p.is_file() and (m := DATEI_TAG.match(p.name)) and von <= m.group(1) <= bis)
+        out.append({"schritt": schritt, "dateien": dateien})
+    return out
 
 
 def wert(heute: dt.date, routine: str) -> str:
@@ -45,7 +80,8 @@ def erster_werktag(jahr: int, monat: int) -> int:
 def faellig(heute: dt.date, cfg: dict[str, str], zeilen: list[str]) -> list[str]:
     """Python twin of slk_faellig (hooks/faellig.sh); a parity test runs both on the same dates."""
     out = []
-    if hole(zeilen, "tagesstart") != heute.isoformat():
+    status = hole(zeilen, "tagesstart")
+    if status != heute.isoformat() and not ao.status_nach(status, "tagesstart", heute):
         out.append("tagesstart")
     idx = WOCHENTAGE.index(cfg["wochenstart"]) if cfg.get("wochenstart") in WOCHENTAGE else 5
     montag = heute - dt.timedelta(days=heute.weekday())
@@ -57,11 +93,14 @@ def faellig(heute: dt.date, cfg: dict[str, str], zeilen: list[str]) -> list[str]
         out.append("wochenstart")
     ms = cfg.get("monatsstart", "")
     tag = erster_werktag(heute.year, heute.month) if ms == "erster-werktag" else int(ms) if ms.isdigit() else 99
-    if hole(zeilen, "monatsabschluss") != f"{heute:%Y-%m}" and heute.day >= tag:
+    status = hole(zeilen, "monatsabschluss")
+    if status != f"{heute:%Y-%m}" and not ao.status_nach(status, "monatsabschluss", heute) and heute.day >= tag:
         out.append("monatsabschluss")
     q = (heute.month - 1) // 3 + 1
     qm = (q - 1) * 3 + 1
-    if hole(zeilen, "quartal") != f"{heute.year}-Q{q}" and (heute.month > qm or heute.day >= erster_werktag(heute.year, qm)):
+    status = hole(zeilen, "quartal")
+    if (status != f"{heute.year}-Q{q}" and not ao.status_nach(status, "quartal", heute)
+            and (heute.month > qm or heute.day >= erster_werktag(heute.year, qm))):
         out.append("quartal")
     return out
 
@@ -78,16 +117,39 @@ def cmd_erledigt(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
                 zeilen[i] = ""  # a duplicate key would hide the new value from slk_get
     zeilen = [z for z in zeilen if z] + ([] if gesetzt else [neu])
     write_atomic(ws / "Unternehmen" / ".kit-status", "\n".join(zeilen) + "\n")
-    return 0, {"ok": True, "routine": a.routine, "eintrag": neu}
+    teile = schritte(ws, a.routine, heute)
+    luecken = [s["schritt"] for s in teile if not s["dateien"]]
+    pfad = ws / "Unternehmen" / ".kit-routinen"
+    alt = pfad.read_text(encoding="utf-8").splitlines() if pfad.is_file() else []
+    protokoll = [z for z in alt if not z.startswith(f"{a.routine}=")]
+    protokoll.append(f"{neu}\tam={heute.isoformat()}\tohne_datei={','.join(luecken)}")
+    write_atomic(pfad, "\n".join(protokoll) + "\n")
+    meldungen = [f"{a.routine}: eingetragen, aber ohne Datei aus diesem Zeitraum: {', '.join(luecken)}."] if luecken else []
+    return 0, {"ok": True, "routine": a.routine, "eintrag": neu, "schritte": teile, "luecken": luecken, "meldungen": meldungen}
+
+
+def luecken_aus_protokoll(ws: Path) -> dict[str, list[str]]:
+    """Per routine the steps that left no file the last time it was recorded (Unternehmen/.kit-routinen)."""
+    pfad = ws / "Unternehmen" / ".kit-routinen"
+    out: dict[str, list[str]] = {}
+    for z in pfad.read_text(encoding="utf-8", errors="replace").splitlines() if pfad.is_file() else []:
+        routine = z.split("=", 1)[0]
+        m = re.search(r"\tohne_datei=(.*)$", z)
+        if m and m.group(1):
+            out[routine] = m.group(1).split(",")
+    return out
 
 
 def cmd_stand(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
     werte, fehler = ao.lies_konfig(ws)
+    spaet = ao.zukunft(ws, heute)
     if werte is None or fehler:
-        return 0, {"ok": True, "faellig": [], "meldungen": ["Einstellungen unvollständig – keine Routine-Hinweise."]}
+        return 0, {"ok": True, "faellig": [], "zukunft": spaet,
+                   "meldungen": ["Einstellungen unvollständig – keine Routine-Hinweise.", *spaet]}
     zeilen = lies_status(ws)
     return 0, {"ok": True, "faellig": faellig(heute, werte, zeilen),
-               "zuletzt": {r: hole(zeilen, r) or None for r in ROUTINEN}, "meldungen": []}
+               "zuletzt": {r: hole(zeilen, r) or None for r in ROUTINEN}, "luecken": luecken_aus_protokoll(ws),
+               "zukunft": spaet, "meldungen": spaet}
 
 
 EREIGNIS = re.compile(r"^### (\d{4}-\d{2}-\d{2}) · ([^·\n]+?) · ([^\n]+?)\s*$", re.M)
@@ -106,11 +168,11 @@ def letzter_monat(ws: Path, vorlage: str) -> str | None:
     return monate[-1] if monate else None
 
 
-def prozent_ziel(defs: dict, name: str) -> float | None:
-    """Target of a KPI of the same name in kpi-ziele.md, only when it is a percentage: a yearly EUR target is never
+def prozent_ziel(defs: dict, name: str, einheit: str = "%") -> float | None:
+    """Target of a KPI of the same name in kpi-ziele.md, only in the value's own unit: a yearly EUR target is never
     compared with one month (Plan 5 Review Focus 4)."""
     for k in defs["kpi-ziele"].get("kennzahlen") or []:
-        if (str(k.get("name", "")).strip().casefold() == name.casefold() and str(k.get("einheit", "")).strip() == "%"
+        if (str(k.get("name", "")).strip().casefold() == name.casefold() and str(k.get("einheit", "")).strip() == einheit
                 and k.get("ziel") not in (None, "")):
             return float(zahl(k["ziel"]))
     return None
@@ -118,11 +180,12 @@ def prozent_ziel(defs: dict, name: str) -> float | None:
 
 def mit_anzeige(w: dict, defs: dict) -> dict:
     prozent = w["einheit"] == "%"
-    ziel = prozent_ziel(defs, w["name"]) if prozent else None
+    ziel = prozent_ziel(defs, w["name"], w["einheit"]) if w["einheit"] in ("%", "Tage") else None
     # D19: the kit's standard KPI list carries targets (DB I-Marge 35 %) – never shown as the company's own target.
     std = "kennzahlen" in (defs["kpi-ziele"].get("standard_felder") or [])
-    return w | {"anzeige": f"{kennzahlen.deutsch(w['betrag'], 1 if prozent else 0)} {'%' if prozent else w['einheit']}",
-                "ziel": ziel, "ziel_anzeige": None if ziel is None else f"{kennzahlen.deutsch(ziel, 1)} %",
+    stellen = 1 if w["einheit"] in ("%", "Tage") else 0
+    return w | {"anzeige": f"{kennzahlen.deutsch(w['betrag'], stellen)} {'%' if prozent else einheit_zu(w['betrag'], w['einheit'])}",
+                "ziel": ziel, "ziel_anzeige": None if ziel is None else f"{kennzahlen.deutsch(ziel, 1)} {w['einheit']}",
                 "ziel_quelle": None if ziel is None else kennzahlen.STANDARD_HINWEIS if std
                 else "Unternehmen/kpi-ziele.md"}
 
@@ -190,11 +253,66 @@ def kpi_blick(ws: Path, monat: str | None) -> dict:
                                      f"Anlagen mit Vertrag = ja / alle Anlagen × 100 (Stand "
                                      f"{kennzahlen.monatsname(stand)})", "%"))
 
+    def marge(kpi: str, feld: str) -> None:
+        import finanzen  # only here: its imports are not needed for the rest of this script
+
+        try:
+            r = finanzen.rechnung(ws, [monat], finanzen.definitionen(ws), [])
+        except finanzen.FinanzFehler as exc:
+            fehlt.append(f"{kpi}: {exc}")
+            return
+        db, u = r["ist"][feld], r["klassen"]["ist"]["umsatz"]
+        if db and u and u["betrag"]:
+            werte.append(kennzahlen.wert(kpi, db["betrag"] / u["betrag"] * 100, list(dict.fromkeys(db["quelle"] + u["quelle"])),
+                                         f"{'DB I' if feld == 'db1' else 'DB II'} / Serviceumsatz × 100", "%"))
+        else:
+            fehlt.append(f"{kpi} {name}: nicht berechenbar (Plan oder Positionen fehlen).")
+
+    def verrechenbarkeit(kpi: str) -> None:
+        std = kennzahlen.summe(kennzahlen.lade(ws, "auftraege", [monat]), "Stunden", "Auftragsstunden")
+        ist = kennzahlen.summe(kennzahlen.lade(ws, "kapazitaet", [monat]), "Ist_Stunden", "Ist-Stunden")
+        if ist["betrag"]:
+            werte.append(kennzahlen.wert(kpi, std["betrag"] / ist["betrag"] * 100, std["quelle"] + ist["quelle"],
+                                         "Auftragsstunden / Ist_Stunden × 100, alle Teams zusammen", "%"))
+
+    def durchlaufzeit(kpi: str) -> None:
+        tage, zeilen = [], []
+        for z in kennzahlen.lade(ws, "auftraege", [monat]):
+            try:
+                tage.append((dt.date.fromisoformat(str(z.get("Abschluss"))[:10]) - dt.date.fromisoformat(str(z.get("Eingang"))[:10])).days)
+                zeilen.append(z)
+            except ValueError:
+                continue
+        if not tage:
+            fehlt.append(f"{kpi} {name}: keine Aufträge mit Eingang und Abschluss.")
+            return
+        werte.append(kennzahlen.wert(kpi, sum(tage) / len(tage), _quelle(zeilen),
+                                     "Mittelwert (Abschluss − Eingang) in Tagen", "Tage"))
+
     for teil in (umsatz, lieferfaehigkeit, auslastung, vertragsquote):
         try:
             teil()
         except kennzahlen.KennzahlFehler as exc:
             fehlt.append(str(exc))
+    # The company's own list (kpi-ziele.md) on top of the four: what it defines is shown or named as not computable.
+    for k in defs["kpi-ziele"].get("kennzahlen") or []:
+        kpi = str(k.get("name", "")).strip() if isinstance(k, dict) else ""
+        form = re.sub(r"[^a-zäöüß0-9]+", " ", kpi.casefold()).strip()
+        if not kpi or form.startswith(("serviceumsatz", "umsatz", "lieferf", "auslastung", "vertragsquote")):
+            continue
+        try:
+            if re.match(r"(db|deckungsbeitrag) (i|1)\b", form):
+                marge(kpi, "db1")
+            elif re.match(r"(db|deckungsbeitrag) (ii|2)\b", form):
+                marge(kpi, "db2")
+            elif form.startswith("verrechenbar"):
+                verrechenbarkeit(kpi)
+            elif form.startswith("durchlaufzeit"):
+                durchlaufzeit(kpi)
+            else:
+                fehlt.append(f"{kpi}: steht in kpi-ziele.md, aber das Kit kann sie noch nicht berechnen.")
+        except kennzahlen.KennzahlFehler as exc:
+            fehlt.append(f"{kpi}: {exc}")
     return {"ok": True, "monat": monat, "kennzeichnung": kennzahlen.datenquelle(ws)["kennzeichnung"],
             "hinweis": defs["hinweis"], "kennzahlen": [mit_anzeige(w, defs) for w in werte], "fehlt": fehlt,
             "meldungen": list(fehlt)}
@@ -240,19 +358,20 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     for name in ("erledigt", "stand", "kpi-blick", "eskalationen"):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         if name == "erledigt":
             sp.add_argument("--routine", required=True, choices=ROUTINEN)
         if name == "kpi-blick":
             sp.add_argument("--monat")
     a = ap.parse_args(argv)
     ws = Path(a.ws)
+    if not ao.ist_arbeitsordner(ws):
+        return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner."]}
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         heute = dt.date.fromisoformat(a.heute)
     except ValueError:
         return 1, {"ok": False, "fehler": [f"--heute '{a.heute}' ist kein Datum (JJJJ-MM-TT)."]}
-    if not ao.ist_arbeitsordner(ws):
-        return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner."]}
     befehle = {"erledigt": cmd_erledigt, "stand": cmd_stand, "kpi-blick": cmd_kpi_blick,
                "eskalationen": cmd_eskalationen}
     try:

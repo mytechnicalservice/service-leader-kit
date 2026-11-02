@@ -34,10 +34,11 @@ that folder in VS Code (Datei → Ordner öffnen) and stop.
    need the user's yes in a separate request.
 5. Numbers only exactly as the scripts print them; never add, round or estimate. In sample mode the first line of the
    answer is "Beispieldaten – Muster Maschinenbau GmbH".
-6. Reference date: today, or the date the user names ("heute ist der 07.10.2026"); pass it as `--heute JJJJ-MM-TT` to
-   every script.
+6. Reference date: only when the user names a date ("heute ist der 07.10.2026") pass it as `--heute JJJJ-MM-TT` to
+   every script. Otherwise leave `--heute` out: the scripts use today or the folder's Demo-Datum.
 7. The last step `routine.py erledigt` runs whenever every step was attempted, also after a failed step; not when the
-   user stopped the routine.
+   user stopped the routine. Every entry of its `luecken` (a step that left no file in the period) goes into the block
+   "Nicht erledigt".
 
 ## Steps
 
@@ -50,14 +51,15 @@ user names one.
    in this routine: the presentation and the cover mail (offered at the end).
 2. Skill `verlaengerungs-radar` aus der Routine monatsabschluss (its own reference date rule).
 3. Skill `kapazitaet-lage` aus der Routine monatsabschluss for the same month.
-4. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine monatsabschluss --heute JJJJ-MM-TT`
+4. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine monatsabschluss [--heute JJJJ-MM-TT]`
 
 ## Answer (German, at most 25 lines plus the file paths, in this order)
 
 1. **Bericht <Monat>:** file; Serviceumsatz Ist vs Plan and Ergebnis Ist vs Plan as printed; reconciliation result;
    action cases created (number, owner, date) or "keine Maßnahme" with reason; conflicts between sources with both
    values.
-2. **Verlängerungen:** urgent and expired contracts first, then the rest of the horizon.
+2. **Verlängerungen:** urgent and expired contracts first, then the rest of the horizon; each with its action date,
+   and whether it ends or renews unless cancelled.
 3. **Kapazität:** red teams first, then the total.
 4. Offer: "Soll ich daraus die Präsentation und die Begleitmail machen?" (workflow Monatsbericht).
 5. **Nicht erledigt:** every failed step with its message — only if there is one.

@@ -59,7 +59,8 @@ BEISPIEL = ROOT / "plugin" / "beispiel"
 FIX = ROOT / "plugin" / "evals" / "_gemeinsam" / "vorgaenge"
 ERW = json.loads((ROOT / "plugin" / "evals" / "erwartet" / "beispiel.json").read_text(encoding="utf-8"))
 NAMEN = ["Serviceumsatz Ist", "Serviceumsatz Plan", "Planerfüllung Umsatz", "Lieferfähigkeit Ersatzteile",
-         "Auslastung Techniker", "Vertragsquote"]
+         "Auslastung Techniker", "Vertragsquote", "DB I-Marge", "DB II-Marge", "Verrechenbarkeit",
+         "Durchlaufzeit Aufträge"]
 
 
 def musterfirma(ws):
@@ -121,7 +122,8 @@ def test_kpi_blick_names_a_missing_plan_and_a_missing_month(kit_ws, capsys):
     erg.write_text("﻿" + "\n".join(neu) + "\n", encoding="utf-8")
     code, out = ruf(capsys, "kpi-blick", "--ws", str(ws))
     namen = [w["name"] for w in out["kennzahlen"]]
-    assert code == 0 and namen == ["Serviceumsatz Ist", "Lieferfähigkeit Ersatzteile", "Vertragsquote"]
+    assert code == 0 and namen == ["Serviceumsatz Ist", "Lieferfähigkeit Ersatzteile", "Vertragsquote", "DB I-Marge",
+                                   "DB II-Marge", "Durchlaufzeit Aufträge"]
     assert any(f.startswith("Plan fehlt für: Umsatz Schulung") for f in out["fehlt"])
     assert any("September 2026" in f and "kapazitaet" in f for f in out["fehlt"])
 

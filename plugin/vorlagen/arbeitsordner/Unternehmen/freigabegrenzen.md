@@ -18,7 +18,8 @@ geben sie immer eine Empfehlung.
 
 - Ab welchem Angebotswert (EUR) soll vor der Freigabe geprüft werden?
 - Ab welchem Rabatt (%)?
-- Ab welchem Kulanzbetrag (EUR)?
+- Ab welchem Kulanzbetrag (EUR) soll Finanzen vorher prüfen? Das ist die Prüfschwelle. Wer entscheidet, steht getrennt
+  davon in den Entscheidungsrechten (`ergebnisrechnung.md`).
 - Ab welchem Einkaufswert (EUR) soll eine Lieferantenvergabe vorher geprüft werden?
 - Ab wie vielen Prozentpunkten Margenabweichung gibt Finanzen eine Empfehlung mit Auflagen?
 - Wie lange gilt eure Gewährleistung (Monate), und ab wie vielen gleichen Fehlern gilt ein Fehler als Wiederholfehler?

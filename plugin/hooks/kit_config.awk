@@ -3,11 +3,13 @@
 # Prints the settings as key=value lines in schema order and exits 0, or prints nothing and exits 1.
 # Tolerates a UTF-8 BOM, CRLF line ends (in the settings and the schema), blank lines, # comments and spaces around keys and values;
 # rejects unknown, duplicate, missing or invalid keys. The first setting must be schema=…
+# A schema key with a trailing ? is optional: it may be missing and is then not printed.
 BEGIN {
   while ((getline line < schema) > 0) {
     sub(/\r$/, "", line)
     if (line ~ /^[ \t]*(#|$)/) continue
     k = substr(line, 1, index(line, "=") - 1)
+    if (k ~ /\?$/) { sub(/\?$/, "", k); optional[k] = 1 }
     re[k] = substr(line, index(line, "=") + 1)
     order[++nk] = k
   }
@@ -27,7 +29,7 @@ BEGIN {
   val[k] = v
 }
 END {
-  for (i = 1; i <= nk; i++) if (!(order[i] in val)) bad = 1
+  for (i = 1; i <= nk; i++) if (!(order[i] in val) && !(order[i] in optional)) bad = 1
   if (bad) exit 1
-  for (i = 1; i <= nk; i++) print order[i] "=" val[order[i]]
+  for (i = 1; i <= nk; i++) if (order[i] in val) print order[i] "=" val[order[i]]
 }

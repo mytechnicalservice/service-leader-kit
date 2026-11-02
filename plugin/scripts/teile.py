@@ -13,6 +13,7 @@ import shutil
 import sys
 from pathlib import Path
 
+import arbeitsordner as ao
 import kennzahlen as kz
 import vorgang
 from slk_common import JsonParser, run, zahl
@@ -21,7 +22,7 @@ MONAT_RE = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
 MONATSNAMEN = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
                "November", "Dezember"]
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
-STANDARD = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 TREND_SCHWELLE = 5.0
 TOP_N = 10
 ABC_GRENZEN = (80.0, 95.0)
@@ -229,7 +230,7 @@ def review(ws: Path, bis: str | None = None) -> dict:
         meldungen.append(f"Ziel Lieferbereitschaft {kz.deutsch(lb['ziel_prozent'], 1)} %: {STANDARD}")
     return {"ok": True, "beispiel": q["beispiel"],
             "zeitraum": {"von": monate[0], "bis": bis, "monate_vorhanden": len(je_monat), "fehlende_monate": fehlend},
-            "umsatz": gesamt, "menge": kz.summe(alle, "Menge", "Stückzahl Ersatzteile"),
+            "umsatz": gesamt, "menge": kz.summe(alle, "Menge", "Stückzahl Ersatzteile") | {"einheit": "Stück"},
             "gutschriften": {"zeilen": len(gut), "summe": summe_umsatz("Gutschriften (negative Menge)", gut, alle)},
             "monate": [{"monat": m, "umsatz": w} for m, w in monatswerte.items()],
             "trend": trend(je_monat, monate), "top_teile": top,
@@ -483,12 +484,13 @@ def parser() -> JsonParser:
     r = sub.add_parser("teilegeschaeft-review")
     r.add_argument("--ws", required=True)
     r.add_argument("--bis")
+    r.add_argument("--heute")
     s = sub.add_parser("lieferanten-entscheidung")
     s.add_argument("--ws", required=True)
     s.add_argument("--angebot", action="append", required=True)
     s.add_argument("--ergaenze", action="append", default=[])
     s.add_argument("--ablegen", action="store_true")
-    s.add_argument("--heute", default=dt.date.today().isoformat())
+    s.add_argument("--heute")
     return ap
 
 
@@ -496,8 +498,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     a = parser().parse_args(argv)
     try:
         if a.cmd == "teilegeschaeft-review":
+            ao.bezugstag(Path(a.ws), a.heute)
             return 0, review(Path(a.ws), a.bis)
-        out = lieferanten(Path(a.ws), a.angebot, a.ergaenze, a.ablegen, dt.date.fromisoformat(a.heute))
+        heute = dt.date.fromisoformat(ao.bezugstag(Path(a.ws), a.heute))
+        out = lieferanten(Path(a.ws), a.angebot, a.ergaenze, a.ablegen, heute)
         return (0 if out["ok"] else 1), out
     except (TeileFehler, kz.KennzahlFehler) as exc:
         return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)]}

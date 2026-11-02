@@ -13,10 +13,20 @@ if ! ws=$(slk_ws_from "$proj"); then
   exit 0
 fi
 U="$ws/Unternehmen"
-heute=$(date +%Y-%m-%d)
 out=""
 add() { out="$out
 - $1"; }
+# The reference date: a valid demo_datum replaces the system date for everything below (arbeitsordner.bezugstag).
+# The protocol and backups keep the real time: they record when something really happened.
+systemtag=$(date +%Y-%m-%d)
+heute=$systemtag
+cfg=""; cfg_ok=0
+if cfg=$(slk_config "$ws"); then cfg_ok=1; fi
+demo=$(slk_get "$cfg" demo_datum)
+if [ "$cfg_ok" = 1 ] && [ -n "$demo" ]; then
+  heute=$demo
+  add "Demo-Datum aktiv: Bezugsdatum $(slk_de_datum "$heute") statt Systemdatum $(slk_de_datum "$systemtag") (Unternehmen/.kit-config, demo_datum). Fälligkeiten, Routinen und Skripte rechnen damit. Nenne das in jeder Antwort und jedem internen Dokument, nimm dieses Datum für Datumsangaben und Dateinamen und übergib --heute nur, wenn der Nutzer selbst ein anderes Datum nennt. Zurück zum Systemdatum: Einrichtung mit --demo-datum aus."
+fi
 
 # The guards must block a known-bad call on this computer; a broken shell or awk would let everything through.
 # Exit 2 alone is not proof: dash also exits 2 on a missing or broken sourced file, so the guard's own message is required too.
@@ -40,8 +50,8 @@ if [ -n "$v_kit" ] && slk_ver_gt "$v_kit" "${v_ws:-0}"; then
   add "Neue Kit-Version $v_kit (Ordner: ${v_ws:-unbekannt}): zuerst gesundheitscheck ausführen."
 fi
 
-if cfg=$(slk_config "$ws"); then
-  st=""; [ -f "$U/.kit-status" ] && st=$(tr -d '\r' < "$U/.kit-status" | sed "1s/^$bom//")
+st=""; [ -f "$U/.kit-status" ] && st=$(tr -d '\r' < "$U/.kit-status" | sed "1s/^$bom//")
+if [ "$cfg_ok" = 1 ]; then
   due=$(slk_faellig "$heute" "$cfg" "$st")
   [ -n "$due" ] && out="$out
 $(printf '%s\n' "$due" | sed 's/^/- /')"
@@ -72,8 +82,42 @@ if [ "$k" -gt 0 ]; then
   add "Überfällig: ${liste#, }$rest."
 fi
 
+# Entries dated after the reference date: nothing is recalculated, the user has to look at them.
+kommagetrennt() { head -n 5 | tr '\n' ',' | sed 's/,$//; s/,/, /g'; }
+zukunft=""
+z_status=$(slk_status_zukunft "$heute" "$st")
+[ -n "$z_status" ] && zukunft="$zukunft Status: $(printf '%s\n' "$z_status" | kommagetrennt)."
+z_dateien=$(find "$ws/00_Eingang" "$ws/02_Postausgang" "$ws/03_Berichte" "$ws/04_Angebote" "$ws/05_Projekte" "$ws/06_Kunden" \
+              -type f -name '[12][0-9][0-9][0-9]-[01][0-9]-[0-3][0-9]_*' 2>/dev/null | sed 's|.*/||' |
+              awk -v h="$heute" 'substr($0, 1, 10) > h' | sort)
+if [ -n "$z_dateien" ]; then
+  m=$(printf '%s\n' "$z_dateien" | wc -l | tr -d ' ')
+  rest=""; [ "$m" -gt 5 ] && rest=" und $((m - 5)) weitere"
+  zukunft="$zukunft Dateien: $(printf '%s\n' "$z_dateien" | kommagetrennt)$rest."
+fi
+z_faelle=""; z_mails=""
+for f in "$ws/01_Vorgaenge/offen"/V-*.md; do
+  [ -f "$f" ] || continue
+  awk -v h="$heute" 'substr($0, 1, 4) == "### " && substr($0, 5, 4) ~ /^[12][0-9][0-9][0-9]$/ && substr($0, 5, 10) > h { spaet = 1 }
+    /^(erstellt|aktualisiert): "/ { if (substr($2, 2, 10) > h) spaet = 1 } END { exit !spaet }' "$f" &&
+    z_faelle="$z_faelle$(basename "$f" .md)
+"
+done
+[ -n "$z_faelle" ] && zukunft="$zukunft Vorgänge: $(printf '%s' "$z_faelle" | kommagetrennt)."
+for f in "$ws/00_Eingang"/*.eml; do
+  [ -f "$f" ] || continue
+  tag=$(slk_mail_tag "$f")
+  [ -n "$tag" ] && [ "$(printf '%s' "$tag" | tr -d -)" -gt "$(printf '%s' "$heute" | tr -d -)" ] &&
+    z_mails="$z_mails${f##*/}
+"
+done
+[ -n "$z_mails" ] && zukunft="$zukunft Mails: $(printf '%s' "$z_mails" | kommagetrennt)."
+[ -n "$zukunft" ] && add "Datiert nach dem Bezugsdatum $(slk_de_datum "$heute"):$zukunft Bitte prüfen, das Kit rechnet nichts um."
+
+[ -d "$U" ] && touch "$U/.kit-stand.jetzt" 2>/dev/null
 if [ -f "$U/.kit-stand" ]; then
-  neu=$(find "$U" -type f ! -name '.kit-*' ! -name '~$*' -newer "$U/.kit-stand" 2>/dev/null | sed 's|.*/||' | sort)
+  # Like stop.sh: a modification time after this moment would count as changed at every session start.
+  neu=$(find "$U" -type f ! -name '.kit-*' ! -name '~$*' -newer "$U/.kit-stand" ! -newer "$U/.kit-stand.jetzt" 2>/dev/null | sed 's|.*/||' | sort)
   if [ -n "$neu" ]; then
     m=$(printf '%s\n' "$neu" | wc -l | tr -d ' ')
     namen=$(printf '%s\n' "$neu" | head -n 5 | tr '\n' ',' | sed 's/,$//; s/,/, /g')
@@ -81,7 +125,7 @@ if [ -f "$U/.kit-stand" ]; then
     add "Geändert in Unternehmen/ seit der letzten Sitzung: $namen$rest. Bitte kurz mit dem Nutzer bestätigen."
   fi
 fi
-[ -d "$U" ] && touch "$U/.kit-stand" 2>/dev/null
+[ -f "$U/.kit-stand.jetzt" ] && mv -f "$U/.kit-stand.jetzt" "$U/.kit-stand" 2>/dev/null
 
 context() {
 printf 'Service Leader Kit – Stand %s, Ordner %s%s\n' "$heute" "$ws" "${out:-

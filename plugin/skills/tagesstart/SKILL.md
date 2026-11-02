@@ -34,21 +34,22 @@ that folder in VS Code (Datei → Ordner öffnen) and stop.
    need the user's yes in a separate request.
 5. Numbers only exactly as the scripts print them; never add, round or estimate. In sample mode the first line of the
    answer is "Beispieldaten – Muster Maschinenbau GmbH".
-6. Reference date: today, or the date the user names ("heute ist der 07.10.2026"); pass it as `--heute JJJJ-MM-TT` to
-   every script.
+6. Reference date: only when the user names a date ("heute ist der 07.10.2026") pass it as `--heute JJJJ-MM-TT` to
+   every script. Otherwise leave `--heute` out: the scripts use today or the folder's Demo-Datum.
 7. The last step `routine.py erledigt` runs whenever every step was attempted, also after a failed step; not when the
-   user stopped the routine.
+   user stopped the routine. Every entry of its `luecken` (a step that left no file in the period) goes into the block
+   "Nicht erledigt".
 
 ## Steps
 
-1. Due routines: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" stand --ws "<workspace>" --heute JJJJ-MM-TT`.
+1. Due routines: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" stand --ws "<workspace>" [--heute JJJJ-MM-TT]`.
    Keep `faellig` without `tagesstart`.
 2. Skill `mail-triage` aus der Routine tagesstart: the list only — this routine files nothing.
 3. For every triage entry with `art: export`: Skill `daten-pruefen` for that file, dry run only (its step 1). Show the
    result; taking it over is a separate request of the user.
 4. Skill `morgen-briefing` aus der Routine tagesstart.
 5. Skill `freigabe-queue` aus der Routine tagesstart (the queue only).
-6. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine tagesstart --heute JJJJ-MM-TT`
+6. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine tagesstart [--heute JJJJ-MM-TT]`
 
 ## Answer (German, at most 25 lines plus the file paths, in this order)
 

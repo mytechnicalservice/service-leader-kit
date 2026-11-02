@@ -15,17 +15,21 @@ if [ "$(slk_get "$cfg" ablage)" = github ] && [ -e "$ws/.git" ] && command -v gi
 fi
 
 # 2. Case reminder (decision D4): work files changed since the last Stop, no case file did, an open case exists.
+# A file dated after this moment (restored, or built for a demo) is newer than any stamp: it stays out, or it would
+# count as new at every stop. The stamp "jetzt" marks this moment.
 stamp="$U/.kit-letzter-stop"
-if [ "$aktiv" = 0 ] && [ -f "$stamp" ]; then
+jetzt="$U/.kit-letzter-stop.jetzt"
+[ -d "$U" ] && touch "$jetzt" 2>/dev/null
+if [ "$aktiv" = 0 ] && [ -f "$stamp" ] && [ -f "$jetzt" ]; then
   arbeit=$(find "$ws/02_Postausgang" "$ws/03_Berichte" "$ws/04_Angebote" "$ws/05_Projekte" "$ws/06_Kunden" \
-             -type f -newer "$stamp" ! -name '.*' ! -name '~$*' 2>/dev/null | head -n 1)
-  fall=$(find "$ws/01_Vorgaenge" -type f -name 'V-*.md' -newer "$stamp" 2>/dev/null | head -n 1)
+             -type f -newer "$stamp" ! -newer "$jetzt" ! -name '.*' ! -name '~$*' 2>/dev/null | head -n 1)
+  fall=$(find "$ws/01_Vorgaenge" -type f -name 'V-*.md' -newer "$stamp" ! -newer "$jetzt" 2>/dev/null | head -n 1)
   offen=$(find "$ws/01_Vorgaenge/offen" -type f -name 'V-*.md' 2>/dev/null | head -n 1)
   if [ -n "$arbeit" ] && [ -z "$fall" ] && [ -n "$offen" ]; then
     grund="Service Leader Kit: Es ist ein neues Arbeitsergebnis entstanden (${arbeit#"$ws"/}), aber kein Vorgang wurde aktualisiert. Gehört die Arbeit zu einem offenen Vorgang, trag sie mit vorgang.py eintrag ein. Sonst antworte nur: kein Vorgang betroffen."
   fi
 fi
-[ -d "$U" ] && touch "$stamp" 2>/dev/null
+[ -f "$jetzt" ] && mv -f "$jetzt" "$stamp" 2>/dev/null
 
 [ -n "$grund$meldung" ] || exit 0
 sep=""

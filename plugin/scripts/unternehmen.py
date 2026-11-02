@@ -392,8 +392,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     sub = ap.add_subparsers(dest="cmd", required=True)
     st = sub.add_parser("stand")
     st.add_argument("--ws", required=True)
+    st.add_argument("--heute")
     ze = sub.add_parser("zeige")
     ze.add_argument("--ws", required=True)
+    ze.add_argument("--heute")
     ze.add_argument("--bereich", required=True, choices=BEREICHE)
     se = sub.add_parser("setze")
     se.add_argument("--ws", required=True)
@@ -405,11 +407,12 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     se.add_argument("--art", choices=["master", "briefkopf", "beispielmail"])
     se.add_argument("--layout", action="append", default=[])
     se.add_argument("--bestaetigt", action="store_true")
-    se.add_argument("--heute", default=dt.date.today().isoformat())
+    se.add_argument("--heute")
     a = ap.parse_args(argv)
     ws = Path(a.ws)
     if not ao.ist_arbeitsordner(ws):
         return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner. Bitte zuerst die Einrichtung ausführen."]}
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         return {"stand": cmd_stand, "zeige": cmd_zeige, "setze": cmd_setze}[a.cmd](a, ws)
     except (Fehler, LayoutFehler) as exc:

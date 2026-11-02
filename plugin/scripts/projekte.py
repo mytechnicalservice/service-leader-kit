@@ -15,8 +15,9 @@ import re
 import sys
 from pathlib import Path
 
+import arbeitsordner as ao
 import kennzahlen
-from slk_common import JsonParser, run, write_atomic, zahl
+from slk_common import JsonParser, anzahl_text, run, write_atomic, zahl
 from vorgang import VorgangFehler, parse_case, pruefe_mensch, rel
 
 TYPEN = ("inbetriebnahme", "retrofit")
@@ -37,7 +38,7 @@ RANG = {"gruen": 0, "gelb": 1, "rot": 2}
 ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
 VERBOTEN = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 BEISPIEL = "Beispieldaten – Muster Maschinenbau GmbH"
-STANDARD_HINWEIS = "Standarddefinition des Kits – in der Einrichtung noch nicht festgelegt"
+STANDARD_HINWEIS = "Kit-Standard – im Unternehmen nicht eigens festgelegt"
 KEINE_SCHAETZUNG = "Das Kit schätzt keine Werte: bitte die Angaben in projekt.md ergänzen oder korrigieren."
 
 
@@ -214,11 +215,21 @@ def termin(meta: dict, quelle: str, s: dict) -> dict:
     w = kennzahlen.wert("Terminverzug", tage[name], [f"{quelle}: meilensteine/{name}"],
                         formel="(Ist, sonst Prognose) − Plantermin; größter Verzug aller Meilensteine", einheit="Tage")
     ms = meta.get("vertragsstrafe_meilenstein")
+    abgenommen = meta.get("status") == "abgenommen"
     if ms is not None and tage[ms] > 0:
-        return {"ampel": "rot", "verzug": w, "grund": f"Vertragsstrafe droht: {ms} {tage[ms]} Tage nach Plan"}
+        # The headline is the milestone the penalty runs on, not the largest delay of any milestone.
+        w = kennzahlen.wert("Terminverzug", tage[ms], [f"{quelle}: meilensteine/{ms}"],
+                            formel="(Ist, sonst Prognose) − Plantermin; Meilenstein der Vertragsstrafe", einheit="Tage")
+        spaet = f"{ms} {anzahl_text(tage[ms], 'Tage')} nach Plan"
+        if abgenommen:
+            return {"ampel": "rot", "zustand": "Vertragsstrafe offen", "verzug": w,
+                    "grund": f"Vertragsstrafe offen: {spaet}; das Projekt ist abgenommen"}
+        return {"ampel": "rot", "verzug": w, "grund": f"Vertragsstrafe droht: {spaet}"}
+    if abgenommen:
+        return {"ampel": "gruen", "zustand": "abgenommen", "verzug": w, "grund": "abgenommen, keine Vertragsstrafe offen"}
     t = tage[name]
     ampel = "rot" if t >= s["termin_rot_ab_tage"] else "gelb" if t >= s["termin_gelb_ab_tage"] else "gruen"
-    return {"ampel": ampel, "verzug": w, "grund": f"{name}: {t} Tage Verzug" if t else "alle Meilensteine im Plan"}
+    return {"ampel": ampel, "verzug": w, "grund": f"{name}: {anzahl_text(t, 'Tage')} Verzug" if t else "alle Meilensteine im Plan"}
 
 
 def kosten(meta: dict, quelle: str, s: dict) -> dict:
@@ -359,21 +370,21 @@ def optionen_fuer(meta: dict, quelle: str, a, bezug: str, v: int, mehr: float, k
 
     titel_b = "Beschleunigen (Zusatzkapazität, Überstunden, Fremdmontage)"
     liste = [option("A", "Weiterlaufen lassen, neuen Termin mitteilen", 0, strafe(v),
-                    f"{bezug} {v} Tage später als vereinbart" + (", Vertragsstrafe wird fällig" if klausel and v else ""),
+                    f"{bezug} {anzahl_text(v, 'Tage')} später als vereinbart" + (", Vertragsstrafe wird fällig" if klausel and v else ""),
                     "keine")]
     if a.beschleunigung_eur is not None:
         rest = max(0, v - a.beschleunigung_tage)
         liste.append(option("B", titel_b, a.beschleunigung_eur, strafe(rest),
-                            f"{bezug} {rest} Tage später als vereinbart" if rest else f"{bezug} zum vereinbarten Termin",
+                            f"{bezug} {anzahl_text(rest, 'Tage')} später als vereinbart" if rest else f"{bezug} zum vereinbarten Termin",
                             f"Kapazität verfügbar; Kosten und Zeitgewinn laut Angabe ({d(a.beschleunigung_eur)} EUR, "
-                            f"{a.beschleunigung_tage} Tage)"))
+                            f"{anzahl_text(a.beschleunigung_tage, 'Tage')})"))
     else:
         liste.append(offen("B", titel_b, "Mehrkosten der Beschleunigung (EUR) und aufgeholte Tage angeben",
                            "Verzug sinkt um die aufgeholten Tage", "Kapazität verfügbar"))
     if klausel:
         liste.append(option("C", "Neuen Termin mit dem Kunden vereinbaren (Verzicht auf die Vertragsstrafe)", 0,
                             kennzahlen.wert("Vertragsstrafe", 0, [f"{quelle}: vertragsstrafe_meilenstein"], formel="Verzicht des Kunden"),
-                            f"{bezug} {v} Tage später, neuer Termin schriftlich vereinbart",
+                            f"{bezug} {anzahl_text(v, 'Tage')} später, neuer Termin schriftlich vereinbart",
                             "schriftliche Zustimmung des Kunden – ohne sie gilt Option A"))
     titel_d = "Nachtrag an den Kunden"
     if a.nachtrag_eur is not None:
@@ -687,18 +698,17 @@ def betrag(s: str) -> int | float:
 def parser() -> JsonParser:
     ap = JsonParser(prog="projekte")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    heute = dt.date.today()
 
     def add(name: str):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", type=iso_datum, default=heute)
+        sp.add_argument("--heute", type=iso_datum)
         return sp
 
-    add("ampel").add_argument("--stichtag", type=iso_datum, default=heute)
+    add("ampel").add_argument("--stichtag", type=iso_datum)
     sp = add("verzug")
     sp.add_argument("--projekt", required=True)
-    sp.add_argument("--stichtag", type=iso_datum, default=heute)
+    sp.add_argument("--stichtag", type=iso_datum)
     sp.add_argument("--beschleunigung-eur", type=betrag)
     sp.add_argument("--beschleunigung-tage", type=int, choices=range(0, 366), metavar="TAGE")
     sp.add_argument("--nachtrag-eur", type=betrag)
@@ -734,6 +744,9 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     if not (ws / "Unternehmen").is_dir():
         text = f"{ws} ist kein Kundendienst-Ordner (Unternehmen/ fehlt)."
         return 1, {"ok": False, "fehler": [text], "meldungen": [text]}
+    a.heute = dt.date.fromisoformat(ao.bezugstag(ws, a.heute.isoformat() if a.heute else None))
+    if hasattr(a, "stichtag") and a.stichtag is None:
+        a.stichtag = a.heute
     try:
         return COMMANDS[a.cmd](a, ws)
     except (ProjektFehler, VorgangFehler, kennzahlen.KennzahlFehler) as exc:

@@ -25,14 +25,14 @@ The script opens only that copy and the files it writes. Write it with the Write
 needs from `01_Vorgaenge/` or `Unternehmen/` after reading those files yourself (Read tool or the kit's scripts);
 inline code (`python -c`, `python - <<EOF`) that names them is refused by the guard, even to read.
 
-Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`). Customer: the exact name used in the cases
+Date: leave `--heute` out (the script uses today or the folder's Demo-Datum); only a reference date the user names goes in as `--heute JJJJ-MM-TT`. Customer: the exact name used in the cases
 or the `06_Kunden/` folder.
 
 ## Vorbereitung
 
 1. Read the customer folder files that matter for the topic (Read). Propose 3–5 talking points (goal of the call,
    open promises, risks, questions); each becomes `--punkt "…"`. Numbers only from the script.
-2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" besprechung-vorbereiten --ws "<workspace>" --heute JJJJ-MM-TT --kunde "<Kunde>"`
+2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" besprechung-vorbereiten --ws "<workspace>" [--heute JJJJ-MM-TT] --kunde "<Kunde>"`
    (or `--thema "<Thema>"` without a customer; `--termin "<wann>"` if known) plus the `--punkt` flags.
 3. Summarise in German: open cases with the total as printed, open recommendations, contract, the talking points.
    Name `datei`. For an escalation, offer the `eskalation-topkunde` skill.
@@ -41,7 +41,7 @@ or the `06_Kunden/` folder.
 
 1. From the notes, extract participants, discussed points, decisions and actions `"Was | Wer | JJJJ-MM-TT"`. Never
    invent an owner or a date: leave the part empty, the script flags it. An agent is never the owner.
-2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" besprechung-protokoll --ws "<workspace>" --heute JJJJ-MM-TT --titel "<Titel>" --datum JJJJ-MM-TT --kunde "<Kunde>"`
+2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" besprechung-protokoll --ws "<workspace>" [--heute JJJJ-MM-TT] --titel "<Titel>" --datum JJJJ-MM-TT --kunde "<Kunde>"`
    plus `--teilnehmer`, `--punkt`, `--beschluss`, `--massnahme` (each repeatable) and `--naechster-termin`.
 3. For every action with `bereit: true` (when the user asked for cases): run
    `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/vorgang.py" neu --ws "<workspace>" --titel "<titel>" --typ aufgabe --kunde "<kunde>" --verantwortlich "<verantwortlich>" --faellig <faellig> --von assistenz --text "<text>"`

@@ -22,7 +22,7 @@ graders:
     target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
   - name: grenze-ueberschritten
     type: regex
-    pattern: "Freigabegrenze von 300 EUR – weiter an Finanzen"
+    pattern: "Prüfschwelle von 300 EUR"
     target: { source: file, path: 01_Vorgaenge/offen/V-0001.md }
   - {
       name: finanzen-beteiligt,
