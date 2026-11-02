@@ -187,28 +187,12 @@ seg_git_rules() {
   esac
 }
 
-# sed/perl editing in place: a -i anywhere in the command counts, because it can reach sed through a variable, a
-# find -exec, a heredoc or a second wrapper. Only a -i that a reading command other than sed owns does not: grep -i
-# beside sed -n is no sed -i (T-1952). $(…) or xargs on sed itself can hand it any flag, so there every -i counts.
-_slk_ip=0
-seg_lese_flags() { # one reading command's args: its own unquoted -i is taken off the count
-  for _slk_a in "$@"; do
-    case "$_slk_a" in ??0*)
-      case "$(slk_lower "${_slk_a#???}")" in -i*|--in-place*) _slk_ip=$((_slk_ip - 1)) ;; esac ;;
-    esac
-  done
-  return 0
-}
+# sed/perl editing in place, by the command's own args: this also sees a quoted "-i", which the whole-command check
+# below does not. That check stays on purpose: a -i can reach sed through a variable, a find -exec or a heredoc, so
+# a grep -i beside sed -n stays refused once a protected folder is named outside a reading command (T-1952).
 seg_inplace_rules() {
   for _slk_a in "$@"; do
-    _slk_t=${_slk_a#???}
-    case "$(slk_lower "$_slk_t")" in -i*|--in-place*) block shell-geschuetzt "$schutz" ;; esac
-    case "$_slk_t" in
-      *'$sub'*) ;;
-      '$xargs') case "$nq" in *xargs*) ;; *) continue ;; esac ;;   # a plain pipe only feeds stdin, never flags
-      *) continue ;;
-    esac
-    { has_flag '-i*' || has_flag '--in-place*'; } && block shell-geschuetzt "$schutz"
+    case "$(slk_lower "${_slk_a#???}")" in -i*|--in-place*) block shell-geschuetzt "$schutz" ;; esac
   done
   return 0
 }
@@ -228,10 +212,7 @@ check_segs() {
     if [ "$_slk_mode" = git ]; then
       [ "$_slk_vb" = git ] && seg_git_rules "$@"
     elif [ "$_slk_mode" = inplace ]; then
-      case "$_slk_vb" in
-        sed|perl) seg_inplace_rules "$@" ;;
-        *) in_list "$_slk_vb" "$LESEN" && seg_lese_flags "$@" ;;
-      esac
+      case "$_slk_vb" in sed|perl) seg_inplace_rules "$@" ;; esac
     elif [ "$_slk_vb" = find ]; then
       seg_find_rules "$@"
     elif in_list "$_slk_vb" "cd chdir pushd set-location sl push-location"; then
@@ -404,14 +385,8 @@ erster_verb() { for v in "$@"; do case "$verbs" in *" $v "*) printf '%s' "$v"; r
 if [ "$named" = 1 ]; then
   # shellcheck disable=SC2086
   _slk_ausl=$(erster_verb $DEL $MOVE $COPY $INLINE) && gesperrt "Befehl $_slk_ausl"
-  if has_verb sed perl; then
-    # Counted on the text with quote marks removed, so a -i inside "$(…)" is seen as well as owned.
-    for _slk_w in $(printf '%s' "$nq" | tr '\n\t' '  '); do
-      case "$_slk_w" in -i*|--in-place*) _slk_ip=$((_slk_ip + 1)) ;; esac
-    done
-    check_segs inplace
-    [ "$_slk_ip" -gt 0 ] && gesperrt "Ändern in der Datei (-i)"
-  fi
+  has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && gesperrt "Ändern in der Datei (-i)"
+  has_verb sed perl && check_segs inplace
   has_verb git && has_word rm mv checkout restore reset stash && gesperrt "Git-Befehl, der Dateien ändert"
   has_verb uv && has_word python python3 && has_word -c && gesperrt "Inline-Code (uv run python -c)"
   printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&

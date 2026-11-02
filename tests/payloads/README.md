@@ -34,5 +34,5 @@ scripts to run; `tests/test_hooks_shell.py` feeds them to the hook.
 - `entscheidungsvorlage`: letterhead `cp`, a heredoc build script in `/tmp`, a `python3 -` heredoc that opens
   `01_Vorgaenge/offen/V-0003.md`, then `uv run … python /tmp/ev3/bau.py` (entscheidungsvorlage).
 
-`T-1952-alle-vorgaenge.sh` is the Bash call refused on 2026-11-02 in a demo test (plugin 0.3.0): a loop over all cases
+`T-1952-alle-vorgaenge.sh` is the Bash call refused on 2026-11-02 in a demo test (plugin 0.3.0, a known limit that stays refused): a loop over all cases
 with `sed -n` plus `grep -l -i`, workspace path -> `__WS__`. Its `-i` belongs to `grep`.
