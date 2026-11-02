@@ -15,6 +15,7 @@ import re
 import sys
 from pathlib import Path
 
+import arbeitsordner as ao
 import kennzahlen
 from slk_common import JsonParser, run, write_atomic, zahl
 from vorgang import VorgangFehler, parse_case, pruefe_mensch, rel
@@ -687,18 +688,17 @@ def betrag(s: str) -> int | float:
 def parser() -> JsonParser:
     ap = JsonParser(prog="projekte")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    heute = dt.date.today()
 
     def add(name: str):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", type=iso_datum, default=heute)
+        sp.add_argument("--heute", type=iso_datum)
         return sp
 
-    add("ampel").add_argument("--stichtag", type=iso_datum, default=heute)
+    add("ampel").add_argument("--stichtag", type=iso_datum)
     sp = add("verzug")
     sp.add_argument("--projekt", required=True)
-    sp.add_argument("--stichtag", type=iso_datum, default=heute)
+    sp.add_argument("--stichtag", type=iso_datum)
     sp.add_argument("--beschleunigung-eur", type=betrag)
     sp.add_argument("--beschleunigung-tage", type=int, choices=range(0, 366), metavar="TAGE")
     sp.add_argument("--nachtrag-eur", type=betrag)
@@ -734,6 +734,9 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     if not (ws / "Unternehmen").is_dir():
         text = f"{ws} ist kein Kundendienst-Ordner (Unternehmen/ fehlt)."
         return 1, {"ok": False, "fehler": [text], "meldungen": [text]}
+    a.heute = dt.date.fromisoformat(ao.bezugstag(ws, a.heute.isoformat() if a.heute else None))
+    if hasattr(a, "stichtag") and a.stichtag is None:
+        a.stichtag = a.heute
     try:
         return COMMANDS[a.cmd](a, ws)
     except (ProjektFehler, VorgangFehler, kennzahlen.KennzahlFehler) as exc:

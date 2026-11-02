@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 import kennzahlen as kz
-from arbeitsordner import lies_konfig
+from arbeitsordner import bezugstag, lies_konfig
 from daten_pruefen import ImportFehler, datum, leer, lese, monat, personen_spalten
 from slk_common import JsonParser, csv_sicher, run, write_atomic, zahl
 
@@ -766,7 +766,7 @@ def parser() -> JsonParser:
         sp = sub.add_parser(name)
         if ws:
             sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         if fenster_args:
             sp.add_argument("--bis")
             sp.add_argument("--monate", type=int, default=12)
@@ -805,6 +805,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     if getattr(a, "monate", 1) < 1:
         return 1, fehler("--monate muss mindestens 1 sein.")
     ws = Path(a.ws) if getattr(a, "ws", None) else None
+    a.heute = bezugstag(ws, a.heute)
     try:
         return BEFEHLE[a.cmd](a, ws)
     except (kz.KennzahlFehler, ImportFehler, ValueError) as exc:

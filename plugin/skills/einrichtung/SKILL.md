@@ -84,6 +84,13 @@ On a first run, say in one line which kit variant this is (`variante` from step 
 - `codex`: "Du nutzt das Kit in Codex: Deine Kopie liegt in deinem Ordner, Updates kommen nicht von selbst."
 End with this sentence: "Sag jederzeit ‚Was kannst du?‘ für eine Übersicht."
 
+To work on a fixed day for a demo ("Demo-Datum 04.11.2026", "stell das Kit auf den 04.11."): run
+`uv run "${CLAUDE_PLUGIN_ROOT}/scripts/einrichtung.py" anlegen --ordner "<pfad>" --demo-datum JJJJ-MM-TT`. Say that from
+then on the session start, the due routines and every script use this date instead of the system date, and that every
+output says so; it applies from the next session start. To end it ("Demo-Datum aus"): the same call with
+`--demo-datum aus`. An impossible date is refused with `fehler`; explain it and ask again. Never edit
+`Unternehmen/.kit-config` by hand.
+
 To remove the sample company later ("lösch die Beispieldaten"): ask once "Soll ich den Ordner Beispiel/ mit der
 Musterfirma löschen? Alles in Beispiel/ wird gelöscht; deine Dateien außerhalb von Beispiel/ bleiben unberührt." Only
 after a clear yes run `anlegen --ordner "<pfad>" --beispieldaten nein --beispiel-loeschen`. Never delete it any other

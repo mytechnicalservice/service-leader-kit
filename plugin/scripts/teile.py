@@ -13,6 +13,7 @@ import shutil
 import sys
 from pathlib import Path
 
+import arbeitsordner as ao
 import kennzahlen as kz
 import vorgang
 from slk_common import JsonParser, run, zahl
@@ -483,12 +484,13 @@ def parser() -> JsonParser:
     r = sub.add_parser("teilegeschaeft-review")
     r.add_argument("--ws", required=True)
     r.add_argument("--bis")
+    r.add_argument("--heute")
     s = sub.add_parser("lieferanten-entscheidung")
     s.add_argument("--ws", required=True)
     s.add_argument("--angebot", action="append", required=True)
     s.add_argument("--ergaenze", action="append", default=[])
     s.add_argument("--ablegen", action="store_true")
-    s.add_argument("--heute", default=dt.date.today().isoformat())
+    s.add_argument("--heute")
     return ap
 
 
@@ -496,8 +498,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     a = parser().parse_args(argv)
     try:
         if a.cmd == "teilegeschaeft-review":
+            ao.bezugstag(Path(a.ws), a.heute)
             return 0, review(Path(a.ws), a.bis)
-        out = lieferanten(Path(a.ws), a.angebot, a.ergaenze, a.ablegen, dt.date.fromisoformat(a.heute))
+        heute = dt.date.fromisoformat(ao.bezugstag(Path(a.ws), a.heute))
+        out = lieferanten(Path(a.ws), a.angebot, a.ergaenze, a.ablegen, heute)
         return (0 if out["ok"] else 1), out
     except (TeileFehler, kz.KennzahlFehler) as exc:
         return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)]}

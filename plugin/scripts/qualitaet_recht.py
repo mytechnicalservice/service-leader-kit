@@ -14,6 +14,7 @@ import re
 import sys
 from pathlib import Path
 
+import arbeitsordner as ao
 import kennzahlen as kz
 import vorgang
 from slk_common import JsonParser, run, zahl
@@ -319,7 +320,7 @@ def offene_reklamationen(ws: Path, meldungen: list[str]) -> list[dict]:
     return out
 
 
-def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12) -> dict:
+def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12, heute: str | None = None) -> dict:
     ordner, hinweise = quelle(ws)
     meldungen: list[str] = []
     schwelle = teil(kz.definitionen(ordner), "freigabegrenzen").get("wiederholfehler_schwelle")
@@ -363,7 +364,7 @@ def wiederholfehler(ws: Path, bis: str | None = None, monate: int = 12) -> dict:
             "befunde": befunde, "wiederholt_gleiche_anlage": _wiederholt(rep), "nicht_zugeordnet": unzugeordnet,
             "reklamationen_offen": offene_reklamationen(ws, meldungen),
             "auffaellige_anweisungen": eingang_anweisungen(ws),
-            "ausgabe_datei": f"03_Berichte/{dt.date.today().isoformat()}_wiederholfehler-bericht.docx",
+            "ausgabe_datei": f"03_Berichte/{ao.bezugstag(ws, heute)}_wiederholfehler-bericht.docx",
             "gliederung": ["Zusammenfassung für die Konstruktion", "Wiederholfehler nach Maschinentyp und Komponente",
                            "Gleiche Anlage erneut repariert", "Offene Reklamationen", "Datenlage und Quellen",
                            "Bitte an die Konstruktion"],
@@ -463,7 +464,7 @@ def _einfach(zeilen: list[str], datei: str) -> list[dict]:
     return out
 
 
-def vertragspruefung(ws: Path, datei: str, kunde: str | None = None) -> dict:
+def vertragspruefung(ws: Path, datei: str, kunde: str | None = None, heute: str | None = None) -> dict:
     text = text_von(ws, datei)
     zeilen = text.splitlines()
     ordner, hinweise = quelle(ws)
@@ -496,7 +497,7 @@ def vertragspruefung(ws: Path, datei: str, kunde: str | None = None) -> dict:
     return {"ok": True, "datei": datei, "kunde": kunde, "abweichungen": abw, "anzahl_abweichungen": len(abw),
             "kritisch": len(kritisch), "werte": werte, "urteil": urteil, "fachexperten": fx_liste,
             "empfehlung": text_empf, "auffaellige_anweisungen": eingang_anweisungen(ws, {datei: text}),
-            "ausgabe_datei": f"04_Angebote/{dt.date.today().isoformat()}_vertragspruefung-"
+            "ausgabe_datei": f"04_Angebote/{ao.bezugstag(ws, heute)}_vertragspruefung-"
                              f"{kunde or Path(datei).stem}.docx",
             "gliederung": ["Ergebnis auf einen Blick", "Abweichungen von euren Standards (mit Fundstelle)",
                            "Nachverhandlungsvorschläge", "Vom Skript nicht bewertete Klauseln", "Fachexperten",
@@ -611,6 +612,7 @@ def parser() -> JsonParser:
     def add(name: str):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
+        sp.add_argument("--heute")
         return sp
 
     r = add("reklamation")
@@ -629,7 +631,6 @@ def parser() -> JsonParser:
     v.add_argument("--kunde")
     a = add("audit-vorbereitung")
     a.add_argument("--norm", default="ISO 9001")
-    a.add_argument("--heute", default=dt.date.today().isoformat())
     return ap
 
 
@@ -644,10 +645,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
                 raise QRFehler(f"Kosten '{a.kosten}' sind keine Zahl") from exc
             return 0, reklamation(ws, a.nr, a.ursache, a.ausschluss, a.bezug, a.anlage, kosten, a.quelle)
         if a.cmd == "wiederholfehler":
-            return 0, wiederholfehler(ws, a.bis, a.monate)
+            return 0, wiederholfehler(ws, a.bis, a.monate, a.heute)
         if a.cmd == "vertragspruefung":
-            return 0, vertragspruefung(ws, a.datei, a.kunde)
-        return 0, audit_vorbereitung(ws, dt.date.fromisoformat(a.heute), a.norm)
+            return 0, vertragspruefung(ws, a.datei, a.kunde, a.heute)
+        return 0, audit_vorbereitung(ws, dt.date.fromisoformat(ao.bezugstag(ws, a.heute)), a.norm)
     except (QRFehler, vorgang.VorgangFehler, kz.KennzahlFehler) as exc:
         return 1, {"ok": False, "fehler": [str(exc)], "meldungen": [str(exc)]}
 

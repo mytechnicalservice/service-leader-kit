@@ -15,6 +15,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+import arbeitsordner as ao
 from kennzahlen import datenquelle, lies_kopf
 from slk_common import JsonParser, run
 
@@ -188,18 +189,21 @@ def pruefe_datei(ws: Path, datei: Path, erwarte: list[str]) -> dict:
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap = JsonParser(prog="layout")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("firma").add_argument("--ws", required=True)
+    f = sub.add_parser("firma")
+    f.add_argument("--ws", required=True)
     m = sub.add_parser("master-pruefen")
     m.add_argument("--ws", required=True)
     m.add_argument("--datei", required=True)
     a_ = sub.add_parser("ablage")
     for k in ("ws", "ordner", "thema", "endung"):
         a_.add_argument(f"--{k}", required=True)
-    a_.add_argument("--heute", default=dt.date.today().isoformat())
+    a_.add_argument("--heute")
     p = sub.add_parser("pruefe-datei")
     p.add_argument("--ws", required=True)
     p.add_argument("--datei", required=True)
     p.add_argument("--erwarte", action="append", default=[])
+    for sp in (f, m, p):
+        sp.add_argument("--heute")
     a = ap.parse_args(argv)
     ws = Path(a.ws)
     try:
@@ -209,7 +213,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
             d = Path(a.datei)
             return 0, {"ok": True, **pruefe_master(d if d.is_absolute() else ws / d)}
         if a.cmd == "ablage":
-            pfad = ablage(ws, a.ordner, a.thema, a.endung, a.heute)
+            pfad = ablage(ws, a.ordner, a.thema, a.endung, ao.bezugstag(ws, a.heute))
             return 0, {"ok": True, "datei": pfad.relative_to(ws).as_posix()}
         r = pruefe_datei(ws, Path(a.datei), a.erwarte)
         return (0 if r["ok"] else 1), r

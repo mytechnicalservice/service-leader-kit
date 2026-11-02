@@ -45,7 +45,8 @@ def erster_werktag(jahr: int, monat: int) -> int:
 def faellig(heute: dt.date, cfg: dict[str, str], zeilen: list[str]) -> list[str]:
     """Python twin of slk_faellig (hooks/faellig.sh); a parity test runs both on the same dates."""
     out = []
-    if hole(zeilen, "tagesstart") != heute.isoformat():
+    status = hole(zeilen, "tagesstart")
+    if status != heute.isoformat() and not ao.status_nach(status, "tagesstart", heute):
         out.append("tagesstart")
     idx = WOCHENTAGE.index(cfg["wochenstart"]) if cfg.get("wochenstart") in WOCHENTAGE else 5
     montag = heute - dt.timedelta(days=heute.weekday())
@@ -57,11 +58,14 @@ def faellig(heute: dt.date, cfg: dict[str, str], zeilen: list[str]) -> list[str]
         out.append("wochenstart")
     ms = cfg.get("monatsstart", "")
     tag = erster_werktag(heute.year, heute.month) if ms == "erster-werktag" else int(ms) if ms.isdigit() else 99
-    if hole(zeilen, "monatsabschluss") != f"{heute:%Y-%m}" and heute.day >= tag:
+    status = hole(zeilen, "monatsabschluss")
+    if status != f"{heute:%Y-%m}" and not ao.status_nach(status, "monatsabschluss", heute) and heute.day >= tag:
         out.append("monatsabschluss")
     q = (heute.month - 1) // 3 + 1
     qm = (q - 1) * 3 + 1
-    if hole(zeilen, "quartal") != f"{heute.year}-Q{q}" and (heute.month > qm or heute.day >= erster_werktag(heute.year, qm)):
+    status = hole(zeilen, "quartal")
+    if (status != f"{heute.year}-Q{q}" and not ao.status_nach(status, "quartal", heute)
+            and (heute.month > qm or heute.day >= erster_werktag(heute.year, qm))):
         out.append("quartal")
     return out
 
@@ -83,11 +87,13 @@ def cmd_erledigt(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
 
 def cmd_stand(a, ws: Path, heute: dt.date) -> tuple[int, dict]:
     werte, fehler = ao.lies_konfig(ws)
+    spaet = ao.zukunft(ws, heute)
     if werte is None or fehler:
-        return 0, {"ok": True, "faellig": [], "meldungen": ["Einstellungen unvollständig – keine Routine-Hinweise."]}
+        return 0, {"ok": True, "faellig": [], "zukunft": spaet,
+                   "meldungen": ["Einstellungen unvollständig – keine Routine-Hinweise.", *spaet]}
     zeilen = lies_status(ws)
     return 0, {"ok": True, "faellig": faellig(heute, werte, zeilen),
-               "zuletzt": {r: hole(zeilen, r) or None for r in ROUTINEN}, "meldungen": []}
+               "zuletzt": {r: hole(zeilen, r) or None for r in ROUTINEN}, "zukunft": spaet, "meldungen": spaet}
 
 
 EREIGNIS = re.compile(r"^### (\d{4}-\d{2}-\d{2}) · ([^·\n]+?) · ([^\n]+?)\s*$", re.M)
@@ -240,19 +246,20 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     for name in ("erledigt", "stand", "kpi-blick", "eskalationen"):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         if name == "erledigt":
             sp.add_argument("--routine", required=True, choices=ROUTINEN)
         if name == "kpi-blick":
             sp.add_argument("--monat")
     a = ap.parse_args(argv)
     ws = Path(a.ws)
+    if not ao.ist_arbeitsordner(ws):
+        return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner."]}
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         heute = dt.date.fromisoformat(a.heute)
     except ValueError:
         return 1, {"ok": False, "fehler": [f"--heute '{a.heute}' ist kein Datum (JJJJ-MM-TT)."]}
-    if not ao.ist_arbeitsordner(ws):
-        return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner."]}
     befehle = {"erledigt": cmd_erledigt, "stand": cmd_stand, "kpi-blick": cmd_kpi_blick,
                "eskalationen": cmd_eskalationen}
     try:

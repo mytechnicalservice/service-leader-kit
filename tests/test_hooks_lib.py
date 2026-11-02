@@ -78,9 +78,9 @@ def test_config_invalid_prints_nothing(shell, tmp_path, text):
 
 
 def test_schema_keys_match_spec_table():
-    keys = [l.split("=")[0] for l in SCHEMA.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")]
+    keys = [l.split("=")[0].rstrip("?") for l in SCHEMA.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")]
     assert keys == ["schema", "ablage", "git_auto", "laufzeit", "beispieldaten", "mail", "sprache", "wochenstart",
-                    "monatsstart"]
+                    "monatsstart", "demo_datum"]
 
 
 def test_workspace_found_above_and_below(shell, tmp_path):

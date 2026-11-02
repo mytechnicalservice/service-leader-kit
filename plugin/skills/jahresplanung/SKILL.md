@@ -44,8 +44,8 @@ that folder in VS Code (Datei → Ordner öffnen) and stop.
    need the user's yes in a separate request.
 5. Numbers only exactly as the scripts print them; never add, round or estimate. In sample mode the first line of the
    answer is "Beispieldaten – Muster Maschinenbau GmbH".
-6. Reference date: today, or the date the user names ("heute ist der 07.10.2026"); pass it as `--heute JJJJ-MM-TT` to
-   every script.
+6. Reference date: only when the user names a date ("heute ist der 07.10.2026") pass it as `--heute JJJJ-MM-TT` to
+   every script. Otherwise leave `--heute` out: the scripts use today or the folder's Demo-Datum.
 7. The last step `routine.py erledigt` runs whenever every step was attempted, also after a failed step; not when the
    user stopped the routine.
 
@@ -62,14 +62,14 @@ skills do not ask twice.
 4. Strategy memo, at most 2 pages:
    - Numbers only from the outputs of steps 1–3: the budget's numbers file (`*.zahlen.json`), `fuer_budget` of
      `personalplanung`, `budget_annahmen` of `preisliste-update` — each with its file as source.
-   - File name: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" ablage --ws "<workspace>" --ordner 03_Berichte --thema "Strategie <Jahr>" --endung docx --heute JJJJ-MM-TT`
+   - File name: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" ablage --ws "<workspace>" --ordner 03_Berichte --thema "Strategie <Jahr>" --endung docx [--heute JJJJ-MM-TT]`
    - Layout: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" firma --ws "<workspace>"` (letterhead).
    - Sections: Ausgangslage · Ziele <Jahr> · Personal · Preise · Risiken · Entscheidungen für die Geschäftsführung
      (with the decision-right holder from `Unternehmen/ergebnisrechnung.md`).
    - Write it with Claude's docx skill (D7); without it, as in **Ohne Dokument-Skill** above.
    - Check: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/layout.py" pruefe-datei --ws "<workspace>" --datei "<pfad>" --erwarte "<Serviceumsatz Plan <Jahr> as printed by the budget>"`
      must print `DATEI-OK`; otherwise correct the file once and check again.
-5. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine jahresplanung --heute JJJJ-MM-TT`
+5. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine jahresplanung [--heute JJJJ-MM-TT]`
 
 ## Answer (German, at most 25 lines plus the file paths, in this order)
 

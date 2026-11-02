@@ -4,12 +4,14 @@ like the hooks do (hooks/kit_config.awk). Never deletes and never overwrites."""
 from __future__ import annotations
 
 import datetime as dt
+import email
+import email.policy
 import json
 import re
 import shutil
 from pathlib import Path
 
-from slk_common import write_atomic
+from slk_common import merke_demo, merke_hinweis, write_atomic
 
 PLUGIN = Path(__file__).resolve().parents[1]
 VORLAGE = PLUGIN / "vorlagen" / "arbeitsordner"
@@ -89,16 +91,24 @@ def ergaenze(ws: Path) -> list[str]:
     return neu
 
 
-def regeln() -> dict[str, re.Pattern]:
-    """The schema's rules in schema order: key -> pattern for the whole value."""
-    out: dict[str, re.Pattern] = {}
+def _schema_zeilen() -> list[tuple[str, str]]:
+    zeilen = []
     for line in SCHEMA.read_text(encoding="utf-8").split("\n"):
         line = line.rstrip("\r")
-        if not line.strip(" \t") or line.lstrip(" \t").startswith("#"):
-            continue
-        k, _, rx = line.partition("=")
-        out[k] = re.compile(f"(?:{rx})")
-    return out
+        if line.strip(" \t") and not line.lstrip(" \t").startswith("#"):
+            k, _, rx = line.partition("=")
+            zeilen.append((k, rx))
+    return zeilen
+
+
+def regeln() -> dict[str, re.Pattern]:
+    """The schema's rules in schema order: key -> pattern for the whole value."""
+    return {k.removesuffix("?"): re.compile(f"(?:{rx})") for k, rx in _schema_zeilen()}
+
+
+def optionale() -> set[str]:
+    """Keys the schema marks with a trailing '?': they may be missing, like in kit_config.awk."""
+    return {k.removesuffix("?") for k, _ in _schema_zeilen() if k.endswith("?")}
 
 
 def pruefe_text(text: str) -> tuple[dict[str, str], list[str]]:
@@ -125,7 +135,7 @@ def pruefe_text(text: str) -> tuple[dict[str, str], list[str]]:
             fehler.append(f"Zeile {i}: unbekannte Einstellung '{k}'")
         elif not r[k].fullmatch(v):
             fehler.append(f"Ungültiger Wert für '{k}': '{v}'")
-    fehler += [f"Einstellung '{k}' fehlt" for k in r if k not in werte]
+    fehler += [f"Einstellung '{k}' fehlt" for k in r if k not in werte and k not in optionale()]
     return werte, fehler
 
 
@@ -156,6 +166,91 @@ def schreibe_konfig(ws: Path, werte: dict[str, str]) -> None:
     if fehler:
         raise ValueError("; ".join(fehler))
     write_atomic(ws / "Unternehmen" / ".kit-config", text)
+
+
+def de_tag(iso: str) -> str:
+    return dt.date.fromisoformat(iso).strftime("%d.%m.%Y")
+
+
+def demo_datum(ws: Path) -> str | None:
+    """The workspace's demo date from valid settings only (the hooks' rule: invalid settings have no demo date)."""
+    werte, fehler = lies_konfig(ws)
+    return (werte or {}).get("demo_datum") if not fehler else None
+
+
+def bezugstag(ws: Path | None, explizit: str | None = None) -> str:
+    """Reference date of a script run (ISO): an explicit --heute wins, then demo_datum, then the system date.
+    A demo date is announced in the script's output; an explicit date that differs from it is pointed out."""
+    demo = demo_datum(ws) if ws is not None else None
+    if explizit is not None:
+        if demo and explizit != demo:
+            merke_hinweis(f"--heute {explizit} weicht vom Demo-Datum {demo} ab; dieser Lauf nutzt {explizit}.")
+        return explizit
+    if demo:
+        merke_demo(demo, f"Demo-Datum aktiv: Bezugsdatum {de_tag(demo)} statt Systemdatum "
+                         f"{dt.date.today():%d.%m.%Y} (Unternehmen/.kit-config, demo_datum).")
+        return demo
+    return dt.date.today().isoformat()
+
+
+STATUS_FORM = {"tagesstart": r"\d{4}-\d{2}-\d{2}", "wochenstart": r"\d{4}-\d{2}-\d{2}", "monatsabschluss": r"\d{4}-\d{2}",
+               "quartal": r"\d{4}-Q[1-4]", "jahresplanung": r"\d{4}"}
+DATIERT = re.compile(r"(\d{4}-\d{2}-\d{2})_")
+FALLDATUM = re.compile(r'^(?:### |erstellt: "|aktualisiert: ")(\d{4}-\d{2}-\d{2})', re.M)
+ARBEITSORDNER = ("00_Eingang", "02_Postausgang", "03_Berichte", "04_Angebote", "05_Projekte", "06_Kunden")
+
+
+def status_nach(wert: str, routine: str, heute: dt.date) -> bool:
+    """True if a .kit-status entry lies after the reference date; malformed entries count as not run (slk_status_nach)."""
+    if not re.fullmatch(STATUS_FORM[routine], wert):
+        return False
+    bezug = {"tagesstart": heute.isoformat(), "wochenstart": heute.isoformat(), "monatsabschluss": f"{heute:%Y-%m}",
+             "quartal": f"{heute.year}-Q{(heute.month - 1) // 3 + 1}", "jahresplanung": str(heute.year)}[routine]
+    return re.sub(r"\D", "", wert) > re.sub(r"\D", "", bezug)
+
+
+def mail_tag(p: Path) -> str | None:
+    """Date of a mail file (its Date header) as JJJJ-MM-TT; None if it has none or it cannot be read."""
+    try:
+        wert = email.message_from_bytes(p.read_bytes(), policy=email.policy.default)["Date"]
+        return wert.datetime.date().isoformat() if wert is not None and wert.datetime else None
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+
+
+def _gekuerzt(namen: list[str]) -> str:
+    rest = len(namen) - 5
+    return ", ".join(namen[:5]) + (f" und {rest} weitere" if rest > 0 else "")
+
+
+def zukunft(ws: Path, heute: dt.date) -> list[str]:
+    """Mails, files, cases and status entries dated after the reference date, one line per kind (spec K10): the kit
+    recalculates nothing, the user has to look at them. Due dates in the future are normal and not listed."""
+    tag = heute.isoformat()
+    zeilen = []
+    pfad = ws / "Unternehmen" / ".kit-status"
+    status = pfad.read_text(encoding="utf-8-sig", errors="replace").splitlines() if pfad.is_file() else []
+    werte = dict(z.split("=", 1) for z in reversed(status) if "=" in z)
+    spaet = [f"{k}={werte[k]}" for k in STATUS_FORM if k in werte and status_nach(werte[k], k, heute)]
+    if spaet:
+        zeilen.append(f"Status-Einträge nach dem Bezugsdatum {heute:%d.%m.%Y}: {_gekuerzt(spaet)}.")
+    dateien = sorted(p.name for o in ARBEITSORDNER for p in (ws / o).rglob("*")
+                     if p.is_file() and (m := DATIERT.match(p.name)) and m.group(1) > tag)
+    if dateien:
+        zeilen.append(f"Dateien mit Datum nach dem Bezugsdatum {heute:%d.%m.%Y}: {_gekuerzt(dateien)}.")
+    faelle = []
+    for p in sorted((ws / "01_Vorgaenge" / "offen").glob("V-*.md")):
+        text = p.read_text(encoding="utf-8-sig", errors="replace")
+        if any(d > tag for d in FALLDATUM.findall(text)):
+            faelle.append(p.stem)
+    if faelle:
+        zeilen.append(f"Vorgänge mit Einträgen nach dem Bezugsdatum {heute:%d.%m.%Y}: {_gekuerzt(faelle)}.")
+    postfach = [*(ws / "00_Eingang").glob("*.eml"), *(ws / "Beispiel" / "00_Eingang").glob("*.eml"),
+                *(ws / "06_Kunden").rglob("*.eml")]
+    mails = sorted(p.name for p in postfach if (d := mail_tag(p)) and d > tag)
+    if mails:
+        zeilen.append(f"Mails mit Datum nach dem Bezugsdatum {heute:%d.%m.%Y}: {_gekuerzt(mails)}.")
+    return zeilen
 
 
 def status_start(heute: dt.date) -> str:

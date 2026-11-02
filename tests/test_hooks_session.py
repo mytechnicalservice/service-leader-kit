@@ -74,10 +74,12 @@ def test_changes_in_unternehmen_are_reported_once(shell, kit_ws):
     profil = kit_ws / "Unternehmen" / "profil.md"
     profil.write_text("x", encoding="utf-8")
     assert "Geändert in Unternehmen/" not in start(shell, kit_ws)  # first session: marker only
-    later = time.time() + 5
-    os.utime(profil, (later, later))
+    # Everything moves back in time, the profile least: a modification time after now would not count as a change.
+    for p in (kit_ws / "Unternehmen").rglob("*"):
+        os.utime(p, (time.time() - 60, time.time() - 60))
+    os.utime(kit_ws / "Unternehmen" / ".kit-stand", (time.time() - 30, time.time() - 30))
+    os.utime(profil, (time.time() - 5, time.time() - 5))
     assert "Geändert in Unternehmen/ seit der letzten Sitzung: profil.md" in start(shell, kit_ws)
-    os.utime(kit_ws / "Unternehmen" / ".kit-stand", (later + 5, later + 5))
     assert "Geändert in Unternehmen/" not in start(shell, kit_ws)
 
 

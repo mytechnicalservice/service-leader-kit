@@ -34,8 +34,8 @@ that folder in VS Code (Datei → Ordner öffnen) and stop.
    need the user's yes in a separate request.
 5. Numbers only exactly as the scripts print them; never add, round or estimate. In sample mode the first line of the
    answer is "Beispieldaten – Muster Maschinenbau GmbH".
-6. Reference date: today, or the date the user names ("heute ist der 07.10.2026"); pass it as `--heute JJJJ-MM-TT` to
-   every script.
+6. Reference date: only when the user names a date ("heute ist der 07.10.2026") pass it as `--heute JJJJ-MM-TT` to
+   every script. Otherwise leave `--heute` out: the scripts use today or the folder's Demo-Datum.
 7. The last step `routine.py erledigt` runs whenever every step was attempted, also after a failed step; not when the
    user stopped the routine.
 
@@ -50,7 +50,7 @@ user names one.
    in this routine: the presentation and the cover mail (offered at the end).
 2. Skill `verlaengerungs-radar` aus der Routine monatsabschluss (its own reference date rule).
 3. Skill `kapazitaet-lage` aus der Routine monatsabschluss for the same month.
-4. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine monatsabschluss --heute JJJJ-MM-TT`
+4. `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/routine.py" erledigt --ws "<workspace>" --routine monatsabschluss [--heute JJJJ-MM-TT]`
 
 ## Answer (German, at most 25 lines plus the file paths, in this order)
 

@@ -103,9 +103,10 @@ def abgelaufen(ws: Path, jahre: int, heute: dt.date) -> list[dict]:
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap = JsonParser(prog="gesundheitscheck")
     ap.add_argument("--ws", required=True)
-    ap.add_argument("--heute", default=dt.date.today().isoformat())
+    ap.add_argument("--heute")
     a = ap.parse_args(argv)
-    ws, heute = Path(a.ws).expanduser(), dt.date.fromisoformat(a.heute)
+    ws = Path(a.ws).expanduser()
+    heute = dt.date.fromisoformat(ao.bezugstag(ws, a.heute))
     if not ao.ist_arbeitsordner(ws):
         text = f"'{ws}' ist kein Kundendienst-Ordner. Bitte zuerst \"richte den Kundendienst ein\" ausführen."
         return 1, {"ok": False, "fehler": [text], "meldungen": [text]}

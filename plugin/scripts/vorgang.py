@@ -14,6 +14,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+import arbeitsordner as ao
 from slk_common import JsonParser, run, write_atomic, zahl
 
 FIELDS = ["nr", "titel", "typ", "status", "kunde", "externe_nr", "verantwortlich", "bearbeitet_von", "faellig",
@@ -344,7 +345,7 @@ def parser() -> JsonParser:
     def add(name: str, *req: str, **opt: dict):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         for r in req:
             sp.add_argument(f"--{r}", required=True)
         for o, kw in opt.items():
@@ -368,6 +369,7 @@ COMMANDS = {"neu": cmd_neu, "eintrag": cmd_eintrag, "setze": cmd_setze, "entsche
 
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     a = parser().parse_args(argv)
+    a.heute = ao.bezugstag(Path(a.ws), a.heute)
     try:
         return COMMANDS[a.cmd](a, Path(a.ws))
     except VorgangFehler as exc:

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
+import arbeitsordner as ao
 from kennzahlen import KennzahlFehler, datenquelle, definitionen, deutsch, lade, summe, wert
 from slk_common import JsonParser, csv_sicher, run, zahl
 
@@ -528,7 +529,7 @@ def parser() -> JsonParser:
     def add(name: str):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         return sp
 
     p = add("preisliste")
@@ -568,6 +569,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ws = Path(a.ws).expanduser().resolve()
     if not (ws / "Unternehmen").is_dir():
         return 1, fehler(f"{ws} ist kein Kundendienst-Ordner (Unternehmen/ fehlt)")
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         dt.date.fromisoformat(a.heute)
     except ValueError:

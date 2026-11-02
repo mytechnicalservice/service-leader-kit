@@ -19,6 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import daten_pruefen as dp
+import arbeitsordner as ao
 import kennzahlen as kz
 import vorgang
 from slk_common import JsonParser, run, write_atomic, zahl
@@ -1067,7 +1068,7 @@ def parser() -> JsonParser:
     def add(name: str):
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         return sp
 
     sp = add("management-report")
@@ -1111,6 +1112,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ws = Path(a.ws)
     if not (ws / "Unternehmen").is_dir():
         return 1, {"ok": False, "fehler": [f"{ws} ist kein Kundendienst-Ordner (Unternehmen/ fehlt)"]}
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         return COMMANDS[a.cmd](a, ws)
     except (FinanzFehler, kz.KennzahlFehler, vorgang.VorgangFehler, ValueError) as exc:

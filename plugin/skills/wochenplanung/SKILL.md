@@ -15,7 +15,7 @@ followed. Nothing is decided, sent, moved or deleted here.
 PYTHONPATH trick, no hand-made result) to make a step or a check pass. If one is unavailable, stop and tell the user
 exactly what is missing (its name and the command that failed).
 
-Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`); the plan covers that date's Monday–Friday.
+Date: leave `--heute` out (the script uses today or the folder's Demo-Datum); only a reference date the user names goes in as `--heute JJJJ-MM-TT`. The plan covers that date's Monday–Friday.
 
 ## Steps
 
@@ -24,7 +24,7 @@ Date: today, or the reference date the user names (`--heute JJJJ-MM-TT`); the pl
    end time "Mittwoch 10:00–11:00 Teamleiterrunde" → `--termin "2026-10-07 10:00–11:00 Teamleiterrunde"`; all day
    "Freitag ganztägig Messe Stuttgart" → `--termin "2026-10-09 Messe Stuttgart"`, no time and no "ganztägig" in the
    title – the script writes "ganztägig" itself). Convert weekday names to the dates of this week. A line you cannot place: leave it out and say so.
-2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" wochenplanung --ws "<workspace>" --heute JJJJ-MM-TT`
+2. Run: `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/assistenz.py" wochenplanung --ws "<workspace>" [--heute JJJJ-MM-TT]`
    plus one `--termin "…"` per appointment.
 3. Answer in German: the three priorities with one sentence why each, then per day only what matters, then
    chase-ups and decisions. Name `datei`, damaged files (`defekt`) and unreadable calendar lines (`meldungen`).

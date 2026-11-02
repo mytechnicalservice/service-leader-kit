@@ -12,6 +12,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+import arbeitsordner as ao
 from daten_pruefen import monatsname
 from kennzahlen import KennzahlFehler, datenquelle, definitionen, deutsch, lade, summe, wert
 from slk_common import JsonParser, run, zahl
@@ -174,8 +175,8 @@ def ergebnis(ws: Path, felder: dict, zeilen: list[str]) -> dict:
             "zusammenfassung": ([BEISPIEL_HINWEIS] if beispiel else []) + zeilen}
 
 
-def heute_von(heute: str | None) -> dt.date:
-    return pruefe_datum(heute, "--heute") if heute else dt.date.today()
+def heute_von(ws: Path, heute: str | None) -> dt.date:
+    return pruefe_datum(ao.bezugstag(ws, heute), "--heute")
 
 
 # --- company files ------------------------------------------------------------------------------------------------
@@ -255,7 +256,7 @@ def verlaengerungs_radar(ws: Path, monate: int | None = None, stichtag: str | No
         annahmen.append(f"Horizont {monate} Monate, dringend bis {DRINGEND_MONATE} Monate ({STANDARD})")
     if not 1 <= monate <= 36:
         raise VertriebFehler("--monate muss zwischen 1 und 36 liegen")
-    tag_heute = heute_von(heute)
+    tag_heute = heute_von(ws, heute)
     anlagen, ib = installed_base(ws)
     tag = pruefe_datum(stichtag, "--stichtag") if stichtag else ib["stichtag"]
     grenze, dringend_bis = plus_monate(tag, monate), plus_monate(tag, DRINGEND_MONATE)
@@ -372,7 +373,7 @@ def retrofit_grenze(typ: str) -> int:
 
 def installed_base_potenziale(ws: Path, kunde: str | None = None, stichtag: str | None = None,
                               heute: str | None = None) -> dict:
-    tag_heute = heute_von(heute)
+    tag_heute = heute_von(ws, heute)
     anlagen, ib = installed_base(ws)
     tag = pruefe_datum(stichtag, "--stichtag") if stichtag else ib["stichtag"]
     preise = preisliste(ws)
@@ -478,7 +479,7 @@ def offene_vorgaenge(ws: Path) -> tuple[list[dict], list[str]]:
 
 
 def key_account_review(ws: Path, kunde: str | None = None, top: int | None = None, heute: str | None = None) -> dict:
-    tag_heute = heute_von(heute)
+    tag_heute = heute_von(ws, heute)
     monate = zeitraum(ws)
     auf, l1 = lade_zeitraum(ws, "auftraege", monate)
     et, l2 = lade_zeitraum(ws, "ersatzteile", monate)
@@ -695,7 +696,7 @@ def grossangebot(ws: Path, kunde: str, typ: str, anzahl: int, laufzeit: int | No
     stufe = (stufe or "").strip() or None
     if not 1 <= anzahl <= 500:
         raise VertriebFehler("--anzahl muss zwischen 1 und 500 liegen")
-    tag_heute, annahmen, meldungen = heute_von(heute), [], []
+    tag_heute, annahmen, meldungen = heute_von(ws, heute), [], []
     aufruf = f'grossangebot --kunde "{kunde}" --typ "{typ}" --anzahl {anzahl}'
     if laufzeit is None:
         laufzeit = LAUFZEIT_JAHRE

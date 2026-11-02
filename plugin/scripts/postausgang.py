@@ -55,7 +55,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     e.add_argument("--cc", action="append", default=[])
     e.add_argument("--betreff", required=True)
     e.add_argument("--format", choices=["md", "eml"], default="md")
-    e.add_argument("--heute", default=dt.date.today().isoformat())
+    e.add_argument("--heute")
     a = ap.parse_args(argv)
     ws = Path(a.ws)
     if not ao.ist_arbeitsordner(ws):
@@ -66,6 +66,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     text = sys.stdin.read()
     if not text.strip():
         return 1, {"ok": False, "fehler": ["Der Mailtext fehlt (über die Standardeingabe übergeben)."]}
+    a.heute = ao.bezugstag(ws, a.heute)
     heute = dt.date.fromisoformat(a.heute)
     pfad = freier_pfad(ws, a.heute, a.betreff, a.format)
     write_atomic(pfad, inhalt(a.an, a.cc, a.betreff, text, a.format, heute))

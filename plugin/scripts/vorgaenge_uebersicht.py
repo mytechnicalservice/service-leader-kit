@@ -14,6 +14,7 @@ from pathlib import Path
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+import arbeitsordner as ao
 from slk_common import JsonParser, run
 from vorgang import VorgangFehler, all_cases
 
@@ -76,9 +77,10 @@ def build(ws: Path, heute: str) -> Path:
 def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap = JsonParser(prog="vorgaenge_uebersicht")
     ap.add_argument("--ws", required=True)
-    ap.add_argument("--heute", default=dt.date.today().isoformat())
+    ap.add_argument("--heute")
     a = ap.parse_args(argv)
     ws = Path(a.ws)
+    a.heute = ao.bezugstag(ws, a.heute)
     try:
         path = build(ws, a.heute)
         offen = [m for _, m, _ in all_cases(ws, ("offen",))]

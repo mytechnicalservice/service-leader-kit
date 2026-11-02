@@ -16,6 +16,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+import arbeitsordner as ao
 from slk_common import JsonParser, csv_sicher, run, write_atomic, zahl
 
 VORLAGEN = Path(__file__).resolve().parents[1] / "vorlagen" / "import"
@@ -355,9 +356,10 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     ap.add_argument("--zuordnung", action="append", default=[])
     ap.add_argument("--uebernehmen", action="store_true")
     ap.add_argument("--duplikate-behalten", action="store_true", dest="duplikate_behalten")
-    ap.add_argument("--heute", default=dt.date.today().isoformat())
+    ap.add_argument("--heute")
     a = ap.parse_args(argv)
-    r = pruefe(Path(a.ws), Path(a.datei), a.vorlage, a.kontrollsumme, a.zuordnung, a.uebernehmen, a.heute,
+    r = pruefe(Path(a.ws), Path(a.datei), a.vorlage, a.kontrollsumme, a.zuordnung, a.uebernehmen,
+               ao.bezugstag(Path(a.ws), a.heute),
                a.duplikate_behalten)
     return (0 if r["ok"] else 1), r
 

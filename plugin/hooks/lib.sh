@@ -123,6 +123,22 @@ slk_days() {
   echo $((_slk_era * 146097 + _slk_doe - 719468))
 }
 
+# YYYY-MM-DD as DD.MM.YYYY for messages.
+slk_de_datum() { printf '%s' "$1" | awk -F- '{ printf "%s.%s.%s", $3, $2, $1 }'; }
+
+# Date of a mail file's first Date: header as YYYY-MM-DD; prints nothing if there is none or it cannot be read.
+slk_mail_tag() {
+  awk 'BEGIN { split("jan feb mar apr may jun jul aug sep oct nov dec", n, " "); for (i = 1; i <= 12; i++) m[n[i]] = i }
+    /^[ \t\r]*$/ { exit }
+    tolower($1) == "date:" {
+      for (i = 2; i < NF; i++) {
+        k = tolower(substr($(i + 1), 1, 3))
+        if ($i ~ /^[0-9]+$/ && (k in m) && $(i + 2) ~ /^[12][0-9][0-9][0-9]$/) { printf "%s-%02d-%02d", $(i + 2), m[k], $i; exit }
+      }
+      exit
+    }' "$1" 2>/dev/null
+}
+
 # Weekday of date $1: 0 = Monday … 6 = Sunday. Prints nothing and fails on a malformed date.
 slk_wochentag() { _slk_n=$(slk_days "$1") || return 1; echo $(((_slk_n + 3) % 7)); }
 

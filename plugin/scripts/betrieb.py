@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import daten_pruefen
+import arbeitsordner as ao
 import kennzahlen
 import vorgang
 from kennzahlen import deutsch, wert
@@ -890,7 +891,7 @@ def parser() -> JsonParser:
     for name, (_, optionen) in BEFEHLE.items():
         sp = sub.add_parser(name)
         sp.add_argument("--ws", required=True)
-        sp.add_argument("--heute", default=dt.date.today().isoformat())
+        sp.add_argument("--heute")
         sp.add_argument("--pruefe")
         for o, kw in optionen.items():
             sp.add_argument(f"--{o}", **kw)
@@ -903,6 +904,7 @@ def _main(argv: list[str] | None) -> tuple[int, dict]:
     try:
         if not (ws / "Unternehmen" / ".kit-config").is_file():
             raise BetriebFehler(f"{ws} ist kein Kundendienst-Ordner (Unternehmen/.kit-config fehlt).")
+        a.heute = ao.bezugstag(ws, a.heute)
         try:
             dt.date.fromisoformat(a.heute)
         except ValueError:
