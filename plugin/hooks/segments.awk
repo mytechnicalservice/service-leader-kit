@@ -5,7 +5,7 @@
 # (a $ outside '...', except $false/$true/$null), wildcard (* or ?, quoted or not), came-from-quotes.
 # A "$(...)" or backtick gives its own line AND a "$sub" arg in the command around it; a command fed by
 # xargs or by a pipe ("|", "|&") gets a "$xargs" arg (its targets are unknown). A shell wrapper (bash -c "...", powershell
-# -Command "...", eval "...") gets its quoted args split once more. Backslash: an escape before a space,
+# -Command "...", eval "...") gets its quoted args split too, up to three levels deep. Backslash: an escape before a space,
 # quote or shell operator, otherwise a Windows path separator ("/"). "#" at a word start is a comment.
 # Heredoc bodies are data, except that an unquoted delimiter (<<EOF) lets bash run $(...) and backticks in
 # the body: those become their own lines. No heredoc inside (( )) / $(( )) or when the delimiter does not
@@ -19,7 +19,7 @@
 # or wrapped command (its output may feed another command), else "-"; then "p" if it pipes its output into the
 # next command, else "-". The shell guard uses them for its read exemption (T-1952).
 BEGIN {
-  n = split("sudo command exec xargs env nohup time nice builtin then do else elif if while until ! { }", a, " ")
+  n = split("sudo command exec xargs env nohup time timeout nice builtin then do else elif if while until ! { } {}", a, " ")
   for (i = 1; i <= n; i++) skip[a[i]] = 1
   n = split("bash sh zsh dash ksh eval powershell pwsh cmd", a, " ")
   for (i = 1; i <= n; i++) wrapper[a[i]] = 1
@@ -33,14 +33,14 @@ function endword(   lx, b) {
   lx = tolower(word); b = lx
   sub(/^.*\//, "", b); sub(/\.exe$/, "", b)
   if (verb == "") {
-    if (b == "" || lx ~ /^[a-z_][a-z0-9_]*=/ || word ~ /^-/ || word ~ /^[0-9]+$/ || (b in skip)) {
+    if (b == "" || lx ~ /^[a-z_][a-z0-9_]*=/ || word ~ /^-/ || word ~ /^[0-9.]+[smhd]?$/ || (b in skip)) {
       if (b == "xargs") fed = 1
       reset_word(); return
     }
     verb = b
   } else {
     args = args "\t" wv ww wq word
-    if (lvl == 0 && (verb in wrapper) && wq) { pend[++np] = word; pendps[np] = (verb == "powershell" || verb == "pwsh" || verb == "cmd") }
+    if (lvl < 3 && (verb in wrapper) && wq) { pend[++np] = word; pendlvl[np] = lvl + 1; pendps[np] = (verb == "powershell" || verb == "pwsh" || verb == "cmd") }
   }
   reset_word()
 }
@@ -204,7 +204,6 @@ function run(text, psm,   np0) {
 { txt = (NR > 1 ? txt "\n" : "") $0 }
 END {
   lvl = 0; np = 0; run(txt, ps + 0)
-  n0 = np; lvl = 1
-  for (pk = 1; pk <= n0; pk++) run(pend[pk], pendps[pk])
+  for (pk = 1; pk <= np; pk++) { lvl = pendlvl[pk]; run(pend[pk], pendps[pk]) }
   printf "%s", all
 }

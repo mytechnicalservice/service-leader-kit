@@ -516,6 +516,73 @@ def test_reads_with_sed_and_grep_pass(shell, kit_ws, command):
     assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
 
 
+@pytest.mark.parametrize("command", [
+    # sed's in-place flag in every spelling
+    f"sed -ni s/a/b/ {V}",
+    f"sed -Ei s/a/b/ {V}",
+    f"sed -nI s/a/b/ {V}",
+    f"sed --in s/a/b/ {V}",
+    f"sed --in-pl=.b s/a/b/ {V}",
+    f"sed -$(echo i) s/a/b/ {V}",
+    # writers beside the usual cp and mv
+    f"touch {V}",
+    f"gzip {V}",
+    f"patch {V} /tmp/a.patch",
+    f"ed {V}",
+    f"sort -o {V} {V}",
+    f"sort -uo {V} {V}",
+    f"sort --output={V} {V}",
+    f"awk -i inplace 1 {V}",
+    "git apply --include='01_Vorgaenge/*' /tmp/a.patch",
+    # a redirect after moving into the folder
+    "cd 01_Vorgaenge/offen && echo x > V-0004.md",
+    "cd Unternehmen; echo x >> profil.md",
+    "pushd 01_Vorgaenge/offen; echo x > V-0004.md",
+    # a command hidden one level further
+    f"find 01_Vorgaenge -name '*.md' -exec sed -i s/a/b/ {{}} +",
+    f"find 01_Vorgaenge -name '*.md' -exec /usr/bin/sed -ni s/a/b/ {{}} +",
+    f"bash -c \"bash -c 'rm {V}'\"",
+    f"bash -c \"bash -c 'sed -i s/a/b/ {V}'\"",
+    f"sh <<'EOF'\nrm {V}\nEOF",
+    f"sh <<'EOF'\nsed -i s/a/b/ {V}\nEOF",
+    f"bash <<< 'rm {V}'",
+    f"printf 'rm {V}\\n' | sh",
+    f"timeout 5 rm {V}",
+    f"timeout 5s sed -i s/a/b/ {V}",
+    f"echo {V} | xargs -I {{}} rm {{}}",
+])
+def test_t2164_write_routes_are_refused(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2, (command, err)
+
+
+@pytest.mark.parametrize("command", [
+    # the same commands where nothing protected is written
+    "touch 03_Berichte/x.md",
+    "gzip -c 03_Berichte/x.md",
+    "sort 03_Berichte/x.md",
+    "sort -o 03_Berichte/y.md 03_Berichte/x.md",
+    "awk '{print $1}' 03_Berichte/x.md",
+    "cd 03_Berichte && echo x > y.md",
+    "sed -i '' s/a/b/ 03_Berichte/x.md",
+    "bash /tmp/bau.sh",
+    "printf 'echo hallo\\n' | sh",
+    "sh <<'EOF'\necho hallo\nEOF",
+    "bash -c \"bash -c 'echo hallo'\"",
+    "timeout 5 python3 /tmp/bau.py",
+    # reading the protected folders, with flags that only look like -i
+    f"sed -nE 1p {V}",
+    f"sed -E -n 1p {V}",
+    f"sed -n 's/-i/x/p' {V}",
+    f"timeout 5 cat {V}",
+    f"cd 01_Vorgaenge/offen && cat V-0004.md 2>/dev/null",
+    "find 01_Vorgaenge -iname '*.md' -exec sed -n 1p {} +",
+    "find 01_Vorgaenge -name '*.md' -exec grep -l hansa {} +",
+])
+def test_t2164_harmless_neighbours_pass(shell, kit_ws, command):
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
+
+
 def test_known_limit_loop_with_sed_beside_grep_i_stays_refused(shell, kit_ws):
     # The call refused on 2026-11-02, verbatim. A false refusal we accept until the guard parses commands.
     code, err = pre(shell, kit_ws, bash(kit_ws, demo("alle-vorgaenge", kit_ws)))
