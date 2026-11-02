@@ -2,7 +2,7 @@
 
 Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
 
-## Unveröffentlicht
+## 0.3.1 – 2026-11-02
 
 ### Behoben
 
@@ -13,6 +13,19 @@ Alle nennenswerten Änderungen am Service Leader Kit. Neueste Version oben.
   Ordner und Inline-Code, der sie nennt, bleiben gesperrt; die Dokument-Skills sagen das nun ausdrücklich.
 - Eine Umleitung hinter `cp` (`2>/dev/null`) galt fälschlich als Ziel der Kopie; so ließ sich in
   `Unternehmen/vorlagen/` schreiben. Das ist jetzt gesperrt.
+- Ein `sed`, dessen Schalter sich nicht erkennen lassen (`$(…)`, `xargs`, Variable statt Skript, `"-i"` in
+  Anführungszeichen), gilt nicht mehr als Lesen und wird in den geschützten Ordnern gesperrt (T-1952).
+- **Schutz der geschützten Ordner erweitert:** Gesperrt sind jetzt auch weitere Schreibwege per Shell, darunter `touch`,
+  `sort -o`, Umleitungen nach einem `cd` in den Ordner und Befehle, die eine Shell aus einer Pipe oder einem Heredoc
+  liest. Lesebefehle bleiben erlaubt; wer nach einem `cd` in den Ordner umleitet oder daneben `touch` oder `gzip` aufruft,
+  wird in manchen Fällen auch beim reinen Lesen gesperrt.
+- Befehle mit sehr vielen Argumenten werden gesperrt: Ihre Prüfung konnte das Zeitlimit des Schutzprogramms überschreiten,
+  und dann griff es nicht. Abhilfe: mehrere Aufrufe.
+
+### Bekannte Grenze
+
+- Eine Schleife über Vorgänge mit `sed -n` und ein `grep -i` im selben Aufruf bleiben gesperrt: Das `-i` gilt dort als
+  möglicher `sed -i`. Abhilfe: zwei getrennte Aufrufe.
 
 ## 0.3.0 – 2026-10-08
 
