@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from hookrun import NS, PAYLOADS, bash, echt, run_hook
@@ -500,3 +502,176 @@ def test_powershell_read_beside_inline_code_passes(shell, kit_ws):
 def test_reading_inside_a_protected_folder_beside_inline_code_stays_blocked(shell, kit_ws):
     p = bash(kit_ws, "cat profil.md; python3 -c \"print(1)\"", cwd=kit_ws / "Unternehmen")
     assert pre(shell, kit_ws, p)[0] == 2
+
+
+# T-1952, second finding: a -i anywhere in a call counts as sed's once a protected folder is named outside a reading
+# command, because the guard matches words and does not parse. Reads split into two calls pass.
+V = "01_Vorgaenge/offen/V-0004.md"
+
+
+@pytest.mark.parametrize("command", [
+    f"sed -n 1p {V}; grep -i hansa {V}",
+    'for f in 01_Vorgaenge/offen/V-*.md; do sed -n 1p "$f"; done',
+    "grep -i hansa 03_Berichte/x.md",
+])
+def test_reads_with_sed_and_grep_pass(shell, kit_ws, command):
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
+
+
+@pytest.mark.parametrize("command", [
+    # sed's in-place flag in every spelling
+    f"sed -ni s/a/b/ {V}",
+    f"sed -Ei s/a/b/ {V}",
+    f"sed -nI s/a/b/ {V}",
+    f"sed --in s/a/b/ {V}",
+    f"sed --in-pl=.b s/a/b/ {V}",
+    f"sed -$(echo i) s/a/b/ {V}",
+    # writers beside the usual cp and mv
+    f"touch {V}",
+    f"gzip {V}",
+    f"patch {V} /tmp/a.patch",
+    f"ed {V}",
+    f"sort -o {V} {V}",
+    f"sort -uo {V} {V}",
+    f"sort --output={V} {V}",
+    f"awk -i inplace 1 {V}",
+    "git apply --include='01_Vorgaenge/*' /tmp/a.patch",
+    # a redirect after moving into the folder
+    "cd 01_Vorgaenge/offen && echo x > V-0004.md",
+    "cd Unternehmen; echo x >> profil.md",
+    "pushd 01_Vorgaenge/offen; echo x > V-0004.md",
+    # a command hidden one level further
+    f"find 01_Vorgaenge -name '*.md' -exec sed -i s/a/b/ {{}} +",
+    f"find 01_Vorgaenge -name '*.md' -exec /usr/bin/sed -ni s/a/b/ {{}} +",
+    f"bash -c \"bash -c 'rm {V}'\"",
+    f"bash -c \"bash -c 'sed -i s/a/b/ {V}'\"",
+    f"sh <<'EOF'\nrm {V}\nEOF",
+    f"sh <<'EOF'\nsed -i s/a/b/ {V}\nEOF",
+    f"bash <<< 'rm {V}'",
+    f"printf 'rm {V}\\n' | sh",
+    f"timeout 5 rm {V}",
+    f"timeout 5s sed -i s/a/b/ {V}",
+    f"echo {V} | xargs -I {{}} rm {{}}",
+])
+def test_t2164_write_routes_are_refused(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2, (command, err)
+
+
+@pytest.mark.parametrize("command", [
+    # timeout and xargs -I {} must not turn a reader into one the read exemption trusts
+    "timeout 5 ls 01_Vorgaenge; cp /tmp/x 0*/offen/V-0004.md",
+    f'timeout 5 cat {V}; cp /tmp/x "$f"',
+    "timeout 5 ls 01_Vorgaenge; python3 /tmp/b.py",
+    'ls 01_Vorgaenge | xargs -I {} cat {}; cp /tmp/x "$f"',
+])
+def test_t2164_wrapped_readers_get_no_read_exemption(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2, (command, err)
+
+
+@pytest.mark.parametrize("verb", ["sort", "awk", "bash", "cp", "mv", "rm", "ls"])
+def test_t2164_many_args_do_not_outrun_the_hook(shell, kit_ws, verb):
+    # hooks.json allows 15 seconds, and a hook that is cut off does not block.
+    start = time.monotonic()
+    code, err = pre(shell, kit_ws, bash(kit_ws, f"{verb} {'a ' * 5000}"))
+    assert code == 2 and time.monotonic() - start < 15, err
+    assert regel(kit_ws).startswith("shell-zu-lang tool=Bash")
+
+
+def test_t2164_the_argument_limit_leaves_long_build_scripts_alone(shell, kit_ws):
+    body = "\n".join(f"zeile_{i} = {i} + 1  # text mit Wörtern" for i in range(2000))
+    command = f"cat > /tmp/bau.py <<'EOF'\n{body}\nEOF"
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, "")
+
+
+@pytest.mark.parametrize("command", [
+    # the same commands where nothing protected is written
+    "touch 03_Berichte/x.md",
+    "gzip -c 03_Berichte/x.md",
+    "sort 03_Berichte/x.md",
+    "sort -o 03_Berichte/y.md 03_Berichte/x.md",
+    "awk '{print $1}' 03_Berichte/x.md",
+    "cd 03_Berichte && echo x > y.md",
+    "sed -i '' s/a/b/ 03_Berichte/x.md",
+    "bash /tmp/bau.sh",
+    "printf 'echo hallo\\n' | sh",
+    "sh <<'EOF'\necho hallo\nEOF",
+    "bash -c \"bash -c 'echo hallo'\"",
+    "timeout 5 python3 /tmp/bau.py",
+    # reading the protected folders, with flags that only look like -i
+    f"sed -nE 1p {V}",
+    f"sed -E -n 1p {V}",
+    f"sed -n 's/-i/x/p' {V}",
+    f"timeout 5 cat {V}",
+    f"cd 01_Vorgaenge/offen && cat V-0004.md 2>/dev/null",
+    "find 01_Vorgaenge -iname '*.md' -exec sed -n 1p {} +",
+    "find 01_Vorgaenge -name '*.md' -exec grep -l hansa {} +",
+    "find 01_Vorgaenge -name sed -iname '*.md'",
+    f"sort -to -k1 {V}",
+])
+def test_t2164_harmless_neighbours_pass(shell, kit_ws, command):
+    assert pre(shell, kit_ws, bash(kit_ws, command)) == (0, ""), command
+
+
+def test_known_limit_loop_with_sed_beside_grep_i_stays_refused(shell, kit_ws):
+    # The call refused on 2026-11-02, verbatim. A false refusal we accept until the guard parses commands.
+    code, err = pre(shell, kit_ws, bash(kit_ws, demo("alle-vorgaenge", kit_ws)))
+    assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=Bash"), err
+
+
+@pytest.mark.parametrize("command", [
+    # sed and perl editing in place: their own flag, in every form the rule knows
+    f"sed -i '' s/a/b/ {V}",
+    f"sed -i.bak s/a/b/ {V}",
+    f"sed --in-place=.bak s/a/b/ {V}",
+    f'sed "-i" s/a/b/ {V}',
+    f"perl -i -pe s/a/b/ {V}",
+    f"perl -pi -e s/a/b/ {V}",
+    # ... wrapped, or in a substitution, loop or group
+    f'bash -c "sed -i s/a/b/ {V}"',
+    f"sh -c 'sed -i s/a/b/ {V}'",
+    f'eval "sed -i s/a/b/ {V}"',
+    f'bash -c "perl -i -pe s/a/b/ {V}"',
+    f'x=$(sed -i s/a/b/ {V})',
+    f"x=`sed -i s/a/b/ {V}`",
+    f"{{ sed -i s/a/b/ {V}; }}",
+    'for f in 01_Vorgaenge/offen/V-*.md; do sed -i s/a/b/ "$f"; done',
+    # ... beside the commands that must pass
+    f"sed -n 1p {V}; sed -i s/a/b/ {V}",
+    f"grep -i hansa {V}; sed -i s/a/b/ {V}",
+    f"sed -n 1p {V} && grep -i hansa {V} && sed -i s/a/b/ {V}",
+    # a flag that arrives from elsewhere cannot be attributed to a command, so any -i still counts
+    f"sed $(echo -i) s/a/b/ {V}",
+    f"echo -i | xargs sed s/a/b/ {V}",
+    'for f in 01_Vorgaenge/offen/V-*.md; do for o in -i; do sed "$o" s/a/b/ "$f"; done; done',
+    "cd 01_Vorgaenge/offen; o=$(echo -i); sed $o s/a/b/ V-0004.md",
+    f"for o in -i; do sed $o s/a/b/ {V}; done",
+    f"o=$(echo -i); sed $o s/a/b/ {V}",
+    # ... and an in-place edit the rule cannot see as sed's own still counts beside a harmless sed -n
+    "sed -n 1p 03_Berichte/x.md; find 01_Vorgaenge -name '*.md' -exec sed -i s/a/b/ {} +",
+    f"sed -n 1p 03_Berichte/x.md; bash -c \"bash -c 'sed -i s/a/b/ {V}'\"",
+    f"sed -n 1p 03_Berichte/x.md; timeout 5 sed -i s/a/b/ {V}",
+    f"sed -n 1p 03_Berichte/x.md; sh <<'EOF'\nsed -i s/a/b/ {V}\nEOF",
+    # ... also when a reader's own -i sits inside a quoted substitution
+    f'echo "$(grep -i x 03_Berichte/x.md)"; sed -n 1p 03_Berichte/x.md; timeout 5 sed -i s/a/b/ {V}',
+    # inline code and heredocs on the protected folders, read or write
+    f"python3 -c \"print(open('{V}').read())\"",
+    f"sed -n 1p {V}; python3 -c \"print(open('{V}').read())\"",
+    f"uv run python -c \"print(open('{V}').read())\"",
+    f"python3 - <<'EOF'\nprint(open('{V}').read())\nEOF",
+    f"grep -i hansa {V}; python3 - <<'EOF'\nprint(open('{V}').read())\nEOF",
+    f"cat <<EOF > {V}\nleer\nEOF",
+    # deletes, moves and redirects
+    f"rm {V}",
+    f"sed -n 1p {V}; rm {V}",
+    f"grep -i hansa {V}; mv {V} /tmp/x.md",
+    f"sed -n 1p {V}; grep -i hansa {V}; echo x > {V}",
+    f"grep -i hansa 03_Berichte/x.md >> {V}",
+    f"sed -n 1p 03_Berichte/x.md > {V}",
+    f"grep -i hansa {V} | tee {V}",
+    f"cp /tmp/x.md {V}",
+])
+def test_per_command_flags_keep_every_write_refused(shell, kit_ws, command):
+    code, err = pre(shell, kit_ws, bash(kit_ws, command))
+    assert code == 2 and regel(kit_ws).startswith("shell-geschuetzt tool=Bash"), (command, err)

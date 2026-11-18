@@ -22,6 +22,9 @@ nq=$(printf '%s' "$full" | tr -d "\"'")                                    # quo
 _slk_ps=0; [ "$tool" = PowerShell ] && _slk_ps=1
 segs=$(printf '%s\n' "$cmd" | awk -v ps="$_slk_ps" -f "$SLK_HOOKS/segments.awk")
 verbs=$(printf '%s\n' "$segs" | awk -F '\t' '{ printf " %s", $1 } END { print " " }')
+# Too many arguments to check in time: the per-argument rules take seconds per thousand. Heredoc text is no argument.
+[ "$(printf '%s\n' "$segs" | awk -F '\t' '{ n += NF - 1 } END { print n + 0 }')" -gt 500 ] &&
+  block shell-zu-lang "Der Befehl hat zu viele Argumente zum Prüfen. Teile ihn in mehrere Aufrufe auf."
 words=" $(printf '%s' "$bare" | tr '\n\t' '  ') "
 
 has_verb() { for v in "$@"; do case "$verbs" in *" $v "*) return 0 ;; esac; done; return 1; }
@@ -37,7 +40,7 @@ has_verb $WRAP && words="$words$(printf '%s' "$nq" | tr '\n\t' '  ') "
 DEL="rm rmdir unlink shred truncate remove-item ri del erase rd trash"
 RMLIKE="rm trash remove-item ri del erase"
 MOVE="mv move-item mi move ren rename-item rni"
-COPY="cp copy copy-item cpi rsync ln install dd tee set-content sc out-file clear-content clc add-content ac"
+COPY="cp copy copy-item cpi rsync ln install dd tee touch patch ed gzip gunzip bzip2 xz set-content sc out-file clear-content clc add-content ac"
 INLINE="python python3 py node perl ruby osascript powershell pwsh cmd"
 SEND="curl wget sendmail mail mailx mutt msmtp nc ncat netcat telnet ssh scp sftp ftp send-mailmessage invoke-webrequest iwr invoke-restmethod irm start-bitstransfer"
 
@@ -112,7 +115,9 @@ seg_cd() {
     case "$_slk_a" in 1??*|?1?*) return 0 ;; ???-*) continue ;; esac
     _slk_t=${_slk_a#???}
     case "$_slk_t" in "~"|"~/"*) _slk_t="$HOME${_slk_t#"~"}" ;; esac
-    _slk_ecwd=$(slk_norm_path "$_slk_t" "$_slk_ecwd"); return 0
+    _slk_ecwd=$(slk_norm_path "$_slk_t" "$_slk_ecwd")
+    case "$(slk_lower "$_slk_ecwd")/" in "$lws"/01_vorgaenge/*|"$lws"/unternehmen/*) _slk_cdin=1 ;; esac
+    return 0
   done
   case "$_slk_v" in cd|chdir|set-location|sl) [ -n "$HOME" ] && _slk_ecwd=$(slk_slashes "$HOME") ;; esac
   return 0
@@ -187,7 +192,50 @@ seg_git_rules() {
   esac
 }
 
-# Runs the rules of mode $1 (del = delete/find rules, git = git rules) on every simple command in $segs.
+# True if $1 is sed's in-place flag: -i, -i.bak, in a cluster before the value flags e and f (-ni, -Ei, -nI), any
+# abbreviation of --in-place, or a flag completed by $(…).
+ist_inplace() {
+  case "$1" in
+    -*'$sub'*) return 0 ;;
+    --[iI]*) return 0 ;;
+    --*) return 1 ;;
+    -*) case "${1%%[ef]*}" in -*[iI]*) return 0 ;; esac ;;
+  esac
+  return 1
+}
+
+# sed/perl editing in place, by the command's own args: this also sees a quoted "-i", which the whole-command check
+# below does not. That check stays on purpose: a -i can reach sed through a variable, a find -exec or a heredoc, so
+# a grep -i beside sed -n stays refused once a protected folder is named outside a reading command (T-1952).
+seg_inplace_rules() {
+  for _slk_a in "$@"; do
+    ist_inplace "${_slk_a#???}" && block shell-geschuetzt "$schutz"
+  done
+  return 0
+}
+
+# The other commands that write beside their usual job, by their own args (T-2164). $1 = verb, then the args.
+seg_schreib_rules() {
+  _slk_v=$1; shift; _slk_x=0
+  for _slk_a in "$@"; do
+    _slk_t=${_slk_a#???}
+    case "$_slk_v" in
+      awk|gawk) case "$_slk_t" in -i*|-I*|--include*) block shell-geschuetzt "$schutz" ;; esac ;;
+      sort) case "$_slk_t" in --output*) block shell-geschuetzt "$schutz" ;; --*|-t*|-k*) ;; -*o*) block shell-geschuetzt "$schutz" ;; esac ;;
+      find) # sed or perl run by -exec, up to the end of that -exec
+        case "$_slk_x:$_slk_t" in
+          *:-exec|*:-execdir|*:-ok|*:-okdir) _slk_x=1 ;;
+          1:*) case "${_slk_t##*/}" in sed|SED|perl|PERL) _slk_x=2 ;; *) _slk_x=0 ;; esac ;;
+          2:\;|2:+) _slk_x=0 ;;
+          2:*) ist_inplace "$_slk_t" && block shell-geschuetzt "$schutz" ;;
+        esac ;;
+      *) [ "$_slk_t" = '$xargs' ] && block shell-geschuetzt "$schutz" ;;   # a shell reading its commands from a pipe
+    esac
+  done
+  return 0
+}
+
+# Runs the rules of mode $1 (del = delete/find rules, git = git rules, inplace = sed/perl flags) on every simple command in $segs.
 check_segs() {
   _slk_mode=$1; _slk_ecwd=$cwd
   _slk_oifs=$IFS
@@ -201,6 +249,11 @@ check_segs() {
     _slk_vb=$1; shift
     if [ "$_slk_mode" = git ]; then
       [ "$_slk_vb" = git ] && seg_git_rules "$@"
+    elif [ "$_slk_mode" = inplace ]; then
+      case "$_slk_vb" in
+        sed|perl) seg_inplace_rules "$@" ;;
+        awk|gawk|sort|find|bash|sh|zsh|dash|ksh) seg_schreib_rules "$_slk_vb" "$@" ;;
+      esac
     elif [ "$_slk_vb" = find ]; then
       seg_find_rules "$@"
     elif in_list "$_slk_vb" "cd chdir pushd set-location sl push-location"; then
@@ -216,6 +269,7 @@ check_segs() {
 
 # 1+2. Recursive deletion anywhere in the workspace would take the protected folders with it (decision D3);
 # deleting or moving with wildcards, variables or substitutions cannot be checked. Both per command.
+_slk_cdin=0   # set when a literal cd moved the shell into a protected folder
 check_segs del
 # Inline code that destroys without naming a folder: only where code can run (python -c, node -e, bash -c …).
 # shellcheck disable=SC2086
@@ -287,15 +341,19 @@ lese_args() {
   if [ "$_slk_rv" = sed ]; then
     _slk_skr=1
     for _slk_a in "$@"; do
-      case "$(slk_lower "${_slk_a#???}")" in -i*|--in-place*|--expression*|--file*) return 0 ;; esac
-      case "${_slk_a#???}" in -e*|-f*|-*[ef]) return 0 ;; esac
+      ist_inplace "${_slk_a#???}" && return 0
+      case "$(slk_lower "${_slk_a#???}")" in --expression*|--file*) return 0 ;; esac
+      case "${_slk_a#???}" in -e*|-f*|-*[ef]|*'$sub'*|'$xargs') return 0 ;; esac
     done
   fi
   for _slk_a in "$@"; do
     _slk_t=${_slk_a#???}; _slk_pv=$_slk_vor; _slk_vor=$_slk_t
     case "$_slk_a" in 0?1*) _slk_vor="" ;; esac   # a literal quoted argument is text, no redirection for the next one
     case "$_slk_t" in -*) continue ;; esac
-    if [ "$_slk_skr" = 1 ]; then _slk_skr=0; continue; fi
+    if [ "$_slk_skr" = 1 ]; then
+      case "$_slk_a" in 1??*) return 0 ;; esac   # a variable where sed's script goes may be a flag: no read
+      _slk_skr=0; continue
+    fi
     case "$_slk_a" in 1??*) continue ;; esac
     case "$_slk_t$_slk_pv" in *">"*|*"<"*) continue ;; esac
     _slk_k=$(ohne "$(slk_lower "$(slk_slashes "$_slk_t")")" "$lws")
@@ -371,14 +429,17 @@ if [ "$named" = 1 ]; then
   # shellcheck disable=SC2086
   _slk_ausl=$(erster_verb $DEL $MOVE $COPY $INLINE) && gesperrt "Befehl $_slk_ausl"
   has_verb sed perl && { has_flag '-i*' || has_flag '-I*' || has_flag '--in-place*'; } && gesperrt "Ändern in der Datei (-i)"
-  has_verb git && has_word rm mv checkout restore reset stash && gesperrt "Git-Befehl, der Dateien ändert"
+  has_verb git && has_word rm mv checkout restore reset stash apply && gesperrt "Git-Befehl, der Dateien ändert"
   has_verb uv && has_word python python3 && has_word -c && gesperrt "Inline-Code (uv run python -c)"
   printf '%s\n' "$nqs" | grep -Eq ">[>|]?[[:space:]]*([^[:space:];|&<>]*$vorher)?(01_vorgaenge|unternehmen)($nachher|\$)" &&
     gesperrt "Zeichen > vor einem geschützten Ordner (Umleitung)"
-  if [ "$incwd" = 1 ]; then
+  if [ "$incwd" = 1 ] || [ "$_slk_cdin" = 1 ]; then
     printf '%s' "$nq" | sed -E 's/[0-9]*>>?[[:space:]]*(&[0-9-]?|\/dev\/null)//g' | grep -q '>' &&
       gesperrt "Zeichen > im geschützten Ordner (Umleitung)"
   fi
+  check_segs inplace
+  # A shell fed from a heredoc runs its body, which no rule above sees as commands.
+  case "$full" in *"<<"*) has_verb bash sh zsh dash ksh && gesperrt "Shell mit Heredoc" ;; esac
 fi
 
 # 3b. Git that throws away work, anywhere in the workspace.
